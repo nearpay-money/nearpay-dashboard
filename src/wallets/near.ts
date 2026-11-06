@@ -1,8 +1,11 @@
 /**
  * NEAR wallets for NEP-413 attestations via NEAR Connect (ADR-0010, identity LLD §8.2): the wallet signs
  * `{message, recipient, nonce}` exactly as the challenge gives them; the signing account must be the
- * destination account. NEAR Connect is loaded on demand.
+ * destination account. NEAR Connect is loaded on demand, with the reviewed wallet list in `./near-manifest.ts`
+ * (executors at full commit SHAs, checked with SRI), enforced by `./near-pinning.ts`: nothing is downloaded from a
+ * mutable branch.
  */
+import type { NearConnectorOptions } from "@hot-labs/near-connect";
 import { cspNonce, NEAR_NETWORK } from "../lib/config";
 import { WalletMismatchError } from "./evm";
 
@@ -38,10 +41,18 @@ let connector: Promise<NearConnectorLike> | null = null;
 
 /** The shared NEAR Connect instance (lazy). */
 export function nearConnector(): Promise<NearConnectorLike> {
-  connector ??= import("@hot-labs/near-connect").then(({ NearConnector }) => {
+  connector ??= Promise.all([import("@hot-labs/near-connect"), import("./near-pinning")]).then(([lib, pin]) => {
+    pin.installExecutorIntegrity();
     const nonce = cspNonce();
-    const c = new NearConnector({ network: NEAR_NETWORK, ...(nonce ? { cspNonce: nonce } : {}) });
-    return { connect: () => c.connect() as unknown as Promise<NearWalletLike> };
+    const c = new lib.NearConnector({
+      network: NEAR_NETWORK,
+      ...(nonce ? { cspNonce: nonce } : {}),
+      // The library types `platform` as string[]; the manifest (and the library at runtime) use an object.
+      manifest: pin.pinnedManifest() as unknown as NearConnectorOptions["manifest"],
+      autoConnect: false,
+      storage: pin.withoutDebugWallets(new lib.LocalStorage()),
+    });
+    return { connect: () => pin.connectPinnedWallet(c, lib) as unknown as Promise<NearWalletLike> };
   });
   return connector;
 }
