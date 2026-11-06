@@ -1,3 +1,4 @@
+import { delivery, endpoint, NOW } from "./fixtures";
 import { expect, signIn, test } from "./harness";
 
 test.describe("developers", () => {
@@ -54,7 +55,7 @@ test.describe("developers", () => {
     await page.getByRole("button", { name: "Disable" }).click();
     await expect(page.getByRole("button", { name: "Enable" })).toBeVisible();
     expect(api.callsTo("updateWebhookEndpoint")[0]?.body).toEqual({ disabled: true });
-    await expect(page.getByText("deliveries API")).toBeVisible();
+    await expect(page.getByText("No deliveries in the last 30 days.")).toBeVisible();
     await page.getByRole("link", { name: "View event" }).click();
     await expect(page.getByTestId("event-json")).toContainText('"type": "ping"');
     await page.getByRole("link", { name: "Events" }).click();
@@ -68,5 +69,66 @@ test.describe("developers", () => {
     await page.getByRole("button", { name: "Delete" }).click();
     await expect(page).toHaveURL(/\/developers\/webhooks$/);
     await expect(page.getByText("No test endpoints yet.")).toBeVisible();
+  });
+
+  test("webhook delivery log: status, attempts, last response, pagination (spec 0.1.5)", async ({ page, api }) => {
+    const ep = endpoint({ url: "https://acme.example/log" });
+    api.endpoints.test.push(ep);
+    const rows = [
+      delivery(ep.id, {
+        status: "failed",
+        attempts: 3,
+        last_status_code: 500,
+        last_error: "non-2xx response",
+        next_attempt_at: NOW + 600,
+        succeeded_at: null,
+      }),
+      delivery(ep.id, {
+        status: "pending",
+        attempts: 0,
+        last_status_code: null,
+        next_attempt_at: NOW + 5,
+        succeeded_at: null,
+      }),
+      delivery(ep.id, {
+        status: "abandoned",
+        attempts: 12,
+        last_status_code: null,
+        last_error: "connection refused",
+        next_attempt_at: null,
+        succeeded_at: null,
+      }),
+      // a status newer than the dashboard's spec version renders as received (tolerant parsing)
+      { ...delivery(ep.id), status: "quarantined" as never },
+      ...Array.from({ length: 20 }, () => delivery(ep.id)),
+    ];
+    api.deliveries.set(ep.id, rows);
+    await signIn(page, api, `/developers/webhooks/${ep.id}`);
+    const table = page.getByTestId("deliveries-table");
+    const first = page.getByTestId(`delivery-${rows[0]?.id}`);
+    await expect(first).toContainText("payment_intent.succeeded");
+    await expect(first).toContainText("failed");
+    await expect(first).toContainText("HTTP 500");
+    await expect(first).toContainText("non-2xx response");
+    await expect(first).toContainText(/in (9|10) min/);
+    await expect(page.getByTestId(`delivery-${rows[1]?.id}`)).toContainText("pending");
+    await expect(page.getByTestId(`delivery-${rows[2]?.id}`)).toContainText("connection refused");
+    await expect(page.getByTestId(`delivery-${rows[2]?.id}`)).toContainText("abandoned");
+    await expect(page.getByTestId(`delivery-${rows[3]?.id}`)).toContainText("quarantined");
+    await expect(table.locator("tbody tr")).toHaveCount(20);
+    expect(api.callsTo("listWebhookEndpointDeliveries")[0]?.query).toEqual({ limit: "20" });
+
+    await page.getByRole("button", { name: "Next" }).click();
+    await expect(table.locator("tbody tr")).toHaveCount(4);
+    expect(api.callsTo("listWebhookEndpointDeliveries").at(-1)?.query).toEqual({
+      limit: "20",
+      starting_after: rows[19]?.id,
+    });
+    await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
+    await page.getByRole("button", { name: "Previous" }).click();
+    await expect(page.getByTestId(`delivery-${rows[0]?.id}`)).toBeVisible();
+
+    await page.getByTestId(`delivery-${rows[0]?.id}`).getByRole("link").click();
+    await expect(page).toHaveURL(new RegExp(`/developers/events/${rows[0]?.event}`));
   });
 });
