@@ -78,6 +78,7 @@ const TONE: Record<string, string> = {
   expired_unpaid: "muted",
   disabled: "muted",
   rejected: "bad",
+  abandoned: "bad",
 };
 
 export function Badge({ value, tone }: { value: string; tone?: string }) {

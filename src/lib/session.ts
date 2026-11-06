@@ -1,57 +1,42 @@
 /**
  * Dashboard session state. The session cookie (`__Host-np_session`, HttpOnly) is the credential; the
- * CSRF token comes only in the sign-in response, so it is kept in memory and in `sessionStorage`
- * (this tab only) to survive reloads. A new tab, or a stored session that the API no longer accepts,
- * signs in again with a passkey (spec 0.1.4 has no "current session" route; see brain notes).
+ * `DashboardSession` (with its CSRF token) is held in memory only. A reload or a new tab recovers it from
+ * the cookie with `GET /v1/auth/session` (spec 0.1.5, CR-15-01); nothing is written to web storage.
+ * Builds before 0.1.5 kept the session (incl. the CSRF token) in `sessionStorage`: that copy is removed.
  */
-import type { DashboardSession as DashboardSessionSchema, z } from "@nearpay/spec";
+import { type DashboardSession as DashboardSessionSchema, getDashboardSession, type z } from "@nearpay/spec";
+import type { ApiClient } from "./api";
+import { ApiError } from "./errors";
 
 export type DashboardSession = z.output<typeof DashboardSessionSchema>;
 
-export const STORAGE_KEY = "np.dashboard.session";
+/** Where builds before spec 0.1.5 stored the session; read never, only removed. */
+export const LEGACY_STORAGE_KEY = "np.dashboard.session";
 
-export interface SessionStore {
-  load(nowSec?: number): DashboardSession | null;
-  save(s: DashboardSession): void;
-  clear(): void;
+type StorageLike = Pick<Storage, "removeItem">;
+
+/** Removes the session copy older builds left in `sessionStorage`. */
+export function clearLegacySession(storage: StorageLike | undefined = globalThis.sessionStorage): void {
+  try {
+    storage?.removeItem(LEGACY_STORAGE_KEY);
+  } catch {
+    // storage may be unavailable (privacy mode); nothing to clear then
+  }
 }
 
-type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
-
-function isSession(v: unknown): v is DashboardSession {
-  if (typeof v !== "object" || v === null) return false;
-  const o = v as Record<string, unknown>;
-  return (
-    o.object === "dashboard_session" &&
-    typeof o.csrf_token === "string" &&
-    typeof o.expires_at === "number" &&
-    typeof o.role === "string" &&
-    typeof (o.user as { email?: unknown } | undefined)?.email === "string" &&
-    typeof (o.account as { id?: unknown } | undefined)?.id === "string"
-  );
-}
-
-export function sessionStore(storage: StorageLike | undefined = globalThis.sessionStorage): SessionStore {
-  return {
-    load(nowSec = Math.floor(Date.now() / 1000)) {
-      if (!storage) return null;
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(storage.getItem(STORAGE_KEY) ?? "null");
-      } catch {
-        parsed = null;
-      }
-      if (!isSession(parsed) || parsed.expires_at <= nowSec) {
-        storage.removeItem(STORAGE_KEY);
-        return null;
-      }
-      return parsed;
-    },
-    save(s) {
-      storage?.setItem(STORAGE_KEY, JSON.stringify(s));
-    },
-    clear() {
-      storage?.removeItem(STORAGE_KEY);
-    },
-  };
+/**
+ * The current session from the cookie, or null when there is none (401) or it has expired. Other
+ * failures (network, 5xx) are rethrown so the caller can tell "signed out" from "API unreachable".
+ */
+export async function restoreSession(
+  api: Pick<ApiClient, "call">,
+  nowSec: number = Math.floor(Date.now() / 1000),
+): Promise<DashboardSession | null> {
+  try {
+    const s = await api.call(getDashboardSession);
+    return s.expires_at > nowSec ? s : null;
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 401 || e.code === "authentication_required")) return null;
+    throw e;
+  }
 }

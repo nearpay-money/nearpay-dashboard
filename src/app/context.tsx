@@ -16,7 +16,7 @@ import { StepUpCanceled } from "../lib/errors";
 import { hrefFor, modeFromSearch, withMode } from "../lib/mode";
 import type { AssetInfo } from "../lib/money";
 import { blockedReason } from "../lib/permissions";
-import { type DashboardSession, sessionStore } from "../lib/session";
+import { clearLegacySession, type DashboardSession, restoreSession } from "../lib/session";
 
 export type Account = z.output<typeof AccountSchema>;
 export type Requirements = z.output<typeof RequirementsSchema>;
@@ -29,6 +29,8 @@ interface Loc {
 export interface AppState {
   readonly api: ApiClient;
   readonly session: DashboardSession | null;
+  /** True until `GET /v1/auth/session` has answered on load (reload / new tab). */
+  readonly restoring: boolean;
   setSession(s: DashboardSession | null): void;
   readonly mode: Mode;
   setMode(m: Mode): void;
@@ -54,11 +56,10 @@ export function useApp(): AppState {
   return v;
 }
 
-const store = sessionStore();
-
 export function AppProvider({ children }: { children: ReactNode }) {
   const [location, setLocation] = useState<Loc>({ pathname: window.location.pathname, search: window.location.search });
-  const [session, setSessionState] = useState<DashboardSession | null>(() => store.load());
+  const [session, setSessionState] = useState<DashboardSession | null>(null);
+  const [restoring, setRestoring] = useState(true);
   const [account, setAccount] = useState<Account>();
   const [requirements, setRequirements] = useState<Requirements>();
   const [assets, setAssets] = useState<ReadonlyMap<string, AssetInfo>>(new Map());
@@ -85,8 +86,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setSession = useCallback((s: DashboardSession | null) => {
-    if (s) store.save(s);
-    else store.clear();
     sessionRef.current = s;
     setSessionState(s);
   }, []);
@@ -112,7 +111,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }),
         unauthenticated: () => {
           if (!sessionRef.current) return;
-          store.clear();
           sessionRef.current = null;
           setSessionState(null);
           setStepUp((s) => {
@@ -123,6 +121,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }),
     [],
   );
+
+  // session recovery on load: the cookie is the credential, the API re-issues the session + CSRF token
+  useEffect(() => {
+    clearLegacySession();
+    let live = true;
+    restoreSession(api)
+      .catch(() => null) // API unreachable: treat as signed out; signing in reports the error
+      .then((s) => {
+        if (!live) return;
+        if (s && !sessionRef.current) {
+          sessionRef.current = s;
+          setSessionState(s);
+        }
+        setRestoring(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [api]);
 
   // asset registry (anonymous) for amount formatting
   useEffect(() => {
@@ -158,6 +175,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const value: AppState = {
     api,
     session,
+    restoring,
     setSession,
     mode,
     setMode: (m) => navigate(`${location.pathname}${withMode(location.search, m)}`),

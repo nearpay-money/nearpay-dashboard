@@ -12,6 +12,7 @@ import { AddDestination } from "../features/settlement/AddDestination";
 import { AttestPage } from "../features/settlement/Attest";
 import { Destinations } from "../features/settlement/Destinations";
 import { matchPath, type RouteSpec } from "../lib/router";
+import { Loading } from "../ui/ui";
 import { AppProvider, Link, useApp } from "./context";
 import { Shell } from "./Shell";
 import { StepUpDialog } from "./StepUp";
@@ -42,8 +43,9 @@ function Page() {
   const app = useApp();
   const m = matchPath(ROUTES, app.location.pathname);
   const isPublic = m !== null && PUBLIC.has(m.name);
-  const needsSignIn = !app.session && !isPublic;
-  const signedInOnAuthPage = app.session && (m?.name === "signin" || m?.name === "signup");
+  // wait for the session recovery (GET /v1/auth/session) before deciding where to go
+  const needsSignIn = !app.restoring && !app.session && !isPublic;
+  const signedInOnAuthPage = !app.restoring && app.session && (m?.name === "signin" || m?.name === "signup");
 
   useEffect(() => {
     if (needsSignIn) {
@@ -54,6 +56,7 @@ function Page() {
     }
   }, [needsSignIn, signedInOnAuthPage, app]);
 
+  if (app.restoring && !isPublic) return <Loading what="Restoring your session" />;
   if (needsSignIn || signedInOnAuthPage) return null;
   if (m?.name === "signin") return <SignIn />;
   if (m?.name === "signup") return <SignUp />;

@@ -2,6 +2,7 @@ import {
   createWebhookEndpoint,
   deleteWebhookEndpoint,
   getWebhookEndpoint,
+  listWebhookEndpointDeliveries,
   listWebhookEndpoints,
   testWebhookEndpoint,
   updateWebhookEndpoint,
@@ -9,7 +10,7 @@ import {
 } from "@nearpay/spec";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
-import { formatTime } from "../../lib/format";
+import { formatTime, relative } from "../../lib/format";
 import { useAsync } from "../../lib/hooks";
 import {
   Badge,
@@ -23,6 +24,7 @@ import {
   Modal,
   Mono,
   Note,
+  Pager,
   SecretOnce,
 } from "../../ui/ui";
 
@@ -250,13 +252,92 @@ export function WebhookDetail({ id }: { id: string }) {
         )}
         <ErrorNote error={error} />
       </Card>
-      <Card title="Deliveries">
-        <Note tone="info">
-          The per-endpoint delivery log (attempts, status codes, retries) needs the deliveries API, which{" "}
-          <code>@nearpay/spec</code> 0.1.4 does not define yet. Until then, check events below and your endpoint's logs.
-        </Note>
-        <Link to="/developers/events">Recent events</Link>
-      </Card>
+      <WebhookDeliveries endpointId={id} />
     </>
+  );
+}
+
+/**
+ * Delivery log of one endpoint (`GET /v1/webhook_endpoints/{id}/deliveries`, spec 0.1.5): last 30 days,
+ * newest first, cursor-paginated like the other lists. Unknown statuses render as received.
+ */
+export function WebhookDeliveries({ endpointId }: { endpointId: string }) {
+  const app = useApp();
+  const [cursors, setCursors] = useState<string[]>([]);
+  const after = cursors[cursors.length - 1];
+  const page = useAsync(
+    () =>
+      app.api.call(listWebhookEndpointDeliveries, {
+        params: { id: endpointId },
+        query: { limit: 20, ...(after ? { starting_after: after } : {}) },
+      }),
+    [app.api, app.mode, endpointId, after],
+  );
+  return (
+    <Card
+      title="Deliveries"
+      actions={
+        <Button variant="secondary" onClick={page.reload}>
+          Refresh
+        </Button>
+      }
+    >
+      <p className="muted">
+        Every event sent to this endpoint in the last 30 days, newest first. Failed deliveries are retried with backoff
+        for 72 h, then abandoned.
+      </p>
+      {page.loading && <Loading />}
+      <ErrorNote error={page.error} />
+      {page.data &&
+        (page.data.data.length ? (
+          <table className="table" data-testid="deliveries-table">
+            <thead>
+              <tr>
+                <th>Event</th>
+                <th>Status</th>
+                <th>Attempts</th>
+                <th>Last response</th>
+                <th>Next attempt</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {page.data.data.map((d) => (
+                <tr key={d.id} data-testid={`delivery-${d.id}`}>
+                  <td>
+                    <Link to={`/developers/events/${d.event}`}>{d.event_type}</Link>
+                    <br />
+                    <Mono>{d.event}</Mono>
+                  </td>
+                  <td>
+                    <Badge value={d.status} />
+                  </td>
+                  <td className="num">{d.attempts}</td>
+                  <td>
+                    {d.last_status_code !== null ? <Mono>HTTP {d.last_status_code}</Mono> : null}
+                    {d.last_error ? <span className="muted"> {d.last_error}</span> : null}
+                    {d.last_status_code === null && !d.last_error ? "—" : null}
+                  </td>
+                  <td>{d.next_attempt_at ? relative(d.next_attempt_at) : "—"}</td>
+                  <td>{formatTime(d.created)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <Empty>{cursors.length ? "No more deliveries." : "No deliveries in the last 30 days."}</Empty>
+        ))}
+      {page.data && (
+        <Pager
+          hasMore={page.data.has_more}
+          canBack={cursors.length > 0}
+          onNext={() => {
+            const last = page.data?.data[page.data.data.length - 1];
+            if (last) setCursors([...cursors, last.id]);
+          }}
+          onBack={() => setCursors(cursors.slice(0, -1))}
+        />
+      )}
+    </Card>
   );
 }

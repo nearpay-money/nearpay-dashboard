@@ -9,8 +9,9 @@ import {
   revokeApiKey,
   startKyb,
 } from "@nearpay/spec";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { cspNonce } from "../../src/lib/config";
+import { ApiError } from "../../src/lib/errors";
 import { explorerAddressUrl, explorerTxUrl } from "../../src/lib/explorer";
 import { destinationFingerprint, normalizeAddress } from "../../src/lib/fingerprint";
 import { formatIso, formatTime, humanize, relative, shorten } from "../../src/lib/format";
@@ -18,7 +19,7 @@ import { hrefFor, modeFromSearch, withMode } from "../../src/lib/mode";
 import { assetLabel, currencyDigits, formatAsset, formatFiat, formatPrice, formatUnits } from "../../src/lib/money";
 import { blockedReason, liveGate, roleAllows } from "../../src/lib/permissions";
 import { matchPath } from "../../src/lib/router";
-import { STORAGE_KEY, sessionStore } from "../../src/lib/session";
+import { clearLegacySession, LEGACY_STORAGE_KEY, restoreSession } from "../../src/lib/session";
 
 const require = createRequire(import.meta.url);
 
@@ -144,18 +145,7 @@ describe("mode and router", () => {
   });
 });
 
-describe("session store", () => {
-  const mem = () => {
-    const m = new Map<string, string>();
-    return {
-      m,
-      s: {
-        getItem: (k: string) => m.get(k) ?? null,
-        setItem: (k: string, v: string) => void m.set(k, v),
-        removeItem: (k: string) => void m.delete(k),
-      },
-    };
-  };
+describe("session recovery (GET /v1/auth/session, spec 0.1.5)", () => {
   const session = {
     object: "dashboard_session" as const,
     user: { id: "usr_1", email: "a@b.co" },
@@ -164,29 +154,45 @@ describe("session store", () => {
     csrf_token: "c".repeat(43),
     expires_at: 2000,
   };
-  it("saves, loads, expires and clears", () => {
-    const { m, s } = mem();
-    const st = sessionStore(s);
-    expect(st.load(1000)).toBeNull();
-    st.save(session as never);
-    expect(st.load(1000)?.csrf_token).toBe(session.csrf_token);
-    expect(st.load(2000)).toBeNull();
-    expect(m.has(STORAGE_KEY)).toBe(false);
-    st.save(session as never);
-    st.clear();
-    expect(st.load(1000)).toBeNull();
-    m.set(STORAGE_KEY, "{not json");
-    expect(st.load(1000)).toBeNull();
-    m.set(STORAGE_KEY, JSON.stringify({ ...session, csrf_token: 1 }));
-    expect(st.load(1000)).toBeNull();
-    m.set(STORAGE_KEY, "42");
-    expect(st.load(1000)).toBeNull();
+  const api = (impl: () => Promise<unknown>) => ({ call: vi.fn(impl) }) as never;
+  const apiError = (status: number, code: string) =>
+    new ApiError({ status, type: "authentication_error", code, message: code });
+
+  it("returns the current session from the cookie, or null when expired or signed out", async () => {
+    const ok = api(async () => session);
+    expect(await restoreSession(ok, 1000)).toEqual(session);
+    expect((ok as unknown as { call: ReturnType<typeof vi.fn> }).call.mock.calls[0]?.[0].id).toBe(
+      "getDashboardSession",
+    );
+    expect(
+      await restoreSession(
+        api(async () => session),
+        2000,
+      ),
+    ).toBeNull();
+    expect(await restoreSession(api(async () => Promise.reject(apiError(401, "authentication_required"))))).toBeNull();
   });
-  it("works without storage", () => {
-    const st = sessionStore(undefined);
-    st.save(session as never);
-    st.clear();
-    expect(st.load()).toBeNull();
+
+  it("rethrows failures that do not mean signed out (network, 5xx)", async () => {
+    const down = new ApiError({ status: 503, type: "api_error", code: "api_error", message: "down" });
+    await expect(restoreSession(api(async () => Promise.reject(down)))).rejects.toBe(down);
+    await expect(restoreSession(api(async () => Promise.reject(new TypeError("fetch failed"))))).rejects.toThrow(
+      "fetch failed",
+    );
+  });
+
+  it("removes the sessionStorage copy older builds kept, and never stores the session", () => {
+    const m = new Map<string, string>([[LEGACY_STORAGE_KEY, JSON.stringify(session)]]);
+    clearLegacySession({ removeItem: (k: string) => void m.delete(k) });
+    expect(m.size).toBe(0);
+    clearLegacySession(undefined);
+    clearLegacySession({
+      removeItem: () => {
+        throw new Error("SecurityError");
+      },
+    });
+    const src = readFileSync("src/lib/session.ts", "utf8") + readFileSync("src/app/context.tsx", "utf8");
+    expect(src).not.toMatch(/setItem|localStorage/);
   });
 });
 

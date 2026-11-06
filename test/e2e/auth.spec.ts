@@ -6,14 +6,46 @@ test.describe("auth", () => {
     await expect(page).toHaveURL(/\/payments$/);
     const verify = api.callsTo("passkeyAuthenticationVerify")[0]?.body as { credential: { type: string } } | undefined;
     expect(verify?.credential.type).toBe("public-key");
+    // nothing is kept in web storage: the reload recovers the session from the cookie (spec 0.1.5)
+    expect(await page.evaluate(() => [sessionStorage.length, localStorage.length])).toEqual([0, 0]);
+    const restores = api.callsTo("getDashboardSession").length;
     await page.reload();
     await expect(page.getByRole("heading", { name: "Payments" })).toBeVisible();
+    expect(api.callsTo("getDashboardSession")).toHaveLength(restores + 1);
+    await expect(page.getByTestId("account-name")).toHaveText(api.account.display_name);
     // every call carries the mode header; reads carry no CSRF
     const get = api.callsTo("listPaymentIntents").at(-1);
     expect(get?.headers["nearpay-mode"]).toBe("test");
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/signin/);
     expect(api.callsTo("logout")[0]?.headers["x-csrf-token"]).toBe(api.csrf);
+  });
+
+  test("a new tab recovers the session and its CSRF token from the cookie", async ({ page, api }) => {
+    await signIn(page, api, "/developers");
+    const tab = await page.context().newPage();
+    await api.install(tab);
+    await tab.goto("/developers");
+    await expect(tab.getByTestId("account-name")).toHaveText(api.account.display_name);
+    await expect(tab).toHaveURL(/\/developers$/);
+    // an unsafe request from the new tab carries the recovered CSRF token
+    await tab.getByRole("button", { name: "Sign out" }).click();
+    await expect(tab).toHaveURL(/\/signin/);
+    expect(api.callsTo("logout").at(-1)?.headers["x-csrf-token"]).toBe(api.csrf);
+    await tab.close();
+  });
+
+  test("a stale sessionStorage copy from an older build is removed, not trusted", async ({ page, api }) => {
+    await page.addInitScript(() =>
+      sessionStorage.setItem(
+        "np.dashboard.session",
+        JSON.stringify({ object: "dashboard_session", csrf_token: "x".repeat(43), expires_at: 4_000_000_000 }),
+      ),
+    );
+    await page.goto("/payments");
+    await expect(page).toHaveURL(/\/signin/);
+    expect(api.callsTo("getDashboardSession")).toHaveLength(1);
+    expect(await page.evaluate(() => sessionStorage.getItem("np.dashboard.session"))).toBeNull();
   });
 
   test("sign-up: Turnstile token, magic link, passkey registration, new account", async ({ page, api }) => {

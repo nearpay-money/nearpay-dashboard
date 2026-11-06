@@ -25,21 +25,23 @@ This repo stays surgical: design docs live in [`nearpay-brain`](../nearpay-brain
 
 ## What is built (Stage 1, `lld/dashboard-and-console.md` §1)
 
-| Area                                                                                 | Routes (spec)                                                                                                                                                                                      |
-| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sign-up / sign-in (`/signup`, `/auth/verify#token=…`, `/signin`)                     | Turnstile → `signup`; `verifyMagicLink`; passkeys via `@simplewebauthn/browser` (`passkeyRegistration*`, `passkeyAuthentication*`); `logout`                                                       |
-| Step-up dialog                                                                       | any `401 step_up_required` → `stepUpOptions`/`stepUpVerify`, then the request is replayed once with the same Idempotency-Key                                                                       |
-| Test/live switch                                                                     | `?mode=live` in the URL, `NearPay-Mode` on every call; live-only writes (keys, webhooks) disabled until `requirements.live_enabled`                                                                |
-| Home (`/`)                                                                           | `getAccountRequirements` checklist, `startKyb`, recent `listPaymentIntents`                                                                                                                        |
-| Payments (`/payments`, `/payments/:id`)                                              | `listPaymentIntents`, `getPaymentIntent` (attempts timeline, evidence explorer links), `listBalanceTransactions`, `getCheckoutSession`; destination fingerprint computed client-side (spec vector) |
-| Agent payments (`/agent-payments[/:id]`)                                             | `listAgentPayments`, `getAgentPayment`                                                                                                                                                             |
-| Settlement (`/settlement`, `/settlement/new`, `/settlement/:id/attest`)              | `list/get/create/attest/setDefault/disableSettlementDestination`; NEP-413 via NEAR Connect, EIP-191 via EIP-6963/injected wallets; cool-off status, fingerprint                                    |
-| Developers (`/developers`, `/developers/webhooks[/:id]`, `/developers/events[/:id]`) | API keys (create/roll/revoke, secret shown once), webhook endpoints (create/update/test/delete), events                                                                                            |
-| Settings (`/settings`)                                                               | `getAccount`/`updateAccount` (money settings trigger step-up), add a passkey                                                                                                                       |
+| Area                                                                                 | Routes (spec)                                                                                                                                                                                                                |
+| ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sign-up / sign-in (`/signup`, `/auth/verify#token=…`, `/signin`)                     | Turnstile → `signup`; `verifyMagicLink`; passkeys via `@simplewebauthn/browser` (`passkeyRegistration*`, `passkeyAuthentication*`); `logout`                                                                                 |
+| Step-up dialog                                                                       | any `401 step_up_required` → `stepUpOptions`/`stepUpVerify`, then the request is replayed once with the same Idempotency-Key                                                                                                 |
+| Test/live switch                                                                     | `?mode=live` in the URL, `NearPay-Mode` on every call; live-only writes (keys, webhooks) disabled until `requirements.live_enabled`                                                                                          |
+| Home (`/`)                                                                           | `getAccountRequirements` checklist, `startKyb`, recent `listPaymentIntents`                                                                                                                                                  |
+| Payments (`/payments`, `/payments/:id`)                                              | `listPaymentIntents`, `getPaymentIntent` (attempts timeline, evidence explorer links), `listBalanceTransactions`, `getCheckoutSession`; destination fingerprint computed client-side (spec vector)                           |
+| Agent payments (`/agent-payments[/:id]`)                                             | `listAgentPayments`, `getAgentPayment`                                                                                                                                                                                       |
+| Settlement (`/settlement`, `/settlement/new`, `/settlement/:id/attest`)              | `list/get/create/attest/challenge/setDefault/disableSettlementDestination`; NEP-413 via NEAR Connect, EIP-191 via EIP-6963/injected wallets; new challenge for a pending destination (step-up); cool-off status, fingerprint |
+| Developers (`/developers`, `/developers/webhooks[/:id]`, `/developers/events[/:id]`) | API keys (create/roll/revoke, secret shown once), webhook endpoints (create/update/test/delete) with the delivery log (`listWebhookEndpointDeliveries`, paginated), events                                                   |
+| Settings (`/settings`)                                                               | `getAccount`/`updateAccount` (money settings trigger step-up), add a passkey                                                                                                                                                 |
 
-Session: the `__Host-np_session` cookie is the credential; the CSRF token from the sign-in response is kept in
-memory and `sessionStorage` (this tab) and sent as `X-CSRF-Token` on unsafe methods. Every request goes to
-`/api/<spec path>` same-origin (Traefik strips `/api`).
+Session: the `__Host-np_session` cookie is the credential; the session and its CSRF token are kept in memory
+only and sent as `X-CSRF-Token` on unsafe methods. A reload or a new tab recovers them with
+`getDashboardSession` (`GET /v1/auth/session`); nothing is written to web storage. Every request goes to
+`/api/<spec path>` same-origin (Traefik strips `/api`). Responses are parsed with the spec's
+`safeParseTolerant`: unknown open-enum values render as received, other contract breaks show `invalid_response`.
 
 ## Build and deploy
 
@@ -61,8 +63,8 @@ pnpm verify           # typecheck + Biome + unit tests (coverage ≥ 90% branche
 
 ## Tests
 
-- `test/unit` (Vitest, Node): API client (headers, CSRF, idempotency, step-up replay, session loss), session
-  store, integer money formatting, fingerprint vs `@nearpay/spec/test-vectors/destination-fingerprint.json`,
+- `test/unit` (Vitest, Node): API client (headers, CSRF, idempotency, step-up replay, session loss, tolerant
+  response parsing), session recovery, integer money formatting, fingerprint vs `@nearpay/spec/test-vectors/destination-fingerprint.json`,
   explorer links, role/live gates from the spec route table, EVM/NEAR signing helpers.
 - `test/e2e` (Playwright on system Chrome, `NP_CHROME_PATH`, default `/usr/bin/google-chrome`): the built app
   against a spec-driven mock of `/api` (`test/e2e/mock-api.ts`: strict body/query validation, CSRF, mode header,

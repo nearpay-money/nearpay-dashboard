@@ -3,11 +3,12 @@
  * interception of `/api/**`). Each request is matched to a `@nearpay/spec` public route and checked like
  * the real stack would: `NearPay-Mode` header, session cookie (an in-memory flag), CSRF header on unsafe
  * methods, Idempotency-Key on idempotent writes, roles, step-up freshness, strict body/query validation
- * against the route schemas. Every mocked response is validated against the route's response schema, so
- * fixtures cannot drift from the contract. Calls are recorded for assertions.
+ * against the route schemas. Every mocked response is validated against the route's response schema
+ * (open enums tolerant, as a newer server may add values), so fixtures cannot drift from the contract.
+ * Calls are recorded for assertions.
  */
 import { randomBytes } from "node:crypto";
-import { type AnyRoute, PUBLIC_ROUTES, pathMatcher, type Role } from "@nearpay/spec";
+import { type AnyRoute, PUBLIC_ROUTES, pathMatcher, type Role, safeParseTolerant } from "@nearpay/spec";
 import type { Page, Route } from "@playwright/test";
 import {
   type AccountT,
@@ -15,6 +16,7 @@ import {
   account,
   agentPayment,
   apiKey,
+  type DeliveryT,
   type DestinationT,
   destination,
   type EndpointT,
@@ -101,8 +103,12 @@ export class MockApi {
     live: [] as ReturnType<typeof agentPayment>[],
   };
   events = { test: [] as ReturnType<typeof pingEvent>[], live: [] as ReturnType<typeof pingEvent>[] };
-  /** Pending attestation challenge per destination id. */
+  /** Pending attestation challenge per destination id (only the latest one is accepted). */
   challenges = new Map<string, { id: string; standard: "nep413" | "eip191"; message: string; nonce: string | null }>();
+  /** Lifetime of issued attestation challenges (negative: already expired, to test re-issue). */
+  challengeTtlS = 600;
+  /** Delivery log per webhook endpoint id, newest first. */
+  deliveries = new Map<string, DeliveryT[]>();
   readonly unexpected: string[] = [];
 
   constructor() {
@@ -158,7 +164,8 @@ export class MockApi {
     const reply =
       this.check(m.route, headers, params, query, body) ?? this.dispatch(m.route, params, query, body, headers);
     if (reply.status < 300 && m.route.response) {
-      const v = m.route.response.safeParse(reply.body);
+      // tolerant: a test may play a newer server that sends an open-enum value this spec does not list
+      const v = safeParseTolerant(m.route.response, reply.body);
       if (!v.success) throw new Error(`mock response for ${m.route.id} violates the spec: ${v.error.message}`);
     }
     await r.fulfill({
@@ -214,8 +221,8 @@ export class MockApi {
     return null;
   }
 
-  private sessionBody() {
-    this.signedIn = true;
+  private sessionBody(signIn = true) {
+    if (signIn) this.signedIn = true;
     return {
       object: "dashboard_session",
       user: { id: "usr_01jbz9k3m4n5p6q7r8s9t0v1w2", email: "owner@acme.example" },
@@ -223,6 +230,28 @@ export class MockApi {
       role: this.role,
       csrf_token: this.csrf,
       expires_at: NOW + 7 * 86_400,
+    };
+  }
+
+  /** A fresh challenge for a pending destination; replaces (invalidates) any earlier one. */
+  private issueChallenge(d: DestinationT) {
+    const standard = d.address.startsWith("0x") ? "eip191" : "nep413";
+    const nonceBuf = randomBytes(32);
+    const expiresAt = Math.floor(Date.now() / 1000) + this.challengeTtlS;
+    const chl = {
+      id: newId("chl"),
+      standard,
+      message: `NearPay settlement destination\nAccount: ${this.account.id}\nMode: live\nAsset: ${d.asset_id}\nNetwork: ${d.chain}\nAddress: ${d.address}\nNonce: ${nonceBuf.toString("hex")}\nExpires: ${new Date(expiresAt * 1000).toISOString()}`,
+      nonce: standard === "nep413" ? nonceBuf.toString("base64") : null,
+    } as const;
+    this.challenges.set(d.id, chl);
+    return {
+      id: chl.id,
+      message: chl.message,
+      signing_standard: chl.standard,
+      nonce: chl.nonce,
+      recipient: chl.standard === "nep413" ? "nearpay.money" : null,
+      expires_at: expiresAt,
     };
   }
 
@@ -284,6 +313,9 @@ export class MockApi {
         });
       case "passkeyAuthenticationVerify":
         return ok(this.sessionBody());
+      case "getDashboardSession":
+        // session-only route: check() already answered 401 without the session cookie
+        return ok(this.sessionBody(false));
       case "stepUpVerify":
         this.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
         return ok({ object: "step_up", step_up_until: this.stepUpUntil });
@@ -333,14 +365,6 @@ export class MockApi {
           this.destinations.test.push(d);
           return ok(d);
         }
-        const standard = body.address.startsWith("0x") ? "eip191" : "nep413";
-        const nonceBuf = randomBytes(32);
-        const chl = {
-          id: newId("chl"),
-          standard,
-          message: `NearPay settlement destination\nAccount: ${this.account.id}\nMode: live\nAsset: ${body.asset_id}\nNetwork: ${body.chain}\nAddress: ${body.address}\nNonce: ${nonceBuf.toString("hex")}\nExpires: ${new Date(Date.now() + 600_000).toISOString()}`,
-          nonce: standard === "nep413" ? nonceBuf.toString("base64") : null,
-        } as const;
         const d = destination({
           ...body,
           livemode: true,
@@ -351,18 +375,13 @@ export class MockApi {
           fingerprint: "1WZ5-TFJZ-CM",
         });
         this.destinations.live.push(d);
-        this.challenges.set(d.id, chl);
-        return ok({
-          ...d,
-          attestation_challenge: {
-            id: chl.id,
-            message: chl.message,
-            signing_standard: chl.standard,
-            nonce: chl.nonce,
-            recipient: chl.standard === "nep413" ? "nearpay.money" : null,
-            expires_at: Math.floor(Date.now() / 1000) + 600,
-          },
-        });
+        return ok({ ...d, attestation_challenge: this.issueChallenge(d) });
+      }
+      case "challengeSettlementDestination": {
+        const d = this.destinations[mode].find((x) => x.id === params.id);
+        if (!d) return err(404, "invalid_request_error", "resource_missing");
+        if (d.status !== "pending_verification") return err(409, "invalid_request_error", "state_conflict");
+        return ok({ ...d, attestation_challenge: this.issueChallenge(d) });
       }
       case "attestSettlementDestination": {
         const list_ = this.destinations[mode];
@@ -453,6 +472,20 @@ export class MockApi {
           disabled_reason: disabled ? "merchant" : null,
         };
         return ok(es[i]);
+      }
+      case "listWebhookEndpointDeliveries": {
+        if (!this.endpoints[mode].some((x) => x.id === params.id))
+          return err(404, "invalid_request_error", "resource_missing");
+        const all = this.deliveries.get(params.id ?? "") ?? [];
+        const limit = Number(query.limit ?? 10);
+        const from = query.starting_after ? all.findIndex((x) => x.id === query.starting_after) + 1 : 0;
+        const data = all.slice(from, from + limit);
+        return ok({
+          object: "list",
+          data,
+          has_more: from + limit < all.length,
+          url: `/v1/webhook_endpoints/${params.id}/deliveries`,
+        });
       }
       case "deleteWebhookEndpoint":
         this.endpoints[mode] = this.endpoints[mode].filter((x) => x.id !== params.id);
