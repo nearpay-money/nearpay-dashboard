@@ -217,6 +217,7 @@ describe("format and config", () => {
     expect(cspNonce(doc("abc123") as never)).toBe("abc123");
     expect(cspNonce(doc('x"><script') as never)).toBeUndefined();
     expect(cspNonce(doc(null) as never)).toBeUndefined();
+    expect(cspNonce(doc("NPCSPNONCE") as never)).toBeUndefined(); // not substituted by the server
     expect(cspNonce(undefined)).toBeUndefined();
   });
 });

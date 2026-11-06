@@ -15,8 +15,11 @@ export const NEAR_NETWORK: "mainnet" | "testnet" =
 
 export const CSP_NONCE_PLACEHOLDER = "NPCSPNONCE";
 
-/** The CSP nonce from `<meta name="np-csp-nonce">` (the placeholder when the server did not substitute one). */
+/**
+ * The CSP nonce from `<meta name="np-csp-nonce">`, or undefined when the server did not substitute one: the
+ * unsubstituted placeholder is a fixed, public value and must never be used as a nonce.
+ */
 export function cspNonce(doc: Pick<Document, "querySelector"> | undefined = globalThis.document): string | undefined {
   const v = doc?.querySelector('meta[name="np-csp-nonce"]')?.getAttribute("content") ?? undefined;
-  return v && /^[A-Za-z0-9+/=]+$/.test(v) ? v : undefined;
+  return v && v !== CSP_NONCE_PLACEHOLDER && /^[A-Za-z0-9+/=]+$/.test(v) ? v : undefined;
 }
