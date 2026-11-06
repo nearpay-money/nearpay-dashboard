@@ -3,9 +3,20 @@
  * with the session cookie, `NearPay-Mode`, the CSRF header on unsafe methods and an Idempotency-Key on
  * idempotent writes. A `401 step_up_required` opens the step-up dialog and replays the request once
  * with the same Idempotency-Key; a lost session (401 / CSRF mismatch) signs the user out.
- * Routes, paths and types come from `@nearpay/spec`.
+ * Routes, paths and types come from `@nearpay/spec`. Responses are parsed with the route's response
+ * schema via `safeParseTolerant` (spec 0.1.5): unknown fields and unknown open-enum values (new statuses,
+ * reasons) are kept and rendered as received; anything else that breaks the contract is an
+ * `invalid_response` error instead of a page rendering malformed data.
  */
-import { type AnyRoute, API_VERSION, buildPath, HEADERS, type RouteBody, type RouteResponse } from "@nearpay/spec";
+import {
+  type AnyRoute,
+  API_VERSION,
+  buildPath,
+  HEADERS,
+  type RouteBody,
+  type RouteResponse,
+  safeParseTolerant,
+} from "@nearpay/spec";
 import { ApiError } from "./errors";
 
 export type Mode = "test" | "live";
@@ -45,6 +56,30 @@ export const isUnsafe = (r: Pick<AnyRoute, "method">) => r.method !== "GET";
 
 const SESSION_LOST = new Set(["authentication_required", "csrf_token_invalid"]);
 
+function invalidResponse(route: AnyRoute, res: Response): ApiError {
+  return new ApiError({
+    status: res.status,
+    type: "api_error",
+    code: "invalid_response",
+    message: `The API sent a response the dashboard does not understand (${route.id}).`,
+    requestId: res.headers.get(HEADERS.requestId) ?? undefined,
+  });
+}
+
+/** JSON body → the route's response type, tolerating unknown open-enum values. */
+function parseResponse<R extends AnyRoute>(route: R, res: Response, text: string): RouteResponse<R> {
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw invalidResponse(route, res);
+  }
+  if (!route.response) return json as RouteResponse<R>;
+  const r = safeParseTolerant(route.response, json);
+  if (!r.success) throw invalidResponse(route, res);
+  return r.data as RouteResponse<R>;
+}
+
 export class ApiClient {
   readonly #o: ApiClientOptions;
   constructor(o: ApiClientOptions) {
@@ -81,7 +116,8 @@ export class ApiClient {
       if (res.ok) {
         if (res.status === 204) return undefined as RouteResponse<R>;
         const text = await res.text();
-        return (text ? JSON.parse(text) : undefined) as RouteResponse<R>;
+        if (!text) return undefined as RouteResponse<R>;
+        return parseResponse(route, res, text);
       }
       const err = await ApiError.fromResponse(res);
       if (err.code === "step_up_required" && o.stepUp && attempt === 0) {

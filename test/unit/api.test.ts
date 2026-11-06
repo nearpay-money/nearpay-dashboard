@@ -2,14 +2,22 @@ import {
   API_VERSION,
   createApiKey,
   createSettlementDestination,
+  getDashboardSession,
   getPaymentIntent,
   listCheckoutSessions,
+  listWebhookEndpointDeliveries,
   logout,
   revokeApiKey,
 } from "@nearpay/spec";
 import { describe, expect, it, vi } from "vitest";
 import { ApiClient, encodeQuery } from "../../src/lib/api";
 import { ApiError, describeError, StepUpCanceled } from "../../src/lib/errors";
+import { apiKey, delivery, destination, endpoint, intent } from "../e2e/fixtures";
+
+const PI = intent();
+const KEY = { ...apiKey(), secret: `sk_test_${"A1b2C3d4".repeat(6)}` };
+const SD = destination();
+const LIST = { object: "list", data: [], has_more: false, url: "/v1/checkout/sessions" };
 
 interface Seen {
   url: string;
@@ -51,9 +59,9 @@ function client(f: typeof fetch, extra: Partial<ConstructorParameters<typeof Api
 
 describe("ApiClient", () => {
   it("GETs same-origin with mode and version, no CSRF, no body", async () => {
-    const { f, seen } = fakeFetch([json(200, { id: "pi_1" })]);
+    const { f, seen } = fakeFetch([json(200, PI)]);
     const r = await client(f, { mode: () => "live" }).call(getPaymentIntent, { params: { id: "pi_1" } });
-    expect(r).toEqual({ id: "pi_1" });
+    expect(r).toEqual(PI);
     expect(seen[0]?.url).toBe("/api/v1/payment_intents/pi_1");
     expect(seen[0]?.init.method).toBe("GET");
     expect(seen[0]?.init.credentials).toBe("same-origin");
@@ -64,13 +72,13 @@ describe("ApiClient", () => {
   });
 
   it("encodes list queries", async () => {
-    const { f, seen } = fakeFetch([json(200, { data: [] })]);
+    const { f, seen } = fakeFetch([json(200, LIST)]);
     await client(f).call(listCheckoutSessions, { query: { limit: 5, expand: ["payment_intent"], status: "" } });
     expect(seen[0]?.url).toBe("/api/v1/checkout/sessions?limit=5&expand%5B%5D=payment_intent");
   });
 
   it("sends CSRF, JSON body and an Idempotency-Key on idempotent writes", async () => {
-    const { f, seen } = fakeFetch([json(201, { id: "key_1" })]);
+    const { f, seen } = fakeFetch([json(201, KEY)]);
     await client(f).call(createApiKey, { body: { type: "secret", livemode: false, name: "server" } });
     const hd = h(seen[0] as Seen);
     expect(hd["X-CSRF-Token"]).toBe("csrf-abc");
@@ -98,10 +106,7 @@ describe("ApiClient", () => {
   });
 
   it("on step_up_required opens step-up and replays once with the same Idempotency-Key", async () => {
-    const { f, seen } = fakeFetch([
-      envelope(401, "authentication_error", "step_up_required"),
-      json(201, { id: "sd_1" }),
-    ]);
+    const { f, seen } = fakeFetch([envelope(401, "authentication_error", "step_up_required"), json(201, SD)]);
     const stepUp = vi.fn(async () => {});
     const body = {
       asset_id: "nep141:usdc.near",
@@ -111,7 +116,7 @@ describe("ApiClient", () => {
       label: "x",
     } as const;
     const r = await client(f, { stepUp }).call(createSettlementDestination, { body });
-    expect(r).toEqual({ id: "sd_1" });
+    expect(r).toEqual(SD);
     expect(stepUp).toHaveBeenCalledOnce();
     expect(h(seen[0] as Seen)["Idempotency-Key"]).toBe(h(seen[1] as Seen)["Idempotency-Key"]);
   });
@@ -149,11 +154,54 @@ describe("ApiClient", () => {
   });
 
   it("uses crypto.randomUUID by default", async () => {
-    const { f, seen } = fakeFetch([json(201, {})]);
+    const { f, seen } = fakeFetch([json(201, KEY)]);
     await new ApiClient({ base: "", fetch: f, mode: () => "test", csrf: () => undefined }).call(createApiKey, {
       body: { type: "secret", livemode: false, name: "n" },
     });
     expect(h(seen[0] as Seen)["Idempotency-Key"]).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it("parses responses tolerantly: unknown open-enum values pass, contract breaks are invalid_response", async () => {
+    const we = endpoint();
+    const odd = { ...delivery(we.id), status: "quarantined", extra_field: 1 };
+    const page = { object: "list", data: [odd], has_more: true, url: `/v1/webhook_endpoints/${we.id}/deliveries` };
+    const { f } = fakeFetch([
+      json(200, page),
+      json(200, { ...PI, status: "teleported" }),
+      json(200, { ...PI, amount: "lots" }, { "x-request-id": "req_bad" }),
+      new Response("<html>", { status: 200 }),
+      json(200, { ...KEY, object: "api_token" }),
+    ]);
+    const c = client(f);
+    const r = await c.call(listWebhookEndpointDeliveries, { params: { id: we.id } });
+    expect(r.data[0]?.status as string).toBe("quarantined");
+    expect(r.data[0]).toMatchObject({ extra_field: 1 });
+    expect((await c.call(getPaymentIntent, { params: { id: PI.id } })).status as string).toBe("teleported");
+    const bad = await c.call(getPaymentIntent, { params: { id: PI.id } }).catch((x: unknown) => x);
+    expect(bad).toMatchObject({ code: "invalid_response", status: 200, requestId: "req_bad" });
+    await expect(c.call(getPaymentIntent, { params: { id: PI.id } })).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+    // literals (and closed enums) stay strict: a wrong `object` is a contract break, not tolerated
+    await expect(c.call(createApiKey, { body: { type: "secret", livemode: false, name: "n" } })).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+  });
+
+  it("reads the current session (GET /v1/auth/session) with the session cookie and no CSRF", async () => {
+    const s = {
+      object: "dashboard_session",
+      user: { id: "usr_01jbz9k3m4n5p6q7r8s9t0v1w2", email: "a@b.co" },
+      account: { id: "acct_01jbz9k3m4n5p6q7r8s9t0v1w2", display_name: "Acme" },
+      role: "owner",
+      csrf_token: "c".repeat(43),
+      expires_at: 2_000_000_000,
+    };
+    const { f, seen } = fakeFetch([json(200, s)]);
+    expect(await client(f).call(getDashboardSession)).toEqual(s);
+    expect(seen[0]?.url).toBe("/api/v1/auth/session");
+    expect(seen[0]?.init.credentials).toBe("same-origin");
+    expect(h(seen[0] as Seen)["X-CSRF-Token"]).toBeUndefined();
   });
 
   it("encodeQuery", () => {

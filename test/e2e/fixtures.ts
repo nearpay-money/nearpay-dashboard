@@ -9,6 +9,7 @@ import {
   Event,
   PaymentIntent,
   SettlementDestination,
+  WebhookDelivery,
   WebhookEndpoint,
   type z,
 } from "@nearpay/spec";
@@ -140,6 +141,26 @@ export function endpoint(over: Partial<EndpointT> = {}): EndpointT {
     description: null,
     status: "enabled",
     disabled_reason: null,
+    ...over,
+  });
+}
+
+export type DeliveryT = z.output<typeof WebhookDelivery>;
+export function delivery(endpointId: string, over: Partial<DeliveryT> = {}): DeliveryT {
+  return WebhookDelivery.parse({
+    id: newId("whd"),
+    object: "webhook_delivery",
+    created: NOW - 120,
+    livemode: false,
+    webhook_endpoint: endpointId,
+    event: newId("evt"),
+    event_type: "payment_intent.succeeded",
+    status: "succeeded",
+    attempts: 1,
+    last_status_code: 200,
+    last_error: null,
+    next_attempt_at: null,
+    succeeded_at: NOW - 119,
     ...over,
   });
 }
