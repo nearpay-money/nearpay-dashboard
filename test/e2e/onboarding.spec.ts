@@ -94,6 +94,82 @@ test.describe("home and settlement destinations", () => {
     expect(body.signature).toMatch(/^0x[0-9a-f]{130}$/);
   });
 
+  test("expired challenge: request a new one (step-up), then sign it (spec 0.1.5)", async ({ page, api }) => {
+    await signIn(page, api, "/settlement/new?mode=live");
+    await page.getByLabel("Asset").selectOption(USDC_NEAR);
+    await page.getByLabel("Intents account").fill(NEAR_ACCOUNT);
+    await page.getByLabel("Label").fill("Live USDC");
+    api.challengeTtlS = -1; // the challenge issued on create is already expired
+    api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
+    await page.getByRole("button", { name: "Add destination" }).click();
+    await expect(page.getByText("The challenge expired.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Sign with NEAR wallet" })).toHaveCount(0);
+    const firstChallenge = await page.getByTestId("challenge-message").textContent();
+
+    api.challengeTtlS = 600;
+    api.stepUpUntil = 0; // challengeSettlementDestination needs a fresh step-up
+    await page.getByRole("button", { name: "Request new challenge" }).click();
+    await expect(page.getByRole("dialog", { name: "Confirm it's you" })).toBeVisible();
+    await page.getByRole("button", { name: "Confirm with passkey" }).click();
+    await expect(page.getByRole("button", { name: "Sign with NEAR wallet" })).toBeVisible();
+    const calls = api.callsTo("challengeSettlementDestination");
+    expect(calls).toHaveLength(2);
+    expect(calls[0]?.headers["idempotency-key"]).toBe(calls[1]?.headers["idempotency-key"]);
+    expect(calls[1]?.headers["x-csrf-token"]).toBe(api.csrf);
+    expect(calls[1]?.body).toEqual({});
+    await expect(page.getByTestId("challenge-message")).not.toHaveText(firstChallenge ?? "");
+
+    // the attestation answers the latest challenge (earlier ones stop being accepted)
+    const latest = api.challenges.get(api.destinations.live[0]?.id ?? "")?.id;
+    await page.getByRole("button", { name: "Sign with NEAR wallet" }).click();
+    await page.locator('.connect-item[data-type="test-near-wallet"]').click();
+    await expect(page.getByText("Signature verified.")).toBeVisible();
+    expect(api.callsTo("attestSettlementDestination")[0]?.body).toMatchObject({ challenge_id: latest });
+  });
+
+  test("a pending destination without its challenge (reload) gets one from the attest page", async ({ page, api }) => {
+    const { destination } = await import("./fixtures");
+    const d = destination({
+      livemode: true,
+      status: "pending_verification",
+      verification: "signature",
+      is_default: false,
+      active_at: null,
+      label: "Pending USDC",
+      address: NEAR_ACCOUNT,
+    });
+    api.destinations.live.push(d);
+    api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
+    await signIn(page, api, "/settlement?mode=live");
+    await page.getByRole("link", { name: "Sign" }).click();
+    await expect(page).toHaveURL(new RegExp(`/settlement/${d.id}/attest`));
+    await page.getByRole("button", { name: "Request signing challenge" }).click();
+    await expect(page.getByTestId("challenge-message")).toContainText(`Address: ${NEAR_ACCOUNT}`);
+    expect(api.callsTo("challengeSettlementDestination")[0]?.headers["nearpay-mode"]).toBe("live");
+  });
+
+  test("requesting a challenge for a destination that is no longer pending shows the conflict", async ({
+    page,
+    api,
+  }) => {
+    const { destination } = await import("./fixtures");
+    const d = destination({
+      livemode: true,
+      status: "pending_verification",
+      verification: "signature",
+      is_default: false,
+      active_at: null,
+      address: NEAR_ACCOUNT,
+    });
+    api.destinations.live.push(d);
+    api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
+    await signIn(page, api, `/settlement/${d.id}/attest?mode=live`);
+    await expect(page.getByRole("button", { name: "Request signing challenge" })).toBeVisible();
+    d.status = "active"; // verified meanwhile (e.g. in another tab)
+    await page.getByRole("button", { name: "Request signing challenge" }).click();
+    await expect(page.getByRole("alert")).toContainText("state_conflict");
+  });
+
   test("refuses to sign with a wallet account that is not the destination", async ({ page, api }) => {
     await signIn(page, api, "/settlement/new?mode=live");
     await page.getByLabel("Asset").selectOption(USDC_NEAR);

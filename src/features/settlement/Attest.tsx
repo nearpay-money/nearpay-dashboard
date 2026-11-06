@@ -1,8 +1,15 @@
 /**
  * Wallet attestation of a destination (identity §8.2, lld/dashboard §1 "wallet signing"): signs exactly
  * the challenge message the API returned, after showing a human-readable summary; never edits it.
+ * A destination still `pending_verification` whose challenge expired (or was never kept) gets a fresh one
+ * with `POST /v1/settlement_destinations/{id}/challenge` (spec 0.1.5; owner/admin, step-up).
  */
-import { attestSettlementDestination, getSettlementDestination, type SettlementDestination } from "@nearpay/spec";
+import {
+  attestSettlementDestination,
+  challengeSettlementDestination,
+  getSettlementDestination,
+  type SettlementDestination,
+} from "@nearpay/spec";
 import { useEffect, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatTime, relative } from "../../lib/format";
@@ -23,14 +30,58 @@ function useNow(): number {
   return now;
 }
 
+/**
+ * "Request new challenge": issues a fresh attestation challenge for a pending destination. A missing
+ * step-up opens the step-up dialog and the request is replayed with the same Idempotency-Key (ApiClient).
+ */
+export function RequestChallenge({
+  destinationId,
+  onChallenge,
+  label = "Request new challenge",
+}: {
+  destinationId: string;
+  onChallenge(d: SettlementDestination): void;
+  label?: string;
+}) {
+  const app = useApp();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>();
+  return (
+    <>
+      <Button
+        busy={busy}
+        blocked={app.gate(challengeSettlementDestination)}
+        data-testid="request-challenge"
+        onClick={async () => {
+          setBusy(true);
+          setError(undefined);
+          try {
+            onChallenge(
+              await app.api.call(challengeSettlementDestination, { params: { id: destinationId }, body: {} }),
+            );
+          } catch (e) {
+            setError(e);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        {label}
+      </Button>
+      <ErrorNote error={error} />
+    </>
+  );
+}
+
 export function AttestPanel({
-  destination,
+  destination: initial,
   onDone,
 }: {
   destination: SettlementDestination;
   onDone(d: SettlementDestination): void;
 }) {
   const app = useApp();
+  const [destination, setDestination] = useState(initial);
   const c = destination.attestation_challenge as Challenge;
   const now = useNow();
   const [busy, setBusy] = useState(false);
@@ -103,7 +154,17 @@ export function AttestPanel({
         {c.message}
       </pre>
       {expired && (
-        <Note tone="warn">The challenge expired. Disable this destination and add it again to get a new one.</Note>
+        <>
+          <Note tone="warn">The challenge expired. Request a new one to sign; earlier challenges stop working.</Note>
+          <RequestChallenge
+            destinationId={destination.id}
+            onChallenge={(d) => {
+              setError(undefined);
+              setEvmWallets(undefined);
+              setDestination(d);
+            }}
+          />
+        </>
       )}
       {!expired && c.signing_standard === "nep413" && (
         <Button busy={busy} onClick={() => void signNear()}>
@@ -161,16 +222,25 @@ export function AttestPage({ id }: { id: string }) {
   const app = useApp();
   const d = useAsync(() => app.api.call(getSettlementDestination, { params: { id } }), [app.api, app.mode, id]);
   const [done, setDone] = useState<SettlementDestination>();
+  const [fresh, setFresh] = useState<SettlementDestination>();
   if (done) return <DestinationResult d={done} />;
   if (d.loading) return <Loading />;
   if (!d.data) return <ErrorNote error={d.error} />;
   if (d.data.status !== "pending_verification") return <DestinationResult d={d.data} />;
-  if (!d.data.attestation_challenge) {
+  const current = fresh ?? d.data;
+  if (!current.attestation_challenge) {
     return (
-      <Note tone="warn">
-        The signing challenge is only available right after the destination is created. Disable it and add it again.
-      </Note>
+      <Card title="Prove you control this destination">
+        <p>
+          {current.label} — fingerprint <Mono>{current.fingerprint}</Mono>
+        </p>
+        <Note tone="info">
+          This destination is waiting for a signature from its wallet. Request a signing challenge to continue; it is
+          valid for 10 minutes.
+        </Note>
+        <RequestChallenge destinationId={current.id} onChallenge={setFresh} label="Request signing challenge" />
+      </Card>
     );
   }
-  return <AttestPanel destination={d.data} onDone={setDone} />;
+  return <AttestPanel key={current.attestation_challenge.id} destination={current} onDone={setDone} />;
 }
