@@ -14,6 +14,9 @@ importers:
       '@hot-labs/near-connect':
         specifier: 0.11.4
         version: 0.11.4
+      '@nearpay-internal/ui':
+        specifier: 0.2.0
+        version: 0.2.0(react@19.3.1)
       '@nearpay/spec':
         specifier: 0.2.0
         version: 0.2.0(zod@4.6.7)
@@ -287,6 +290,9 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@fontsource-variable/dm-sans@5.3.0':
+    resolution: {integrity: sha512-BpUG5bqePiDFMBM4ZtLSlPdAIOM990uB1dlXzIf4aw21yQR7BmykedLXXXMqGWsR18aMLOsbWccwJNh3ztTQaA==}
+
   '@hot-labs/near-connect@0.11.4':
     resolution: {integrity: sha512-exAL1gqysyCHewcMO334YJ3ddTPg3j9EyVM9novz5Jx4fLbG/YSYBlkYMjMNB8E9K/4I7BiemjOw9bQ+h80hEA==}
 
@@ -310,6 +316,12 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@nearpay-internal/ui@0.2.0':
+    resolution: {integrity: sha512-iIwz6XmUIr7tbJFnEVx+N2aq+71oOuMylh9QvhOzVwdPnQMUVAVRNbscKUdDVE2EKawPZbnkA76mdQ3il9P+JQ==}
+    engines: {node: '>=22.11.0'}
+    peerDependencies:
+      react: ^19.0.0
 
   '@nearpay/spec@0.2.0':
     resolution: {integrity: sha512-4uRsEShhgzozqpG/n+lxWQphV+Yo8L/31KNvD6o+ylIbR+yzmADxR0FVd0wa3DEG/G9Ao8IbHm3oEh24BLESQA==}
@@ -1039,6 +1051,8 @@ snapshots:
   '@esbuild/win32-x64@0.21.5':
     optional: true
 
+  '@fontsource-variable/dm-sans@5.3.0': {}
+
   '@hot-labs/near-connect@0.11.4': {}
 
   '@isaacs/cliui@8.0.2':
@@ -1065,6 +1079,11 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
+
+  '@nearpay-internal/ui@0.2.0(react@19.3.1)':
+    dependencies:
+      '@fontsource-variable/dm-sans': 5.3.0
+      react: 19.3.1
 
   '@nearpay/spec@0.2.0(zod@4.6.7)':
     dependencies:

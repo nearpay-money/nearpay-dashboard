@@ -18,6 +18,7 @@ import {
   apiKey,
   type DeliveryT,
   type DestinationT,
+  delivery,
   destination,
   type EndpointT,
   endpoint,
@@ -109,6 +110,8 @@ export class MockApi {
   challengeTtlS = 600;
   /** Delivery log per webhook endpoint id, newest first. */
   deliveries = new Map<string, DeliveryT[]>();
+  /** Other accounts of the signed-in user (spec 0.2.0 memberships). */
+  memberships: { id: string; display_name: string; role: Role }[] = [];
   readonly unexpected: string[] = [];
 
   constructor() {
@@ -422,6 +425,8 @@ export class MockApi {
           type: body.type,
           name: body.name,
           livemode: live,
+          scopes: body.scopes ?? [],
+          ip_allowlist: body.ip_allowlist ?? [],
           display_prefix: secret.slice(0, 8),
           last4: secret.slice(-4),
         });
@@ -541,6 +546,112 @@ export class MockApi {
       case "getAgentPayment": {
         const p = this.agentPayments[mode].find((x) => x.id === params.id);
         return p ? ok(p) : err(404, "invalid_request_error", "resource_missing");
+      }
+      // stage 2 — dashboard-core (spec 0.2.0)
+      case "listMemberships":
+        return ok({
+          object: "list",
+          data: [
+            {
+              object: "membership",
+              account: { id: this.account.id, display_name: this.account.display_name },
+              role: this.role,
+              current: true,
+            },
+            ...this.memberships.map((m) => ({
+              object: "membership",
+              account: { id: m.id, display_name: m.display_name },
+              role: m.role,
+              current: false,
+            })),
+          ],
+        });
+      case "switchSessionAccount": {
+        const m = this.memberships.find((x) => x.id === body.account);
+        if (!m) return err(403, "permission_error", "permission_denied");
+        this.memberships = [
+          ...this.memberships.filter((x) => x.id !== m.id),
+          { id: this.account.id, display_name: this.account.display_name, role: this.role },
+        ];
+        this.account = { ...this.account, id: m.id as never, display_name: m.display_name };
+        this.role = m.role;
+        this.stepUpUntil = 0;
+        return ok(this.sessionBody(false));
+      }
+      case "approveSettlementDestination": {
+        const ds = this.destinations[mode];
+        const i = ds.findIndex((d) => d.id === params.id);
+        const d = ds[i];
+        if (!d) return err(404, "invalid_request_error", "resource_missing");
+        if (d.status !== "pending_approval") return err(409, "invalid_request_error", "state_conflict");
+        const me = "usr_01jbz9k3m4n5p6q7r8s9t0v1w2";
+        const a = d.approval ?? { required: 2, approved_by: [], rejected_by: null };
+        if (a.approved_by.includes(me as never))
+          return err(403, "permission_error", "approver_conflict", "Another owner or admin must approve.");
+        if (body.decision === "reject") {
+          ds[i] = {
+            ...d,
+            status: "disabled",
+            disabled_reason: "merchant",
+            approval: { ...a, rejected_by: me as never },
+          };
+          return ok(ds[i]);
+        }
+        const approved_by = [...a.approved_by, me as never];
+        const done = approved_by.length >= a.required;
+        ds[i] = {
+          ...d,
+          approval: { ...a, approved_by },
+          status: done ? "cooling_off" : "pending_approval",
+          active_at: done ? Math.floor(Date.now() / 1000) + 86_400 : null,
+        };
+        return ok(ds[i]);
+      }
+      case "updateApiKey": {
+        const ks = this.keys[mode];
+        const i = ks.findIndex((k) => k.id === params.id);
+        const k = ks[i];
+        if (!k) return err(404, "invalid_request_error", "resource_missing");
+        if (body.scopes && k.type !== "restricted") return err(409, "invalid_request_error", "state_conflict");
+        ks[i] = {
+          ...k,
+          ...(body.name ? { name: body.name } : {}),
+          ...(body.scopes ? { scopes: body.scopes } : {}),
+          ...(body.ip_allowlist ? { ip_allowlist: body.ip_allowlist } : {}),
+        };
+        return ok(ks[i]);
+      }
+      case "rotateWebhookEndpointSecret": {
+        const es = this.endpoints[mode];
+        const i = es.findIndex((x) => x.id === params.id);
+        if (i < 0) return err(404, "invalid_request_error", "resource_missing");
+        const exp = body.expire_previous_in_seconds ?? 86_400;
+        es[i] = {
+          ...(es[i] as EndpointT),
+          previous_secret_expires_at: exp ? Math.floor(Date.now() / 1000) + exp : null,
+        };
+        return ok({ ...es[i], secret: `whsec_${"R0tAtEd1".repeat(4)}` });
+      }
+      case "resendEvent": {
+        const e = this.events[mode].find((x) => x.id === params.id);
+        const known = [...this.deliveries.values()].flat().some((d) => d.event === params.id);
+        if (!e && !known) return err(404, "invalid_request_error", "resource_missing");
+        const targets = body.endpoint
+          ? [body.endpoint as string]
+          : this.endpoints[mode].filter((x) => x.status === "enabled").map((x) => x.id);
+        const deliveries = targets.map((we) =>
+          delivery(we, {
+            event: params.id as never,
+            status: "pending",
+            attempts: 0,
+            last_status_code: null,
+            succeeded_at: null,
+            next_attempt_at: Math.floor(Date.now() / 1000) + 5,
+          }),
+        );
+        for (const d of deliveries)
+          this.deliveries.set(d.webhook_endpoint, [d, ...(this.deliveries.get(d.webhook_endpoint) ?? [])]);
+        return ok({ object: "event_resend", event: params.id, deliveries });
       }
       default:
         this.unexpected.push(route.id);

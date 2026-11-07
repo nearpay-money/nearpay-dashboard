@@ -1,200 +1,263 @@
-/** Small UI kit (plain CSS classes; no inline styles beyond CSSOM, CSP-friendly). */
-import { type ButtonHTMLAttributes, type ReactNode, useEffect, useId, useState } from "react";
-import { describeError } from "../lib/errors";
-import { humanize } from "../lib/format";
+/**
+ * Dashboard UI helpers on top of `@nearpay-internal/ui` (CSP-safe: no inline styles). The names and
+ * props of the Stage 1 helpers are kept so feature modules written against them keep working; new code
+ * may use the kit components directly and the page patterns in `./page.tsx`.
+ */
+import {
+  Callout,
+  CardTitle,
+  CheckIcon,
+  CopyIcon,
+  KeyValueList,
+  Button as KitButton,
+  Card as KitCard,
+  Field as KitField,
+  Modal as KitModal,
+  Pager as KitPager,
+  Skeleton,
+  StatusBadge,
+} from "@nearpay-internal/ui";
+import { type ButtonHTMLAttributes, type ReactNode, useId, useState } from "react";
+import { friendlyError } from "../lib/errors";
+import { type StatusKind, statusOf, type Tone } from "../lib/status";
+
+const LEGACY_TONE: Readonly<Record<string, Tone>> = {
+  ok: "success",
+  info: "info",
+  warn: "warning",
+  bad: "danger",
+  muted: "neutral",
+};
 
 export function Button({
   variant = "primary",
+  size = "md",
   busy,
   blocked,
   children,
+  className,
   ...rest
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "danger" | "ghost";
+  size?: "md" | "sm";
   busy?: boolean;
-  /** Reason the action is not allowed (disables the button and shows as tooltip). */
+  /** Reason the action is not allowed (disables the button; shown as its description). */
   blocked?: string | null;
+  fullWidth?: boolean;
+}) {
+  const hintId = useId();
+  return (
+    <>
+      <KitButton
+        {...rest}
+        className={className}
+        variant={variant}
+        size={size}
+        loading={busy}
+        disabled={rest.disabled || Boolean(blocked)}
+        title={blocked ?? rest.title}
+        aria-describedby={blocked ? hintId : rest["aria-describedby"]}
+      >
+        {children}
+      </KitButton>
+      {blocked ? (
+        <span id={hintId} className="np-sr-only">
+          {blocked}
+        </span>
+      ) : null}
+    </>
+  );
+}
+
+export function Card({
+  title,
+  actions,
+  children,
+  className,
+  "data-testid": testId,
+}: {
+  title?: ReactNode;
+  actions?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  "data-testid"?: string;
 }) {
   return (
-    <button
-      type="button"
-      {...rest}
-      className={`btn btn-${variant} ${rest.className ?? ""}`}
-      disabled={rest.disabled || busy || Boolean(blocked)}
-      title={blocked ?? rest.title}
-      aria-busy={busy || undefined}
-    >
-      {busy ? "Working…" : children}
-    </button>
-  );
-}
-
-export function Card({ title, actions, children }: { title?: ReactNode; actions?: ReactNode; children: ReactNode }) {
-  return (
-    <section className="card">
+    <KitCard as="section" className={className ? `dash-card ${className}` : "dash-card"} data-testid={testId}>
       {(title || actions) && (
-        <header className="card-head">
-          {title && <h2>{title}</h2>}
-          {actions && <div className="card-actions">{actions}</div>}
+        <header className="dash-card__head">
+          {title ? <CardTitle>{title}</CardTitle> : <span />}
+          {actions && <div className="dash-card__actions">{actions}</div>}
         </header>
       )}
-      <div className="card-body">{children}</div>
-    </section>
+      {children}
+    </KitCard>
   );
 }
 
-const TONE: Record<string, string> = {
-  succeeded: "ok",
-  active: "ok",
-  settled: "ok",
-  enabled: "ok",
-  complete: "ok",
-  approved: "ok",
-  verified: "ok",
-  processing: "info",
-  settling: "info",
-  verifying: "info",
-  deposit_detected: "info",
-  awaiting_deposit: "info",
-  quoting: "info",
-  submitted: "info",
-  queued: "info",
-  open: "info",
-  cooling_off: "warn",
-  pending_verification: "warn",
-  pending_approval: "warn",
-  requires_review: "warn",
-  requires_payment: "muted",
-  expiring: "warn",
-  held: "warn",
-  incomplete_deposit: "warn",
-  pending: "warn",
-  needs_info: "warn",
-  not_started: "muted",
-  failed: "bad",
-  refunded: "muted",
-  canceled: "muted",
-  expired: "muted",
-  expired_unpaid: "muted",
-  disabled: "muted",
-  rejected: "bad",
-  abandoned: "bad",
-};
-
-export function Badge({ value, tone }: { value: string; tone?: string }) {
-  return <span className={`badge badge-${tone ?? TONE[value] ?? "muted"}`}>{humanize(value)}</span>;
+/** Status badge from an API value: vocabulary label + tone (`kind` picks the table). */
+export function Badge({ value, tone, kind = "generic" }: { value: string; tone?: string; kind?: StatusKind }) {
+  const s = statusOf(kind, value);
+  return <StatusBadge tone={tone ? (LEGACY_TONE[tone] ?? (tone as Tone)) : s.tone}>{s.label}</StatusBadge>;
 }
 
-export function ErrorNote({ error }: { error: unknown }) {
+/** Error callout (role alert) with friendly copy, the API's message and the request reference. */
+export function ErrorNote({ error, onRetry }: { error: unknown; onRetry?: () => void }) {
   if (!error) return null;
+  const f = friendlyError(error);
   return (
-    <div className="note note-error" role="alert">
-      {describeError(error)}
+    <Callout
+      tone="danger"
+      role="alert"
+      title={f.title}
+      reference={f.reference}
+      className="dash-error"
+      data-testid="error-note"
+    >
+      {f.detail && f.detail !== f.title ? <p>{f.detail}</p> : null}
+      {onRetry && f.retryable !== false ? (
+        <button type="button" className="np-link-button dash-retry" onClick={onRetry}>
+          Try again
+        </button>
+      ) : null}
+    </Callout>
+  );
+}
+
+export function Note({
+  tone = "info",
+  title,
+  children,
+}: {
+  tone?: "info" | "warn" | "ok" | "error";
+  title?: ReactNode;
+  children: ReactNode;
+}) {
+  const t = tone === "warn" ? "warning" : tone === "ok" ? "success" : tone === "error" ? "danger" : "info";
+  return title ? (
+    <Callout tone={t} title={title}>
+      {children}
+    </Callout>
+  ) : (
+    <Callout tone={t} title={children} />
+  );
+}
+
+/** Skeleton block with a polite status text (screen readers hear what is loading). */
+export function Loading({ what = "Loading", rows = 3 }: { what?: string; rows?: number }) {
+  return (
+    <div className="dash-loading" aria-busy="true">
+      <span role="status" className="np-sr-only">
+        {what}…
+      </span>
+      <Skeleton shape="title" width="50" />
+      {Array.from({ length: rows }, (_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: placeholders
+        <Skeleton key={i} width={i % 2 ? "75" : "100"} />
+      ))}
     </div>
   );
 }
 
-export function Note({ tone = "info", children }: { tone?: "info" | "warn" | "ok" | "error"; children: ReactNode }) {
-  return <div className={`note note-${tone}`}>{children}</div>;
-}
-
-export function Loading({ what = "Loading" }: { what?: string }) {
-  return <p className="muted">{what}…</p>;
-}
-
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="empty">{children}</p>;
+  return <p className="dash-empty">{children}</p>;
 }
 
+/** Labelled control; `children(id)` receives the control id (kit Field wires hint/error). */
 export function Field({
   label,
   hint,
+  error,
+  required,
   children,
 }: {
   label: string;
   hint?: ReactNode;
+  error?: ReactNode;
+  required?: boolean;
   children: (id: string) => ReactNode;
 }) {
   const id = useId();
   return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
+    <KitField label={label} hint={hint} error={error} required={required} id={id}>
       {children(id)}
-      {hint && <small className="muted">{hint}</small>}
-    </div>
+    </KitField>
   );
 }
 
 export function Modal({
   title,
+  description,
   onClose,
   children,
   footer,
+  dismissible = true,
 }: {
   title: string;
+  description?: ReactNode;
   onClose?: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  dismissible?: boolean;
 }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose?.();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
   return (
-    <div className="modal-backdrop">
-      <div className="modal" role="dialog" aria-modal="true" aria-label={title}>
-        <header className="modal-head">
-          <h2>{title}</h2>
-          {onClose && (
-            <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
-              ×
-            </button>
-          )}
-        </header>
-        <div className="modal-body">{children}</div>
-        {footer && <footer className="modal-foot">{footer}</footer>}
-      </div>
-    </div>
+    <KitModal
+      open
+      title={title}
+      description={description}
+      onClose={onClose ?? (() => {})}
+      footer={footer}
+      dismissible={dismissible && Boolean(onClose)}
+    >
+      {children}
+    </KitModal>
   );
 }
 
 /** A value shown once (API key or webhook secret) with a copy button. */
-export function SecretOnce({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false);
+export function SecretOnce({ label, value, onDone }: { label: string; value: string; onDone?: () => void }) {
+  const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   return (
-    <div className="secret">
-      <p>
-        <strong>{label}</strong> — shown only once. Store it now.
-      </p>
-      <code data-testid="secret-value">{value}</code>
-      <Button
-        variant="secondary"
-        onClick={() => {
-          void navigator.clipboard?.writeText(value).then(() => setCopied(true));
-        }}
-      >
-        {copied ? "Copied" : "Copy"}
-      </Button>
-    </div>
+    <Callout tone="warning" title={`${label} — shown only once`} className="dash-secret" live>
+      <p>Store it in your secret manager now. You won't be able to see it again.</p>
+      <code className="dash-secret__value" data-testid="secret-value">
+        {value}
+      </code>
+      <div className="np-row">
+        <KitButton
+          variant="secondary"
+          size="sm"
+          leadingIcon={copied === "copied" ? <CheckIcon size={16} /> : <CopyIcon size={16} />}
+          onClick={() => {
+            navigator.clipboard?.writeText(value).then(
+              () => setCopied("copied"),
+              () => setCopied("failed"),
+            );
+          }}
+        >
+          {copied === "copied" ? "Copied" : "Copy"}
+        </KitButton>
+        {onDone ? (
+          <KitButton variant="ghost" size="sm" onClick={onDone}>
+            I've stored it
+          </KitButton>
+        ) : null}
+      </div>
+      {copied === "failed" ? <p>Couldn't copy. Select the value and copy it manually.</p> : null}
+    </Callout>
   );
 }
 
-export function Mono({ children }: { children: ReactNode }) {
-  return <code className="mono">{children}</code>;
+export function Mono({ children, title }: { children: ReactNode; title?: string }) {
+  return (
+    <code className="dash-mono" title={title}>
+      {children}
+    </code>
+  );
 }
 
 export function KeyValue({ rows }: { rows: [string, ReactNode][] }) {
-  return (
-    <dl className="kv">
-      {rows.map(([k, v]) => (
-        <div key={k}>
-          <dt>{k}</dt>
-          <dd>{v}</dd>
-        </div>
-      ))}
-    </dl>
-  );
+  return <KeyValueList items={rows.map(([label, value]) => ({ label, value }))} className="dash-kv" />;
 }
 
 export function Pager({
@@ -202,21 +265,14 @@ export function Pager({
   canBack,
   onNext,
   onBack,
+  summary,
 }: {
   hasMore: boolean;
   canBack: boolean;
   onNext: () => void;
   onBack: () => void;
+  summary?: ReactNode;
 }) {
-  if (!hasMore && !canBack) return null;
-  return (
-    <div className="pager">
-      <Button variant="secondary" disabled={!canBack} onClick={onBack}>
-        Previous
-      </Button>
-      <Button variant="secondary" disabled={!hasMore} onClick={onNext}>
-        Next
-      </Button>
-    </div>
-  );
+  if (!hasMore && !canBack) return summary ? <p className="np-pager__summary dash-pager-summary">{summary}</p> : null;
+  return <KitPager summary={summary} hasNext={hasMore} hasPrevious={canBack} onNext={onNext} onPrevious={onBack} />;
 }

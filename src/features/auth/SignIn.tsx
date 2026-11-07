@@ -1,5 +1,7 @@
+import { Input } from "@nearpay-internal/ui";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
+import { AuthLayout } from "../../ui/auth";
 import { Button, ErrorNote, Field } from "../../ui/ui";
 import { signInWithPasskey } from "./passkeys";
 
@@ -9,10 +11,11 @@ export function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
   return (
-    <div className="auth">
-      <h1>Sign in to NearPay</h1>
-      <p className="muted">Use the passkey you created at sign-up. No passwords.</p>
+    <AuthLayout>
+      <h1 className="np-text-h3">Sign in to NearPay</h1>
+      <p className="np-text-secondary">Use the passkey you created at sign-up. No passwords.</p>
       <form
+        className="dash-form"
         onSubmit={async (e) => {
           e.preventDefault();
           setBusy(true);
@@ -31,7 +34,7 @@ export function SignIn() {
       >
         <Field label="Email (optional)" hint="Leave empty to pick a passkey from your device.">
           {(id) => (
-            <input
+            <Input
               id={id}
               type="email"
               autoComplete="username webauthn"
@@ -48,6 +51,6 @@ export function SignIn() {
       <p>
         New to NearPay? <Link to="/signup">Create an account</Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }

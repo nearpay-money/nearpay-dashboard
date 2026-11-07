@@ -8,8 +8,11 @@ import {
   createApiKey,
   createWebhookEndpoint,
   type Role,
+  resendEvent,
   rollApiKey,
+  rotateWebhookEndpointSecret,
   testWebhookEndpoint,
+  updateApiKey,
   updateWebhookEndpoint,
 } from "@nearpay/spec";
 import type { Mode } from "./api";
@@ -21,13 +24,16 @@ export function roleAllows(route: Pick<AnyRoute, "auth" | "roles">, role: Role |
   return role !== undefined && route.roles.includes(role);
 }
 
-/** Writes that only make sense once live mode is enabled. */
+/** Writes that only make sense once live mode is enabled (Stage 2 adds the writes on the same objects). */
 const LIVE_ONLY_WRITES = new Set<string>([
   createApiKey.id,
   rollApiKey.id,
+  updateApiKey.id,
   createWebhookEndpoint.id,
   updateWebhookEndpoint.id,
   testWebhookEndpoint.id,
+  rotateWebhookEndpointSecret.id,
+  resendEvent.id,
 ]);
 
 /** Why a write is blocked by the live-mode gate, or null. */

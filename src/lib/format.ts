@@ -30,3 +30,54 @@ export function shorten(s: string, keep = 6): string {
 }
 
 export const humanize = (s: string) => s.replace(/_/g, " ");
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+/** Local calendar day key `YYYY-MM-DD` of a unix time. */
+export function dayKey(unix: number): string {
+  const d = new Date(unix * 1000);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** `"Today, 10:42"` / `"Yesterday, 09:58"` / `"6 Nov, 10:21"` / `"6 Nov 2025, 10:21"` (local time). */
+export function formatWhen(unix: number | null | undefined, nowSec = Math.floor(Date.now() / 1000)): string {
+  if (unix === null || unix === undefined) return "—";
+  const d = new Date(unix * 1000);
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if (dayKey(unix) === dayKey(nowSec)) return `Today, ${time}`;
+  if (dayKey(unix) === dayKey(nowSec - 86_400)) return `Yesterday, ${time}`;
+  const now = new Date(nowSec * 1000);
+  const month = d.toLocaleString("en-GB", { month: "short" });
+  return d.getFullYear() === now.getFullYear()
+    ? `${d.getDate()} ${month}, ${time}`
+    : `${d.getDate()} ${month} ${d.getFullYear()}, ${time}`;
+}
+
+/** `"Saturday, 7 November 2026"`. */
+export function formatLongDate(unix: number): string {
+  return new Date(unix * 1000).toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** `"7 Nov 2026"`. */
+export function formatDate(unix: number | null | undefined): string {
+  if (unix === null || unix === undefined) return "—";
+  return new Date(unix * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** `"10:42:18"` (local). */
+export function formatClock(unix: number): string {
+  const d = new Date(unix * 1000);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+/** Short display of a prefixed id: `pi_01jbz…v1w2` → `pi_…v1w2`. */
+export function shortId(id: string): string {
+  const i = id.indexOf("_");
+  if (i < 0 || id.length - i <= 9) return id;
+  return `${id.slice(0, i)}_…${id.slice(-4)}`;
+}

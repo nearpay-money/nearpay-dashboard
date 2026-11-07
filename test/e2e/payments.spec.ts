@@ -12,8 +12,9 @@ test.describe("payments and agent payments", () => {
     await page.getByLabel("Status").selectOption("succeeded");
     await expect(table).not.toContainText("$15.00");
     expect(api.callsTo("listPaymentIntents").at(-1)?.query).toMatchObject({ status: "succeeded", limit: "20" });
-    await table.getByRole("link", { name: "$2.00" }).click();
-    await expect(page.getByRole("heading", { name: /\$2\.00/ })).toBeVisible();
+    await table.getByRole("link", { name: /Flat white/ }).click();
+    await expect(page.getByRole("heading", { name: /^Payment pi_/ })).toBeVisible();
+    await expect(page.getByText("$2.00").first()).toBeVisible();
     const attempts = page.getByTestId("attempts");
     await expect(attempts).toContainText("2.000017 USDC");
     await expect(attempts).toContainText("deposit timeout");
@@ -34,9 +35,9 @@ test.describe("payments and agent payments", () => {
     await signIn(page, api, "/agent-payments");
     const table = page.getByTestId("agent-payments-table");
     await expect(table).toContainText("0.01 USDC");
-    await expect(table).toContainText("submitted");
+    await expect(table).toContainText("Confirming");
     await page.getByLabel("Kind").selectOption("x402");
-    await expect(table).not.toContainText("submitted");
+    await expect(table).not.toContainText("Confirming");
     await table.getByRole("link", { name: "0.01 USDC" }).click();
     await expect(page.getByText("https://acme.example/premium")).toBeVisible();
     await expect(page.getByRole("link", { name: /5gHq2ZtX/ })).toHaveAttribute(
@@ -47,15 +48,15 @@ test.describe("payments and agent payments", () => {
 
   test("mode switch refetches in live mode", async ({ page, api }) => {
     await signIn(page, api, "/payments");
-    await page.getByRole("button", { name: "Live" }).click();
-    await expect(page.getByText("No payments in live mode.")).toBeVisible();
+    await page.getByRole("switch", { name: "Live mode" }).click();
+    await expect(page.getByRole("heading", { name: "No live payments yet" })).toBeVisible();
     expect(api.callsTo("listPaymentIntents").at(-1)?.headers["nearpay-mode"]).toBe("live");
   });
 });
 
 test.describe("settings", () => {
   test("saves settings; money settings need a step-up", async ({ page, api }) => {
-    await signIn(page, api, "/settings");
+    await signIn(page, api, "/settings/account");
     await page.getByLabel("Display name").fill("Acme Roasters");
     await page.getByRole("button", { name: "Save changes" }).click();
     await expect(page.getByText("Saved.")).toBeVisible();
@@ -72,7 +73,7 @@ test.describe("settings", () => {
   });
 
   test("canceling the step-up shows a message and changes nothing", async ({ page, api }) => {
-    await signIn(page, api, "/settings");
+    await signIn(page, api, "/settings/account");
     await page.getByLabel("Underpayment tolerance (bps, 0–100)").fill("50");
     await page.getByRole("button", { name: "Save changes" }).click();
     await page.getByRole("button", { name: "Cancel" }).click();

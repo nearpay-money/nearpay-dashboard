@@ -80,6 +80,7 @@ test.describe("auth", () => {
 
   test("a revoked session sends the user back to sign-in", async ({ page, api }) => {
     await signIn(page, api);
+    await expect(page.getByTestId("volume-chart")).toBeVisible(); // overview requests have settled
     api.signedIn = false;
     await page.getByRole("link", { name: "Payments", exact: true }).click();
     await expect(page).toHaveURL(/\/signin/);

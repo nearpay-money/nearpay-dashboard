@@ -1,51 +1,55 @@
-import { useEffect } from "react";
-import { AgentPaymentDetail, AgentPayments } from "../features/agent-payments/AgentPayments";
+import { ToastProvider } from "@nearpay-internal/ui";
+import { type MouseEvent, useEffect, useMemo } from "react";
 import { SignIn } from "../features/auth/SignIn";
 import { SignUp } from "../features/auth/SignUp";
 import { VerifyMagicLink } from "../features/auth/VerifyMagicLink";
-import { Developers } from "../features/developers/Developers";
-import { Home } from "../features/home/Home";
-import { PaymentDetail } from "../features/payments/PaymentDetail";
-import { PaymentsList } from "../features/payments/PaymentsList";
-import { Settings } from "../features/settings/Settings";
-import { AddDestination } from "../features/settlement/AddDestination";
-import { AttestPage } from "../features/settlement/Attest";
-import { Destinations } from "../features/settlement/Destinations";
 import { matchPath, type RouteSpec } from "../lib/router";
+import { Page } from "../ui/page";
 import { Loading } from "../ui/ui";
 import { AppProvider, Link, useApp } from "./context";
+import { buildRegistry, type FeatureModule, type Registry, type RouteDef } from "./registry";
 import { Shell } from "./Shell";
 import { StepUpDialog } from "./StepUp";
 
-export const ROUTES: readonly RouteSpec[] = [
+/** Every `src/features/<area>/module.tsx` (core areas and Stage 2 feature areas alike). */
+const discovered = import.meta.glob<{ default: FeatureModule }>("../features/*/module.tsx", { eager: true });
+
+export function loadRegistry(): Registry {
+  const modules = Object.keys(discovered)
+    .sort()
+    .map((k) => discovered[k]?.default)
+    .filter((m): m is FeatureModule => Boolean(m));
+  return buildRegistry(modules);
+}
+
+const PUBLIC_ROUTES: readonly RouteSpec[] = [
   { name: "signin", pattern: "/signin" },
   { name: "signup", pattern: "/signup" },
   { name: "verify", pattern: "/auth/verify" },
-  { name: "home", pattern: "/" },
-  { name: "payments", pattern: "/payments" },
-  { name: "payment", pattern: "/payments/:id" },
-  { name: "agent-payments", pattern: "/agent-payments" },
-  { name: "agent-payment", pattern: "/agent-payments/:id" },
-  { name: "settlement", pattern: "/settlement" },
-  { name: "settlement-new", pattern: "/settlement/new" },
-  { name: "settlement-attest", pattern: "/settlement/:id/attest" },
-  { name: "developers", pattern: "/developers" },
-  { name: "webhooks", pattern: "/developers/webhooks" },
-  { name: "webhook", pattern: "/developers/webhooks/:id" },
-  { name: "events", pattern: "/developers/events" },
-  { name: "event", pattern: "/developers/events/:id" },
-  { name: "settings", pattern: "/settings" },
 ];
 
-const PUBLIC = new Set(["signin", "signup", "verify"]);
+const PUBLIC = new Set(PUBLIC_ROUTES.map((r) => r.name));
 
-function Page() {
+function NotFound() {
+  return (
+    <Page title="Page not found" subtitle="The page you opened doesn't exist or has moved.">
+      <Link to="/">Go to Overview</Link>
+    </Page>
+  );
+}
+
+function Page_() {
   const app = useApp();
-  const m = matchPath(ROUTES, app.location.pathname);
+  const routes = app.registry.routes;
+  const table: RouteSpec[] = useMemo(() => [...PUBLIC_ROUTES, ...routes], [routes]);
+  const m = matchPath(table, app.location.pathname);
   const isPublic = m !== null && PUBLIC.has(m.name);
   // wait for the session recovery (GET /v1/auth/session) before deciding where to go
   const needsSignIn = !app.restoring && !app.session && !isPublic;
   const signedInOnAuthPage = !app.restoring && app.session && (m?.name === "signin" || m?.name === "signup");
+  const route: RouteDef | undefined = m ? routes.find((r) => r.name === m.name) : undefined;
+  const params = m?.params ?? {};
+  const title = route ? (typeof route.title === "function" ? route.title(params) : route.title) : undefined;
 
   useEffect(() => {
     if (needsSignIn) {
@@ -56,73 +60,66 @@ function Page() {
     }
   }, [needsSignIn, signedInOnAuthPage, app]);
 
+  useEffect(() => {
+    const t = m?.name === "signin" ? "Sign in" : m?.name === "signup" ? "Create account" : title;
+    document.title = t ? `${t} · NearPay` : "NearPay Dashboard";
+  }, [title, m?.name]);
+
   if (app.restoring && !isPublic) return <Loading what="Restoring your session" />;
   if (needsSignIn || signedInOnAuthPage) return null;
   if (m?.name === "signin") return <SignIn />;
   if (m?.name === "signup") return <SignUp />;
   if (m?.name === "verify") return <VerifyMagicLink />;
 
-  const id = m?.params.id ?? "";
-  let body: React.JSX.Element;
-  switch (m?.name) {
-    case "home":
-      body = <Home />;
-      break;
-    case "payments":
-      body = <PaymentsList />;
-      break;
-    case "payment":
-      body = <PaymentDetail id={id} />;
-      break;
-    case "agent-payments":
-      body = <AgentPayments />;
-      break;
-    case "agent-payment":
-      body = <AgentPaymentDetail id={id} />;
-      break;
-    case "settlement":
-      body = <Destinations />;
-      break;
-    case "settlement-new":
-      body = <AddDestination key={app.mode} />;
-      break;
-    case "settlement-attest":
-      body = <AttestPage id={id} />;
-      break;
-    case "developers":
-      body = <Developers tab="keys" />;
-      break;
-    case "webhooks":
-      body = <Developers tab="webhooks" />;
-      break;
-    case "webhook":
-      body = <Developers tab="webhook" id={id} />;
-      break;
-    case "events":
-      body = <Developers tab="events" />;
-      break;
-    case "event":
-      body = <Developers tab="event" id={id} />;
-      break;
-    case "settings":
-      body = <Settings />;
-      break;
-    default:
-      body = (
-        <div className="page">
-          <h1>Not found</h1>
-          <Link to="/">Go home</Link>
-        </div>
-      );
-  }
-  return <Shell>{body}</Shell>;
+  const nav = app.registry.nav.find((n) => n.slot === route?.section);
+  // pages below their section (details, forms) get a third breadcrumb item
+  const deeper = route && nav && title && nav.href !== route.pattern ? title : undefined;
+  return (
+    <Shell section={route?.section} crumb={deeper}>
+      {/* a different account or mode is a different data set: remount the page */}
+      <div key={`${app.session?.account.id}:${app.mode}`} className="dash-route">
+        {route ? route.render(params) : <NotFound />}
+      </div>
+    </Shell>
+  );
 }
 
-export function App() {
+/**
+ * Plain `<a href>` elements rendered by kit components (sidebar, breadcrumb, table rows) navigate through
+ * the History API like `<Link>`: same-origin, same-tab, unmodified primary clicks only.
+ */
+function useSpaLinks() {
+  const app = useApp();
+  return (e: MouseEvent<HTMLDivElement>) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = (e.target as Element | null)?.closest?.("a[href]");
+    if (!(a instanceof HTMLAnchorElement)) return;
+    if (a.target && a.target !== "_self") return;
+    if (a.hasAttribute("download") || a.origin !== window.location.origin) return;
+    if (a.pathname.startsWith("/api/") || a.getAttribute("href")?.startsWith("#")) return;
+    e.preventDefault();
+    app.navigate(`${a.pathname}${a.search}`);
+  };
+}
+
+function Root() {
+  const onClick = useSpaLinks();
   return (
-    <AppProvider>
-      <Page />
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: delegated link handling; links stay keyboard-native
+    <div className="np-root dash-root" data-theme="light" onClick={onClick}>
+      <Page_ />
       <StepUpDialog />
+    </div>
+  );
+}
+
+export function App({ registry }: { registry?: Registry }) {
+  const reg = useMemo(() => registry ?? loadRegistry(), [registry]);
+  return (
+    <AppProvider registry={reg}>
+      <ToastProvider>
+        <Root />
+      </ToastProvider>
     </AppProvider>
   );
 }

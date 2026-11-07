@@ -1,6 +1,8 @@
 import { signup } from "@nearpay/spec";
+import { Input } from "@nearpay-internal/ui";
 import { useEffect, useRef, useState } from "react";
 import { Link, useApp } from "../../app/context";
+import { AuthLayout } from "../../ui/auth";
 import { Button, ErrorNote, Field, Note } from "../../ui/ui";
 import { mountTurnstile } from "./turnstile";
 
@@ -20,22 +22,23 @@ export function SignUp() {
 
   if (sent) {
     return (
-      <div className="auth">
-        <h1>Check your email</h1>
+      <AuthLayout>
+        <h1 className="np-text-h3">Check your email</h1>
         <Note tone="ok">
           If <strong>{email}</strong> can be used, a sign-up link is on its way. It expires in 15 minutes.
         </Note>
         <p>
           <Link to="/signin">Back to sign in</Link>
         </p>
-      </div>
+      </AuthLayout>
     );
   }
   return (
-    <div className="auth">
-      <h1>Create your NearPay account</h1>
-      <p className="muted">We email you a link; then you create a passkey on this device.</p>
+    <AuthLayout>
+      <h1 className="np-text-h3">Create your NearPay account</h1>
+      <p className="np-text-secondary">We email you a link; then you create a passkey on this device.</p>
       <form
+        className="dash-form"
         onSubmit={async (e) => {
           e.preventDefault();
           if (!token) return;
@@ -53,7 +56,7 @@ export function SignUp() {
       >
         <Field label="Work email">
           {(id) => (
-            <input
+            <Input
               id={id}
               type="email"
               required
@@ -73,6 +76,6 @@ export function SignUp() {
       <p>
         Already have an account? <Link to="/signin">Sign in</Link>
       </p>
-    </div>
+    </AuthLayout>
   );
 }

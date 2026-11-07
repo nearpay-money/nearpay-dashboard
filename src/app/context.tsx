@@ -7,9 +7,20 @@ import {
   listAssets,
   logout,
   type AccountRequirements as RequirementsSchema,
+  switchSessionAccount,
   type z,
 } from "@nearpay/spec";
-import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type AnchorHTMLAttributes,
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ApiClient, type Mode } from "../lib/api";
 import { API_BASE } from "../lib/config";
 import { StepUpCanceled } from "../lib/errors";
@@ -17,6 +28,7 @@ import { hrefFor, modeFromSearch, withMode } from "../lib/mode";
 import type { AssetInfo } from "../lib/money";
 import { blockedReason } from "../lib/permissions";
 import { clearLegacySession, type DashboardSession, restoreSession } from "../lib/session";
+import { buildRegistry, type Registry } from "./registry";
 
 export type Account = z.output<typeof AccountSchema>;
 export type Requirements = z.output<typeof RequirementsSchema>;
@@ -46,6 +58,10 @@ export interface AppState {
   gate(route: AnyRoute): string | null;
   /** Pending step-up request (rendered by the StepUp dialog). */
   readonly stepUp: { resolve(): void; reject(e: Error): void } | null;
+  /** Routes, sidebar entries and settings cards of every feature module (`./registry.ts`). */
+  readonly registry: Registry;
+  /** Makes the session act for another account of the user (`switchSessionAccount`), then opens Overview. */
+  switchAccount(accountId: string): Promise<void>;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -56,7 +72,9 @@ export function useApp(): AppState {
   return v;
 }
 
-export function AppProvider({ children }: { children: ReactNode }) {
+const EMPTY_REGISTRY = buildRegistry([]);
+
+export function AppProvider({ children, registry = EMPTY_REGISTRY }: { children: ReactNode; registry?: Registry }) {
   const [location, setLocation] = useState<Loc>({ pathname: window.location.pathname, search: window.location.search });
   const [session, setSessionState] = useState<DashboardSession | null>(null);
   const [restoring, setRestoring] = useState(true);
@@ -197,20 +215,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     },
     gate: (route) => blockedReason(route, { role: session?.role, mode, liveEnabled: requirements?.live_enabled }),
     stepUp,
+    registry,
+    switchAccount: async (accountId) => {
+      const s = await api.call(switchSessionAccount, { body: { account: accountId } });
+      setSession(s);
+      setAccountTick((t) => t + 1);
+      navigate(hrefFor("/", modeRef.current));
+    },
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
 /** In-app link that keeps the mode and uses the History API. */
-export function Link({ to, children, className }: { to: string; children: ReactNode; className?: string }) {
+export function Link({
+  to,
+  children,
+  className,
+  ...rest
+}: { to: string; children: ReactNode; className?: string } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
   const app = useApp();
   const href = app.href(to);
   return (
     <a
+      {...rest}
       href={href}
       className={className}
       onClick={(e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        rest.onClick?.(e);
+        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
         e.preventDefault();
         app.navigate(href);
       }}

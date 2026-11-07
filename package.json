@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@hot-labs/near-connect": "0.11.4",
+    "@nearpay-internal/ui": "0.2.0",
     "@nearpay/spec": "0.2.0",
     "@simplewebauthn/browser": "14.0.0",
     "react": "19.3.1",

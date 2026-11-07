@@ -2,24 +2,41 @@ import { USDC_BASE, USDC_NEAR } from "./fixtures";
 import { EVM_ADDRESS, expect, NEAR_ACCOUNT, signIn, test } from "./harness";
 
 test.describe("home and settlement destinations", () => {
-  test("Home shows the live-mode checklist and starts KYB", async ({ page, api }) => {
+  test("Overview shows payments; the checklist links to business details (self-declared KYB)", async ({
+    page,
+    api,
+  }) => {
     await signIn(page, api);
-    const list = page.getByTestId("requirements");
-    await expect(list).toContainText("Verify your business");
-    await page.getByRole("button", { name: "Start verification" }).click();
-    await expect(list).toContainText("pending");
-    expect(api.kybStarted).toBe(true);
+    await expect(page.getByRole("heading", { name: "Your payments, in focus." })).toBeVisible();
     await expect(page.getByTestId("payments-table")).toContainText("$2.00");
     await expect(page.getByTestId("test-banner")).toBeVisible();
+    await page.getByRole("link", { name: "View the checklist" }).click();
+    const list = page.getByTestId("requirements");
+    await expect(list).toContainText("Add your business details");
+    await expect(list).not.toContainText("Verify your business");
+    await expect(list.getByRole("link", { name: "Start" })).toHaveAttribute("href", "/settings/business");
+    await expect(list.getByRole("link", { name: "Continue" })).toHaveAttribute("href", "/settlement/new?mode=live");
+  });
+
+  test("first run: no payments and live mode off shows the onboarding checklist", async ({ page, api }) => {
+    api.intents.test = [];
+    await signIn(page, api);
+    await expect(page.getByRole("heading", { name: "Let’s get you ready to accept payments." })).toBeVisible();
+    await expect(page.getByText("Live payments are not active yet")).toBeVisible();
+    await page.getByRole("button", { name: "View requirements" }).click();
+    await expect(page.getByRole("list", { name: "Live mode requirements" })).toContainText(
+      "Business details reviewed by NearPay",
+    );
   });
 
   test("test destination: step-up, then active immediately", async ({ page, api }) => {
     await signIn(page, api);
     await page.getByRole("link", { name: "Settlement" }).click();
     await page.getByRole("link", { name: "Add destination" }).click();
-    await page.getByLabel("Asset").selectOption(USDC_NEAR);
-    await page.getByLabel("Intents account").fill("acme.near");
-    await page.getByLabel("Label").fill("Test USDC");
+    await page.getByLabel("Currency").selectOption("USDC");
+    await page.getByLabel("Network", { exact: true }).selectOption(USDC_NEAR);
+    await page.getByLabel("NEAR Intents account", { exact: true }).fill("acme.near");
+    await page.getByLabel("Destination name").fill("Test USDC");
     await page.getByRole("button", { name: "Add destination" }).click();
     // createSettlementDestination needs a fresh step-up
     await expect(page.getByRole("dialog", { name: "Confirm it's you" })).toBeVisible();
@@ -39,16 +56,19 @@ test.describe("home and settlement destinations", () => {
     api,
   }) => {
     await signIn(page, api);
-    await page.getByRole("button", { name: "Live" }).click();
+    await page.getByRole("switch", { name: "Live mode" }).click();
     await expect(page).toHaveURL(/mode=live/);
     await expect(page.getByTestId("live-banner")).toBeVisible();
-    await page.getByRole("link", { name: "Add destination" }).click();
-    await expect(page.getByRole("heading", { name: "Add a live settlement destination" })).toBeVisible();
-    await page.getByLabel("Asset").selectOption(USDC_NEAR);
-    await page.getByLabel("Intents account").fill(NEAR_ACCOUNT);
-    await page.getByLabel("Label").fill("Live USDC");
+    // no live payments and live mode off: Overview is the onboarding checklist; step 02 continues to a live destination
+    await page.getByTestId("requirements").getByRole("link", { name: "Continue" }).click();
+    await expect(page.getByRole("heading", { name: "Add a destination" })).toBeVisible();
+    await expect(page.getByText("future live payments")).toBeVisible();
+    await page.getByLabel("Currency").selectOption("USDC");
+    await page.getByLabel("Network", { exact: true }).selectOption(USDC_NEAR);
+    await page.getByLabel("NEAR Intents account", { exact: true }).fill(NEAR_ACCOUNT);
+    await page.getByLabel("Destination name").fill("Live USDC");
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
-    await page.getByRole("button", { name: "Add destination" }).click();
+    await page.getByRole("button", { name: "Connect wallet & verify" }).click();
     await expect(page.getByTestId("challenge-message")).toContainText(`Address: ${NEAR_ACCOUNT}`);
     expect(api.callsTo("createSettlementDestination")[0]?.headers["nearpay-mode"]).toBe("live");
     await page.getByRole("button", { name: "Sign with NEAR wallet" }).click();
@@ -66,17 +86,18 @@ test.describe("home and settlement destinations", () => {
     expect(chl.standard).toBe("nep413");
     expect(chl.public_key).toMatch(/^ed25519:/);
     await page.getByRole("link", { name: "Back to destinations" }).click();
-    await expect(page.getByTestId("cooloff")).toContainText("active in");
+    await expect(page.getByTestId("cooloff")).toContainText("Activates in");
   });
 
   test("live EVM destination: EIP-191 personal_sign of the exact challenge", async ({ page, api }) => {
     await signIn(page, api, "/settlement/new?mode=live");
-    await page.getByLabel("Type").selectOption("chain_address");
-    await page.getByLabel("Asset").selectOption(USDC_BASE);
-    await page.getByLabel("Address").fill(EVM_ADDRESS);
-    await page.getByLabel("Label").fill("Base USDC");
+    await page.getByLabel("Currency").selectOption("USDC");
+    await page.getByLabel("Network", { exact: true }).selectOption(USDC_BASE);
+    await page.getByRole("radio", { name: /Address on Base/ }).check();
+    await page.getByLabel("Wallet address").fill(EVM_ADDRESS);
+    await page.getByLabel("Destination name").fill("Base USDC");
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
-    await page.getByRole("button", { name: "Add destination" }).click();
+    await page.getByRole("button", { name: "Connect wallet & verify" }).click();
     const message = await page.getByTestId("challenge-message").textContent();
     await page.getByRole("button", { name: "Sign with EVM wallet" }).click();
     await page.getByRole("button", { name: "Sign with Test EVM Wallet" }).click();
@@ -96,12 +117,13 @@ test.describe("home and settlement destinations", () => {
 
   test("expired challenge: request a new one (step-up), then sign it (spec 0.1.5)", async ({ page, api }) => {
     await signIn(page, api, "/settlement/new?mode=live");
-    await page.getByLabel("Asset").selectOption(USDC_NEAR);
-    await page.getByLabel("Intents account").fill(NEAR_ACCOUNT);
-    await page.getByLabel("Label").fill("Live USDC");
+    await page.getByLabel("Currency").selectOption("USDC");
+    await page.getByLabel("Network", { exact: true }).selectOption(USDC_NEAR);
+    await page.getByLabel("NEAR Intents account", { exact: true }).fill(NEAR_ACCOUNT);
+    await page.getByLabel("Destination name").fill("Live USDC");
     api.challengeTtlS = -1; // the challenge issued on create is already expired
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
-    await page.getByRole("button", { name: "Add destination" }).click();
+    await page.getByRole("button", { name: "Connect wallet & verify" }).click();
     await expect(page.getByText("The challenge expired.")).toBeVisible();
     await expect(page.getByRole("button", { name: "Sign with NEAR wallet" })).toHaveCount(0);
     const firstChallenge = await page.getByTestId("challenge-message").textContent();
@@ -172,11 +194,12 @@ test.describe("home and settlement destinations", () => {
 
   test("refuses to sign with a wallet account that is not the destination", async ({ page, api }) => {
     await signIn(page, api, "/settlement/new?mode=live");
-    await page.getByLabel("Asset").selectOption(USDC_NEAR);
-    await page.getByLabel("Intents account").fill("someone-else.near");
-    await page.getByLabel("Label").fill("Wrong");
+    await page.getByLabel("Currency").selectOption("USDC");
+    await page.getByLabel("Network", { exact: true }).selectOption(USDC_NEAR);
+    await page.getByLabel("NEAR Intents account", { exact: true }).fill("someone-else.near");
+    await page.getByLabel("Destination name").fill("Wrong");
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
-    await page.getByRole("button", { name: "Add destination" }).click();
+    await page.getByRole("button", { name: "Connect wallet & verify" }).click();
     await page.getByRole("button", { name: "Sign with NEAR wallet" }).click();
     await page.locator('.connect-item[data-type="test-near-wallet"]').click();
     await expect(page.getByRole("alert")).toContainText("switch it to someone-else.near");
@@ -190,11 +213,11 @@ test.describe("home and settlement destinations", () => {
     );
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
     await signIn(page, api, "/settlement");
-    page.on("dialog", (d) => void d.accept());
     await page.getByRole("button", { name: "Make default" }).click();
     await expect(page.getByRole("button", { name: "Make default" })).toHaveCount(1);
-    await page.getByRole("button", { name: "Disable" }).first().click();
-    await expect(page.getByTestId("destinations-table")).toContainText("disabled");
+    await page.getByRole("button", { name: "Disable", exact: true }).first().click();
+    await page.getByRole("button", { name: "Disable destination" }).click();
+    await expect(page.getByTestId("destinations-table")).toContainText("Disabled");
     expect(api.callsTo("disableSettlementDestination")).toHaveLength(1);
   });
 });
