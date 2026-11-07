@@ -1,0 +1,64 @@
+/* Customers feature layout (module-local, unlayered; kit tokens only). */
+.npf-customers__search {
+  display: block;
+}
+.npf-customers__search-form {
+  display: flex;
+  gap: var(--np-space-3);
+  align-items: center;
+  max-width: 520px;
+}
+.npf-customers__search-form > :first-child {
+  flex: 1;
+}
+.npf-customers__wallets {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--np-space-3);
+}
+.npf-customers__wallet-row {
+  display: grid;
+  grid-template-columns: minmax(0, 150px) minmax(0, 1fr) auto;
+  gap: var(--np-space-2);
+  align-items: center;
+}
+.npf-customers__wallet-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--np-space-2);
+}
+.npf-customers__mono {
+  font-family: var(--np-font-mono);
+  font-size: var(--np-text-small);
+  overflow-wrap: anywhere;
+}
+.npf-customers__retry {
+  margin-top: var(--np-space-3);
+}
+.npf-customers__action-error {
+  margin: 0;
+  color: var(--np-color-danger-fg);
+  font-size: var(--np-text-small);
+}
+.npf-customers__skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--np-space-6);
+}
+@media (max-width: 600px) {
+  .npf-customers__wallet-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .npf-customers__wallet-row > :first-child {
+    grid-column: 1 / -1;
+  }
+  .npf-customers__skeleton-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
