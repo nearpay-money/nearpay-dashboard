@@ -51,8 +51,11 @@ test.describe("dashboard core (step 2.3)", () => {
       "https://nearblocks.io/txns/8xQ3mTn2LkPq7Rv9sW4yZb6cDfGhJk",
     );
     await expect(page.getByText("NearPay does not hold your balance.")).toBeVisible();
-    // without the refunds module the refund action is not offered
-    await expect(page.getByRole("link", { name: "Refund payment" })).toHaveCount(0);
+    // the refund flow belongs to the refunds area
+    await expect(page.getByRole("link", { name: "Refund payment" }).first()).toHaveAttribute(
+      "href",
+      `/payments/${pi?.id}/refund`,
+    );
   });
 
   test("first-payment empty state", async ({ page, api }) => {

@@ -7,6 +7,7 @@ import { matchPath, type RouteSpec } from "../lib/router";
 import { Page } from "../ui/page";
 import { Loading } from "../ui/ui";
 import { AppProvider, Link, useApp } from "./context";
+import stage2Areas from "./features";
 import { buildRegistry, type FeatureModule, type Registry, type RouteDef } from "./registry";
 import { Shell } from "./Shell";
 import { StepUpDialog } from "./StepUp";
@@ -19,7 +20,7 @@ export function loadRegistry(): Registry {
     .sort()
     .map((k) => discovered[k]?.default)
     .filter((m): m is FeatureModule => Boolean(m));
-  return buildRegistry(modules);
+  return buildRegistry([...modules, stage2Areas]);
 }
 
 const PUBLIC_ROUTES: readonly RouteSpec[] = [

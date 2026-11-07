@@ -742,3 +742,7 @@ fieldset.dash-filters {
     min-height: 36px;
   }
 }
+/* the step-up dialog opens on top of whatever dialog asked for it (it is a replayed request, not a page) */
+.np-modal-backdrop:has(.dash-stepup) {
+  z-index: calc(var(--np-z-overlay) + 50);
+}

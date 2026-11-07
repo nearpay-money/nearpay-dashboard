@@ -43,6 +43,23 @@ only and sent as `X-CSRF-Token` on unsafe methods. A reload or a new tab recover
 `/api/<spec path>` same-origin (Traefik strips `/api`). Responses are parsed with the spec's
 `safeParseTolerant`: unknown open-enum values render as received, other contract breaks show `invalid_response`.
 
+## Step 2.3 (dashboard core + Stage 2 areas)
+
+- UI on `@nearpay-internal/ui` 0.2.0 (kit `fonts.css`, `tokens.css`, `styles.css` at the entry; app layout in
+  `src/styles.css`). Shell: kit AppShell, sidebar slots filled from the feature registry (`src/app/registry.ts`:
+  every `src/features/<area>/module.tsx` is discovered at build time; the Stage 2 areas' `index.ts` exports are
+  mounted lazily by `src/app/features.tsx`, one chunk per area), account switcher (`listMemberships` /
+  `switchSessionAccount`), Live/Test switch, notifications from real data, drawer below 960 px.
+- Pages: Overview (stats and the daily volume chart computed from `listPaymentIntents`), onboarding checklist
+  (`/setup`), payments list (ADR-0018 filters kept in the URL, CSV export), payment detail (refunds card + refund
+  flow from the refunds area), settlement (two-approver `approval`, cool-off), developers (restricted keys with the
+  `KEY_SCOPES` matrix, secret rotation, resend), developer onboarding (`/developers/start`), agent payments (paid
+  resources from real payments; "Add paid resource" generates the x402 server code), settings index + account and
+  notification pages; Stage 2 areas: refunds, payment links, customers, team, business details (KYB), audit log,
+  checkout appearance.
+- Tests: `test/unit` + `src/features/**/*.test.ts` (Vitest); Playwright runs `test/e2e/**/*.spec.ts` and
+  `src/features/**/*.e2e.ts`. `NP_SHOTS=<dir> pnpm e2e shots` saves review screenshots (1440 / 390 px).
+
 ## Build and deploy
 
 ```

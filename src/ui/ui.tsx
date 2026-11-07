@@ -192,7 +192,9 @@ export function Modal({
   children,
   footer,
   dismissible = true,
+  className,
 }: {
+  className?: string;
   title: string;
   description?: ReactNode;
   onClose?: () => void;
@@ -208,6 +210,7 @@ export function Modal({
       onClose={onClose ?? (() => {})}
       footer={footer}
       dismissible={dismissible && Boolean(onClose)}
+      className={className}
     >
       {children}
     </KitModal>

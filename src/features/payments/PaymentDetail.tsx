@@ -22,8 +22,9 @@ import {
   Timeline,
   type TimelineItem,
 } from "@nearpay-internal/ui";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ComponentType, type ReactNode, Suspense, use, useEffect, useState } from "react";
 import { Link, useApp } from "../../app/context";
+import { loadArea } from "../../app/features";
 import { networkName } from "../../lib/chains";
 import { explorerAddressUrl, explorerTxUrl } from "../../lib/explorer";
 import { destinationFingerprint } from "../../lib/fingerprint";
@@ -36,6 +37,13 @@ import { Badge, KeyValue, Mono } from "../../ui/ui";
 import { paymentName } from "./shared";
 
 type Attempt = PaymentIntent["attempts"][number];
+
+/** Refunds of this payment (refunds area, loaded on demand). */
+function PaymentRefunds({ paymentIntent }: { paymentIntent: PaymentIntent }) {
+  const mod = use(loadArea("refunds")) as { PaymentRefunds?: ComponentType<{ paymentIntent: PaymentIntent }> };
+  const C = mod.PaymentRefunds;
+  return C ? <C paymentIntent={paymentIntent} /> : null;
+}
 type Evidence = NonNullable<Attempt["evidence"]>;
 
 export function EvidenceLink({ evidence }: { evidence: Evidence }) {
@@ -254,6 +262,11 @@ export function PaymentDetail({ id }: { id: string }) {
           <Section title="Payment activity">
             <Timeline items={activity(intent, app.assets, now)} />
           </Section>
+          {intent.status === "succeeded" || (intent.refunds?.length ?? 0) > 0 ? (
+            <Suspense fallback={null}>
+              <PaymentRefunds paymentIntent={intent} />
+            </Suspense>
+          ) : null}
           <Section title="Payment attempts" level={3}>
             <AttemptsList intent={intent} />
           </Section>

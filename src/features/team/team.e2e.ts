@@ -17,8 +17,7 @@ test("team: invite with step-up, approvals and approver conflict", async ({ page
   await page.getByTestId("invite-email").fill("new@acme.example");
   await page.getByTestId("invite-role").selectOption("developer");
   await page.getByTestId("send-invite").click();
-  // the Stage 1 step-up dialog renders under the kit modal scrim in this harness: dispatch the click
-  await page.getByRole("button", { name: "Confirm with passkey" }).dispatchEvent("click");
+  await page.getByRole("button", { name: "Confirm with passkey" }).click();
   await expect(page.getByRole("table", { name: "Team members and invitations" })).toContainText("new@acme.example");
   expect(api.callsTo("createInvitation").at(-1)?.body).toEqual({ email: "new@acme.example", role: "developer" });
 

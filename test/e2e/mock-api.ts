@@ -547,7 +547,9 @@ export class MockApi {
         const p = this.agentPayments[mode].find((x) => x.id === params.id);
         return p ? ok(p) : err(404, "invalid_request_error", "resource_missing");
       }
-      // stage 2 — dashboard-core (spec 0.2.0)
+      // stage 2 — dashboard-core (spec 0.2.0); feature areas install fuller mocks over these
+      case "listRefunds":
+        return ok(list("/v1/refunds", []));
       case "listMemberships":
         return ok({
           object: "list",

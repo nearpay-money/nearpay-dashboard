@@ -50,6 +50,8 @@ export interface AppState {
   navigate(to: string, opts?: { replace?: boolean }): void;
   href(path: string): string;
   readonly account: Account | undefined;
+  /** Why `getAccount` failed (pages show it with a retry: `refreshAccount`), or undefined. */
+  readonly accountError: unknown;
   readonly requirements: Requirements | undefined;
   refreshAccount(): void;
   readonly assets: ReadonlyMap<string, AssetInfo>;
@@ -79,6 +81,7 @@ export function AppProvider({ children, registry = EMPTY_REGISTRY }: { children:
   const [session, setSessionState] = useState<DashboardSession | null>(null);
   const [restoring, setRestoring] = useState(true);
   const [account, setAccount] = useState<Account>();
+  const [accountError, setAccountError] = useState<unknown>();
   const [requirements, setRequirements] = useState<Requirements>();
   const [assets, setAssets] = useState<ReadonlyMap<string, AssetInfo>>(new Map());
   const [stepUp, setStepUp] = useState<AppState["stepUp"]>(null);
@@ -177,9 +180,14 @@ export function AppProvider({ children, registry = EMPTY_REGISTRY }: { children:
       return;
     }
     let live = true;
+    setAccountError(undefined);
     api.call(getAccount).then(
-      (a) => live && setAccount(a),
-      () => {},
+      (a) => {
+        if (live) setAccount(a);
+      },
+      (e: unknown) => {
+        if (live) setAccountError(e);
+      },
     );
     api.call(getAccountRequirements).then(
       (r) => live && setRequirements(r),
@@ -201,6 +209,7 @@ export function AppProvider({ children, registry = EMPTY_REGISTRY }: { children:
     navigate,
     href: (p) => hrefFor(p, mode),
     account,
+    accountError,
     requirements,
     refreshAccount: () => setAccountTick((t) => t + 1),
     assets,

@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { type Account, Link, useApp } from "../../app/context";
 import type { SettingsCard } from "../../app/registry";
 import { useMutation } from "../../lib/hooks";
-import { LoadingState, Page, Section } from "../../ui/page";
+import { ErrorState, LoadingState, Page, Section } from "../../ui/page";
 import { Badge, Button, ErrorNote, Field, KeyValue, Mono } from "../../ui/ui";
 import { registerPasskey } from "../auth/passkeys";
 
@@ -154,6 +154,8 @@ export function AccountSettings() {
     setPkMsg("Passkey added.");
   });
 
+  if (!a && app.accountError)
+    return <ErrorState title="Account & payments" error={app.accountError} onRetry={app.refreshAccount} />;
   if (!a || !form) return <LoadingState what="Loading settings" />;
   const set = <K extends keyof Form>(k: K, v: Form[K]) => {
     setSaved(false);
@@ -309,6 +311,8 @@ export function NotificationSettings() {
     app.refreshAccount();
     toast.show({ tone: "success", title: on ? "Customer receipts on" : "Customer receipts off" });
   });
+  if (!a && app.accountError)
+    return <ErrorState title="Notifications" error={app.accountError} onRetry={app.refreshAccount} />;
   if (!a) return <LoadingState what="Loading notification settings" />;
   return (
     <Page

@@ -9,7 +9,7 @@ import { AppShell, Breadcrumb, Button, Callout, type NavGroup, StatusBadge } fro
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useAsync } from "../lib/hooks";
 import { humanStatus } from "../lib/status";
-import { Loading, Modal } from "../ui/ui";
+import { ErrorNote, Loading, Modal } from "../ui/ui";
 import { Link, useApp } from "./context";
 import type { NavSlot } from "./registry";
 
@@ -270,6 +270,11 @@ export function Shell({ section, crumb, children }: ShellProps) {
           </p>
         </Callout>
       )}
+      {app.accountError && !app.account ? (
+        <div className="dash-banner">
+          <ErrorNote error={app.accountError} onRetry={app.refreshAccount} />
+        </div>
+      ) : null}
       {children}
       {switching ? <AccountSwitcher onClose={() => setSwitching(false)} /> : null}
       {notifying ? <NotificationsPanel onClose={() => setNotifying(false)} /> : null}

@@ -83,8 +83,7 @@ test.describe("refunds", () => {
     await page.getByTestId("override-address").fill("new-payer.near");
     await page.getByTestId("override-reason").fill("Payer lost access to the original account");
     await page.getByTestId("confirm-override").click();
-    // the Stage 1 step-up dialog renders under the kit modal scrim in this harness: dispatch the click
-    await page.getByRole("button", { name: "Confirm with passkey" }).dispatchEvent("click");
+    await page.getByRole("button", { name: "Confirm with passkey" }).click();
     await expect(page.getByText(/Address set by an owner/)).toBeVisible();
     expect(api.callsTo("updateRefundRecipient").length).toBeGreaterThanOrEqual(2); // 401 step_up_required, then replay
   });
