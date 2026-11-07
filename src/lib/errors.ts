@@ -55,6 +55,62 @@ export class StepUpCanceled extends Error {
   }
 }
 
+/** Friendly copy for API error codes (the API's own message is kept as the detail). */
+const FRIENDLY: Readonly<Record<string, string>> = {
+  authentication_required: "Your session ended. Sign in again to continue.",
+  csrf_token_invalid: "Your session ended. Sign in again to continue.",
+  permission_denied: "Your role can't do this. Ask an owner or admin.",
+  step_up_required: "Confirm it's you with your passkey to continue.",
+  rate_limited: "Too many requests. Wait a moment and try again.",
+  idempotency_in_progress: "This request is still being processed. Try again in a moment.",
+  resource_missing: "We couldn't find this. It may have been removed or belong to the other mode.",
+  state_conflict: "This changed in the meantime. Refresh and try again.",
+  invalid_request: "Some details aren't valid. Check the form and try again.",
+  invalid_response: "We received an unexpected response. Refresh the page; if it persists, contact support.",
+  api_error: "Something went wrong on our side. Try again.",
+  http_error: "The request failed. Try again.",
+  account_not_live: "Live mode is not enabled yet. Finish the setup checklist first.",
+  approver_conflict: "Another owner or admin must approve this. You created or already approved it.",
+  attestation_invalid: "The wallet signature didn't match the challenge. Sign again with the destination's wallet.",
+  scope_unknown: "One of the selected permissions isn't recognised. Refresh and try again.",
+  invalid_setting: "One of the settings isn't valid.",
+  link_expired: "This link has expired. Request a new one.",
+};
+
+export interface FriendlyError {
+  /** Short sentence for the callout title. */
+  readonly title: string;
+  /** The API's message (or the error message), for the callout body. */
+  readonly detail: string;
+  /** "Reference req_… · code" for support, when the API sent a request id. */
+  readonly reference: string | undefined;
+  /** Whether retrying the same request can help (network, 5xx, rate limits, conflicts). */
+  readonly retryable: boolean;
+}
+
+/** Maps any thrown value to copy for an error callout. */
+export function friendlyError(e: unknown): FriendlyError {
+  if (e instanceof ApiError) {
+    return {
+      title: FRIENDLY[e.code] ?? (e.status >= 500 ? (FRIENDLY.api_error as string) : e.message),
+      detail: e.message,
+      reference: e.requestId ? `Reference ${e.requestId} · ${e.code}` : e.code,
+      retryable: e.status >= 500 || e.status === 429 || e.status === 409 || e.code === "invalid_response",
+    };
+  }
+  if (e instanceof StepUpCanceled) return { title: e.message, detail: "", reference: undefined, retryable: false };
+  if (e instanceof TypeError && /fetch|network/i.test(e.message)) {
+    return {
+      title: "We couldn't reach NearPay. Check your connection and try again.",
+      detail: e.message,
+      reference: undefined,
+      retryable: true,
+    };
+  }
+  const message = e instanceof Error ? e.message : String(e);
+  return { title: message, detail: "", reference: undefined, retryable: false };
+}
+
 /** A short message for the UI, with the request id for support. */
 export function describeError(e: unknown): string {
   if (e instanceof ApiError)

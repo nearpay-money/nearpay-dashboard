@@ -125,8 +125,8 @@ export function apiKey(over: Partial<ApiKeyT> = {}): ApiKeyT {
   });
 }
 
-export const secretFor = (type: "secret" | "publishable", live: boolean) =>
-  `${type === "secret" ? "sk" : "pk"}_${live ? "live" : "test"}_${"A1b2C3d4".repeat(6)}`;
+export const secretFor = (type: "secret" | "publishable" | "restricted", live: boolean) =>
+  `${type === "secret" ? "sk" : type === "restricted" ? "rk" : "pk"}_${live ? "live" : "test"}_${"A1b2C3d4".repeat(6)}`;
 
 export type EndpointT = z.output<typeof WebhookEndpoint>;
 export function endpoint(over: Partial<EndpointT> = {}): EndpointT {

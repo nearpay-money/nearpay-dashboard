@@ -12,12 +12,15 @@ import {
 } from "@nearpay/spec";
 import { useEffect, useState } from "react";
 import { Link, useApp } from "../../app/context";
+import { networkName } from "../../lib/chains";
 import { formatTime, relative } from "../../lib/format";
 import { useAsync } from "../../lib/hooks";
 import { assetLabel } from "../../lib/money";
+import { Page } from "../../ui/page";
 import { Badge, Button, Card, ErrorNote, KeyValue, Loading, Mono, Note } from "../../ui/ui";
 import { discoverEvmWallets, type EvmWallet, signEip191 } from "../../wallets/evm";
 import { nearConnector, signNep413 } from "../../wallets/near";
+import { approvalText } from "./Destinations";
 
 type Challenge = NonNullable<SettlementDestination["attestation_challenge"]>;
 
@@ -132,7 +135,7 @@ export function AttestPanel({
       <KeyValue
         rows={[
           ["Receive", `${assetLabel(destination.asset_id, app.assets)} (${destination.asset_id})`],
-          ["Network", destination.chain],
+          ["Network", `${networkName(destination.chain)} (${destination.chain})`],
           [
             destination.type === "intents_account" ? "Intents account" : "Address",
             <Mono key="a">{destination.address}</Mono>,
@@ -150,7 +153,7 @@ export function AttestPanel({
         ]}
       />
       <p>Your wallet will show exactly this message. Signing it moves no funds and grants no permission.</p>
-      <pre className="message" data-testid="challenge-message">
+      <pre className="dash-message" data-testid="challenge-message">
         {c.message}
       </pre>
       {expired && (
@@ -197,22 +200,33 @@ export function AttestPanel({
 }
 
 export function DestinationResult({ d }: { d: SettlementDestination }) {
+  const approvals = approvalText(d);
   return (
-    <Card title="Destination added">
-      <p>
-        <Badge value={d.status} /> {d.label} — fingerprint <Mono>{d.fingerprint}</Mono>
-      </p>
-      {d.status === "cooling_off" && d.active_at && (
-        <Note tone="info">
-          Signature verified. For your safety the destination receives payments from {formatTime(d.active_at)} (
-          {relative(d.active_at)}); all owners are notified.
-        </Note>
-      )}
-      {d.status === "pending_approval" && (
-        <Note tone="info">Signature verified; waiting for a second admin to approve.</Note>
-      )}
-      {d.status === "active" && <Note tone="ok">Active — payments can settle here now.</Note>}
-      <Link to="/settlement">Back to destinations</Link>
+    <Card title={d.label} actions={<Badge kind="destination" value={d.status} />}>
+      <div className="np-stack">
+        <KeyValue
+          rows={[
+            ["Fingerprint", <Mono key="f">{d.fingerprint}</Mono>],
+            ["Address", <Mono key="a">{d.address}</Mono>],
+          ]}
+        />
+        {d.status === "cooling_off" && d.active_at && (
+          <Note tone="info" title="Signature verified.">
+            For your safety the destination receives payments from {formatTime(d.active_at)} ({relative(d.active_at)}).
+            All owners are notified.
+          </Note>
+        )}
+        {d.status === "pending_approval" && (
+          <Note tone="info" title="Signature verified.">
+            Another owner or admin must approve this destination{approvals ? ` (${approvals})` : ""}. The 24-hour safety
+            window starts after approval.
+          </Note>
+        )}
+        {d.status === "active" && <Note tone="ok">Active — payments can settle here now.</Note>}
+        <p>
+          <Link to="/settlement">Back to destinations</Link>
+        </p>
+      </div>
     </Card>
   );
 }
@@ -223,13 +237,24 @@ export function AttestPage({ id }: { id: string }) {
   const d = useAsync(() => app.api.call(getSettlementDestination, { params: { id } }), [app.api, app.mode, id]);
   const [done, setDone] = useState<SettlementDestination>();
   const [fresh, setFresh] = useState<SettlementDestination>();
-  if (done) return <DestinationResult d={done} />;
-  if (d.loading) return <Loading />;
-  if (!d.data) return <ErrorNote error={d.error} />;
-  if (d.data.status !== "pending_verification") return <DestinationResult d={d.data} />;
+  const back = { label: "Settlement", to: "/settlement" };
+  const wrap = (node: React.ReactNode) => (
+    <Page
+      title="Verify your wallet"
+      subtitle="Prove you control this destination before it can receive payments."
+      back={back}
+      width="narrow"
+    >
+      {node}
+    </Page>
+  );
+  if (done) return wrap(<DestinationResult d={done} />);
+  if (d.loading) return wrap(<Loading what="Loading destination" />);
+  if (!d.data) return wrap(<ErrorNote error={d.error} onRetry={d.reload} />);
+  if (d.data.status !== "pending_verification") return wrap(<DestinationResult d={d.data} />);
   const current = fresh ?? d.data;
   if (!current.attestation_challenge) {
-    return (
+    return wrap(
       <Card title="Prove you control this destination">
         <p>
           {current.label} — fingerprint <Mono>{current.fingerprint}</Mono>
@@ -239,8 +264,8 @@ export function AttestPage({ id }: { id: string }) {
           valid for 10 minutes.
         </Note>
         <RequestChallenge destinationId={current.id} onChallenge={setFresh} label="Request signing challenge" />
-      </Card>
+      </Card>,
     );
   }
-  return <AttestPanel key={current.attestation_challenge.id} destination={current} onDone={setDone} />;
+  return wrap(<AttestPanel key={current.attestation_challenge.id} destination={current} onDone={setDone} />);
 }

@@ -1,6 +1,8 @@
 import { verifyMagicLink } from "@nearpay/spec";
+import { Input } from "@nearpay-internal/ui";
 import { useEffect, useState } from "react";
 import { Link, useApp } from "../../app/context";
+import { AuthLayout } from "../../ui/auth";
 import { Button, ErrorNote, Field, Loading } from "../../ui/ui";
 import { registerPasskey } from "./passkeys";
 
@@ -27,11 +29,12 @@ export function VerifyMagicLink() {
   }, []);
 
   return (
-    <div className="auth">
-      <h1>Create your passkey</h1>
+    <AuthLayout>
+      <h1 className="np-text-h3">Create your passkey</h1>
       {!reg && !error && <Loading what="Checking your link" />}
       {reg && (
         <form
+          className="dash-form"
           onSubmit={async (e) => {
             e.preventDefault();
             setBusy(true);
@@ -54,12 +57,12 @@ export function VerifyMagicLink() {
           <p>
             Email verified: <strong>{reg.email}</strong>. The registration expires in 5 minutes.
           </p>
-          <Field label="Business name" hint="Shown to payers until KYB verifies your legal name.">
-            {(id) => <input id={id} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />}
+          <Field label="Business name" hint="Shown to payers until NearPay reviews your business details.">
+            {(id) => <Input id={id} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />}
           </Field>
           <Field label="Passkey name">
             {(id) => (
-              <input id={id} maxLength={64} value={passkeyName} onChange={(e) => setPasskeyName(e.target.value)} />
+              <Input id={id} maxLength={64} value={passkeyName} onChange={(e) => setPasskeyName(e.target.value)} />
             )}
           </Field>
           <Button type="submit" busy={busy}>
@@ -73,6 +76,6 @@ export function VerifyMagicLink() {
           <Link to="/signup">Start sign-up again</Link>
         </p>
       )}
-    </div>
+    </AuthLayout>
   );
 }

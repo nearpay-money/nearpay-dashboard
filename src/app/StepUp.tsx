@@ -17,6 +17,7 @@ export function StepUpDialog() {
   return (
     <Modal
       title="Confirm it's you"
+      className="dash-stepup"
       onClose={cancel}
       footer={
         <>

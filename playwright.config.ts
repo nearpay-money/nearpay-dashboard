@@ -5,8 +5,8 @@ import { defineConfig } from "@playwright/test";
 const PORT = 4180;
 
 export default defineConfig({
-  testDir: "test/e2e",
-  testMatch: "**/*.spec.ts",
+  testDir: ".",
+  testMatch: ["test/e2e/**/*.spec.ts", "src/features/**/*.e2e.ts"],
   fullyParallel: false,
   workers: 1,
   retries: 0,

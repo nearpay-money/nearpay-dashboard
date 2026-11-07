@@ -29,7 +29,7 @@ export function formatUnits(amount: string | number | bigint, decimals: number, 
 }
 
 /** `4999, "usd"` → `"$49.99"` style (`USD 49.99` for codes without a symbol we know). */
-export function formatFiat(minor: number, currency: string): string {
+export function formatFiat(minor: number | bigint | string, currency: string): string {
   const digits = currencyDigits(currency);
   const n = formatUnits(BigInt(minor), digits, digits);
   const symbols: Record<string, string> = { usd: "$", eur: "€", gbp: "£", jpy: "¥" };
@@ -56,10 +56,30 @@ export function formatPrice(
   assets: ReadonlyMap<string, AssetInfo>,
 ): string {
   if (p.currency === "asset") return formatAsset(String(p.amount), p.asset_id ?? "", assets);
-  return formatFiat(Number(p.amount), p.currency);
+  return formatFiat(BigInt(p.amount), p.currency);
 }
 
 /** Short asset label: symbol if known, else the token account. */
 export function assetLabel(assetId: string, assets: ReadonlyMap<string, AssetInfo>): string {
   return assets.get(assetId)?.symbol ?? assetId.replace(/^nep\d+:/, "");
+}
+
+/** Integer amount → bigint (fiat minor units as numbers, asset base units as strings). */
+export function toBigInt(amount: number | string | bigint): bigint {
+  return typeof amount === "bigint" ? amount : BigInt(amount);
+}
+
+/**
+ * A decimal string typed by the user (`"12.5"`, `"1,234.56"`) → integer base units as a string, exactly
+ * (no floats). Returns null for anything that is not a non-negative decimal with at most `decimals`
+ * fraction digits.
+ */
+export function parseDecimal(input: string, decimals: number): string | null {
+  const s = input.trim().replace(/,/g, "");
+  const m = /^(\d+)(?:\.(\d*))?$/.exec(s) ?? /^()\.(\d+)$/.exec(s);
+  if (!m) return null;
+  const whole = m[1] || "0";
+  const frac = m[2] ?? "";
+  if (frac.length > decimals) return null;
+  return BigInt(whole + frac.padEnd(decimals, "0")).toString();
 }

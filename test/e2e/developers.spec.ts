@@ -19,9 +19,9 @@ test.describe("developers", () => {
     await expect(page.getByTestId("secret-value")).toContainText("Z9y8");
     expect(api.callsTo("rollApiKey")[0]?.body).toEqual({ expire_old_in_seconds: 86400 });
 
-    page.on("dialog", (d) => void d.accept());
     const before = api.keys.test.length;
     await page.getByRole("button", { name: "Revoke" }).first().click();
+    await page.getByRole("button", { name: "Revoke key" }).click();
     await expect(page.getByTestId("keys-table").locator("tbody tr")).toHaveCount(before - 1);
     expect(api.callsTo("revokeApiKey")[0]?.headers["x-csrf-token"]).toBe(api.csrf);
   });
@@ -63,10 +63,10 @@ test.describe("developers", () => {
     await page.getByLabel("Type").selectOption("ping");
     await expect(page.getByTestId("events-table")).not.toContainText("payment_intent.succeeded");
     expect(api.callsTo("listEvents").at(-1)?.query).toMatchObject({ type: "ping" });
-    await page.getByRole("link", { name: "Webhooks" }).click();
+    await page.getByRole("link", { name: "Notifications" }).click();
     await page.getByRole("link", { name: "https://acme.example/hooks" }).click();
-    page.on("dialog", (d) => void d.accept());
     await page.getByRole("button", { name: "Delete" }).click();
+    await page.getByRole("button", { name: "Delete endpoint" }).click();
     await expect(page).toHaveURL(/\/developers\/webhooks$/);
     await expect(page.getByText("No test endpoints yet.")).toBeVisible();
   });
@@ -105,16 +105,17 @@ test.describe("developers", () => {
     api.deliveries.set(ep.id, rows);
     await signIn(page, api, `/developers/webhooks/${ep.id}`);
     const table = page.getByTestId("deliveries-table");
-    const first = page.getByTestId(`delivery-${rows[0]?.id}`);
+    const row = (i: number) => table.locator("tbody tr").filter({ has: page.getByTestId(`delivery-${rows[i]?.id}`) });
+    const first = row(0);
     await expect(first).toContainText("payment_intent.succeeded");
-    await expect(first).toContainText("failed");
+    await expect(first).toContainText(/failed/i);
     await expect(first).toContainText("HTTP 500");
     await expect(first).toContainText("non-2xx response");
     await expect(first).toContainText(/in (9|10) min/);
-    await expect(page.getByTestId(`delivery-${rows[1]?.id}`)).toContainText("pending");
-    await expect(page.getByTestId(`delivery-${rows[2]?.id}`)).toContainText("connection refused");
-    await expect(page.getByTestId(`delivery-${rows[2]?.id}`)).toContainText("abandoned");
-    await expect(page.getByTestId(`delivery-${rows[3]?.id}`)).toContainText("quarantined");
+    await expect(row(1)).toContainText(/pending/i);
+    await expect(row(2)).toContainText("connection refused");
+    await expect(row(2)).toContainText(/abandoned/i);
+    await expect(row(3)).toContainText(/quarantined/i);
     await expect(table.locator("tbody tr")).toHaveCount(20);
     expect(api.callsTo("listWebhookEndpointDeliveries")[0]?.query).toEqual({ limit: "20" });
 

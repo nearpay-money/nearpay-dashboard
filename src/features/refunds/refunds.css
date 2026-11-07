@@ -1,0 +1,55 @@
+/* Refunds feature layout (module-local, unlayered; kit tokens only). */
+.npf-refunds__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 624px) minmax(0, 1fr);
+  gap: var(--np-space-12);
+  align-items: start;
+}
+.npf-refunds__summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--np-space-4);
+  padding-top: var(--np-space-1);
+}
+.npf-refunds__summary .np-kv__value {
+  color: var(--np-color-text);
+}
+.npf-refunds__card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--np-space-3);
+}
+.npf-refunds__stat-text {
+  overflow-wrap: anywhere;
+}
+.npf-refunds__mono {
+  font-family: var(--np-font-mono);
+  font-size: var(--np-text-small);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.npf-refunds__retry {
+  margin-top: var(--np-space-3);
+}
+.npf-refunds__action-error {
+  margin: 0;
+  color: var(--np-color-danger-fg);
+  font-size: var(--np-text-small);
+}
+.npf-refunds__skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--np-space-6);
+}
+@media (max-width: 960px) {
+  .npf-refunds__layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--np-space-8);
+  }
+}
+@media (max-width: 600px) {
+  .npf-refunds__skeleton-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
