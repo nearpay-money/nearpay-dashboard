@@ -1,0 +1,25 @@
+/* Team & approvals (module-local, unlayered; kit tokens only). */
+.npf-team__who {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--np-space-0-5);
+}
+.npf-team__mono {
+  font-family: var(--np-font-mono);
+  font-size: var(--np-text-small);
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+.npf-team__retry {
+  margin-top: var(--np-space-3);
+}
+.npf-team__action-error {
+  margin: 0;
+  color: var(--np-color-danger-fg);
+  font-size: var(--np-text-small);
+}
+.npf-team__skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--np-space-6);
+}

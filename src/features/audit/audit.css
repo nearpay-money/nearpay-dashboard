@@ -1,0 +1,50 @@
+/* Audit log (module-local, unlayered; kit tokens only). */
+.npf-audit__filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: var(--np-space-3);
+  align-items: end;
+}
+.npf-audit__filter-actions {
+  display: flex;
+  gap: var(--np-space-2);
+  padding-bottom: var(--np-space-6);
+}
+.npf-audit__action {
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--np-space-0-5);
+}
+.npf-audit__mono {
+  font-family: var(--np-font-mono);
+  font-size: var(--np-text-caption);
+  color: var(--np-color-text-secondary);
+  overflow-wrap: anywhere;
+}
+.npf-audit__retry {
+  margin-top: var(--np-space-3);
+}
+.npf-audit__action-error {
+  margin: 0;
+  color: var(--np-color-danger-fg);
+  font-size: var(--np-text-small);
+}
+.npf-audit__skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--np-space-6);
+}
+@media (max-width: 1100px) {
+  .npf-audit__filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .npf-audit__filter-actions {
+    padding-bottom: 0;
+  }
+}
+@media (max-width: 600px) {
+  .npf-audit__filters,
+  .npf-audit__skeleton-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

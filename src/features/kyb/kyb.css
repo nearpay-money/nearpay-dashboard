@@ -1,0 +1,41 @@
+/* Business details (module-local, unlayered; kit tokens only). */
+.npf-kyb__form {
+  max-width: 760px;
+}
+.npf-kyb__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--np-space-4);
+}
+.npf-kyb__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--np-space-3);
+}
+.npf-kyb__requested {
+  margin: var(--np-space-3) 0;
+  padding: var(--np-space-3) var(--np-space-4);
+  border-left: 3px solid var(--np-color-warning-fg);
+  background: var(--np-color-surface);
+  border-radius: var(--np-radius-control);
+  white-space: pre-wrap;
+}
+.npf-kyb__retry {
+  margin-top: var(--np-space-3);
+}
+.npf-kyb__action-error {
+  margin: 0;
+  color: var(--np-color-danger-fg);
+  font-size: var(--np-text-small);
+}
+.npf-kyb__skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--np-space-6);
+}
+@media (max-width: 640px) {
+  .npf-kyb__grid,
+  .npf-kyb__skeleton-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
