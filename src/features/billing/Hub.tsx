@@ -15,11 +15,13 @@ import { useAsync } from "../../lib/hooks";
 import { Page, StatRow } from "../../ui/page";
 import "./billing.css";
 
-export type BillingTab = "invoices" | "subscriptions" | "products" | "tax-rates";
+export type BillingTab = "invoices" | "subscriptions" | "mandates" | "products" | "tax-rates";
 
 const TABS: readonly [BillingTab, string, string][] = [
   ["invoices", "Invoices", "/billing"],
   ["subscriptions", "Subscriptions", "/billing/subscriptions"],
+  // stage 4 — auto-debit mandates
+  ["mandates", "Auto-debit", "/billing/mandates"],
   ["products", "Products", "/billing/products"],
   ["tax-rates", "Tax rates", "/billing/tax-rates"],
 ];
@@ -88,7 +90,7 @@ export function BillingHub({
                 ? `${s.openCount} open invoice${s.openCount === "1" ? "" : "s"}${others(s.outstanding.others)}`
                 : "",
             },
-            { label: "Active subscriptions", value: s?.active ?? "—", sub: "Invoice-based renewals" },
+            { label: "Active subscriptions", value: s?.active ?? "—", sub: "Emailed invoices or auto-debit" },
           ]}
         />
       )}
@@ -108,7 +110,8 @@ export function BillingHub({
       {children}
       {note ?? (
         <Callout title="Invoice-based renewals">
-          Customers approve each invoice payment from their wallet. Automatic debit is a separate opt-in product.
+          Customers approve each invoice payment from their wallet. Auto-debit is a separate opt-in: the customer funds a
+          mandate they can cancel at any time.
         </Callout>
       )}
     </Page>

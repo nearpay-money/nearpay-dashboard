@@ -30,6 +30,7 @@ const STATUS: readonly { value: SubStatusFilter; label: string }[] = [
 export const NO_SURPRISE = (
   <Callout title="No surprise charges">
     With invoice-based subscriptions, the payer approves each renewal. Don't present these as automatically charged.
+    Auto-debit subscriptions collect from a mandate the customer funded themselves and can cancel at any time.
   </Callout>
 );
 
@@ -115,7 +116,12 @@ export function SubscriptionTable({
             : []),
           { key: "p", header: "Plan", primary: !showCustomer, hideOnNarrow: showCustomer, cell: plan },
           { key: "n", header: "Next invoice", cell: (s) => nextInvoiceText(s, formatDate) },
-          { key: "m", header: "Collection", hideOnNarrow: true, cell: () => "Pay each invoice" },
+          {
+            key: "m",
+            header: "Collection",
+            hideOnNarrow: true,
+            cell: (s) => (s.collection_method === "auto_debit" ? "Auto-debit" : "Pay each invoice"),
+          },
           { key: "s", header: "Status", cell: (s) => <SubscriptionStatus subscription={s} /> },
         ]}
         footer={

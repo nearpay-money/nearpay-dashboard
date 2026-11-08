@@ -773,3 +773,29 @@ fieldset.dash-filters {
 .dash-block {
   display: block;
 }
+
+/* stage 4 — disclosures and instruction lists (destination signing, mandate funding) */
+.dash-disclosure {
+  border: 1px solid var(--np-color-border);
+  border-radius: var(--np-radius-control);
+  padding: var(--np-space-3) var(--np-space-4);
+}
+.dash-disclosure > summary {
+  cursor: pointer;
+  font-weight: var(--np-weight-medium);
+  min-height: 24px;
+}
+.dash-disclosure > summary:focus-visible {
+  outline: none;
+  box-shadow: var(--np-shadow-focus);
+  border-radius: 4px;
+}
+.dash-disclosure[open] > summary {
+  margin-bottom: var(--np-space-3);
+}
+.dash-steps {
+  margin: 0;
+  padding-left: var(--np-space-5);
+  display: grid;
+  gap: var(--np-space-1);
+}

@@ -23,6 +23,15 @@ export interface NearWalletLike {
     nonce: Uint8Array;
     signerId?: string;
   }): Promise<NearSignedMessage>;
+  /** NEAR Connect `signAndSendTransaction` (stage 4: merchant mandate cancel). */
+  signAndSendTransaction?(p: {
+    signerId?: string;
+    receiverId: string;
+    actions: ReadonlyArray<{
+      type: "FunctionCall";
+      params: { methodName: string; args: object; gas: string; deposit: string };
+    }>;
+  }): Promise<unknown>;
 }
 
 export interface NearConnectorLike {
@@ -76,4 +85,50 @@ export async function signNep413(
     throw new Error("The wallet returned an unexpected public key format.");
   }
   return signed;
+}
+
+/** A NEAR transaction exactly as the API returned it (spec 0.4.0 `NearTransactionRequest`). */
+export interface NearTxRequest {
+  readonly signer_id: string | null;
+  readonly receiver_id: string;
+  readonly actions: ReadonlyArray<{
+    readonly type: "FunctionCall";
+    readonly method_name: string;
+    readonly args: Readonly<Record<string, unknown>>;
+    readonly gas: string;
+    readonly deposit: string;
+  }>;
+}
+
+/** The transaction hash in a NEAR Connect `FinalExecutionOutcome`, if the wallet returned one. */
+export function outcomeTxHash(outcome: unknown): string | undefined {
+  const o = outcome as { transaction?: { hash?: unknown }; transaction_outcome?: { id?: unknown } } | undefined;
+  const h = o?.transaction?.hash ?? o?.transaction_outcome?.id;
+  return typeof h === "string" && /^[1-9A-HJ-NP-Za-km-z]{32,64}$/.test(h) ? h : undefined;
+}
+
+/**
+ * Connects a wallet and signs + sends `tx` verbatim from `signer` (the account the API names). The
+ * connected wallet must hold `signer`; receiver, methods, args, gas and deposit are passed through
+ * unchanged (only renamed to NEAR Connect's camelCase). Returns the transaction hash when known.
+ */
+export async function signAndSendNear(
+  getConnector: () => Promise<NearConnectorLike>,
+  tx: NearTxRequest,
+  signer: string,
+): Promise<{ txHash: string | undefined }> {
+  if (tx.signer_id !== null && tx.signer_id !== signer) throw new WalletMismatchError(tx.signer_id, [signer]);
+  const wallet = await (await getConnector()).connect();
+  const accounts = (await wallet.getAccounts()).map((a) => a.accountId);
+  if (!accounts.includes(signer)) throw new WalletMismatchError(signer, accounts);
+  if (!wallet.signAndSendTransaction) throw new Error("This wallet can't send NEAR transactions. Use another wallet.");
+  const outcome = await wallet.signAndSendTransaction({
+    signerId: signer,
+    receiverId: tx.receiver_id,
+    actions: tx.actions.map((a) => ({
+      type: "FunctionCall" as const,
+      params: { methodName: a.method_name, args: { ...a.args }, gas: a.gas, deposit: a.deposit },
+    })),
+  });
+  return { txHash: outcomeTxHash(outcome) };
 }

@@ -3,23 +3,34 @@
  * the challenge message the API returned, after showing a human-readable summary; never edits it.
  * A destination still `pending_verification` whose challenge expired (or was never kept) gets a fresh one
  * with `POST /v1/settlement_destinations/{id}/challenge` (spec 0.1.5; owner/admin, step-up).
+ * Stage 4 (identity §20, spec 0.4.0): Solana (`standard: solana`, wallet-standard `solana:signMessage`
+ * over the raw message bytes, base58) and Bitcoin (`standard: bip322`, BIP-322 "simple", base64) — from a
+ * detected wallet, or by pasting a signature made elsewhere (shape-checked before it is sent).
  */
 import {
-  attestSettlementDestination,
   challengeSettlementDestination,
   getSettlementDestination,
   type SettlementDestination,
 } from "@nearpay/spec";
+import { CopyText, Textarea } from "@nearpay-internal/ui";
 import { useEffect, useState } from "react";
 import { Link, useApp } from "../../app/context";
-import { networkName } from "../../lib/chains";
+import {
+  checkBip322Signature,
+  checkBitcoinAddress,
+  checkSolanaSignature,
+  networkName,
+} from "../../lib/chains";
 import { formatTime, relative } from "../../lib/format";
 import { useAsync } from "../../lib/hooks";
 import { assetLabel } from "../../lib/money";
 import { Page } from "../../ui/page";
-import { Badge, Button, Card, ErrorNote, KeyValue, Loading, Mono, Note } from "../../ui/ui";
+import { attestSettlementDestinationV4, type SigningStandard } from "../../lib/spec-next";
+import { Badge, Button, Card, ErrorNote, Field, KeyValue, Loading, Mono, Note } from "../../ui/ui";
+import { type BitcoinWallet, detectBitcoinWallets, signBip322 } from "../../wallets/bitcoin";
 import { discoverEvmWallets, type EvmWallet, signEip191 } from "../../wallets/evm";
 import { nearConnector, signNep413 } from "../../wallets/near";
+import { discoverSolanaWallets, type SolanaWallet, signSolanaMessage } from "../../wallets/solana";
 import { approvalText } from "./Destinations";
 
 type Challenge = NonNullable<SettlementDestination["attestation_challenge"]>;
@@ -92,8 +103,8 @@ export function AttestPanel({
   const [evmWallets, setEvmWallets] = useState<EvmWallet[]>();
   const expired = c.expires_at <= now;
 
-  const submit = async (body: { standard: "nep413" | "eip191"; signature: string; public_key?: string }) => {
-    const d = await app.api.call(attestSettlementDestination, {
+  const submit = async (body: { standard: SigningStandard; signature: string; public_key?: string }) => {
+    const d = await app.api.call(attestSettlementDestinationV4, {
       params: { id: destination.id },
       body: { challenge_id: c.id, ...body },
     });
@@ -141,14 +152,7 @@ export function AttestPanel({
             <Mono key="a">{destination.address}</Mono>,
           ],
           ["Fingerprint", <Mono key="f">{destination.fingerprint}</Mono>],
-          [
-            "Signature",
-            c.signing_standard === "nep413"
-              ? "NEAR wallet (NEP-413 signMessage)"
-              : c.signing_standard === "eip191"
-                ? "EVM wallet (EIP-191 personal_sign)"
-                : c.signing_standard,
-          ],
+          ["Signature", STANDARD_TEXT[c.signing_standard] ?? c.signing_standard],
           ["Expires", expired ? "expired" : `${relative(c.expires_at, now)} (${formatTime(c.expires_at)})`],
         ]}
       />
@@ -191,11 +195,189 @@ export function AttestPanel({
           ))}
         </div>
       )}
-      {!expired && c.signing_standard !== "nep413" && c.signing_standard !== "eip191" && (
-        <Note tone="warn">This signing standard arrives in a later release.</Note>
+      {!expired && c.signing_standard === "solana" && (
+        <SolanaSigner destination={destination} message={c.message} busy={busy} run={run} submit={submit} />
+      )}
+      {!expired && c.signing_standard === "bip322" && (
+        <BitcoinSigner destination={destination} message={c.message} busy={busy} run={run} submit={submit} />
+      )}
+      {!expired && !KNOWN_STANDARDS.has(c.signing_standard) && (
+        <Note tone="warn">This signing standard isn't supported by this dashboard version. Reload the page.</Note>
       )}
       <ErrorNote error={error} />
     </Card>
+  );
+}
+
+const STANDARD_TEXT: Readonly<Record<string, string>> = {
+  nep413: "NEAR wallet (NEP-413 signMessage)",
+  eip191: "EVM wallet (EIP-191 personal_sign)",
+  solana: "Solana wallet (signMessage, raw message)",
+  bip322: "Bitcoin wallet (BIP-322 simple)",
+};
+const KNOWN_STANDARDS = new Set(Object.keys(STANDARD_TEXT));
+
+interface SignerProps {
+  destination: SettlementDestination;
+  message: string;
+  busy: boolean;
+  run(fn: () => Promise<void>): Promise<void>;
+  submit(body: { standard: SigningStandard; signature: string }): Promise<void>;
+}
+
+/** Paste a signature made in another tool; the shape is checked before anything is sent. */
+function PasteSignature({
+  label,
+  hint,
+  check,
+  busy,
+  onSubmit,
+  testId,
+}: {
+  label: string;
+  hint: React.ReactNode;
+  check(sig: string): string | null;
+  busy: boolean;
+  onSubmit(sig: string): void;
+  testId: string;
+}) {
+  const [sig, setSig] = useState("");
+  const [touched, setTouched] = useState(false);
+  const problem = sig.trim() ? check(sig.trim()) : "Paste the signature first.";
+  return (
+    <form
+      className="np-stack"
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        setTouched(true);
+        if (!problem) onSubmit(sig.trim());
+      }}
+    >
+      <Field label={label} hint={hint} error={touched ? (problem ?? undefined) : undefined}>
+        {(id) => (
+          <Textarea
+            id={id}
+            rows={3}
+            value={sig}
+            spellCheck={false}
+            autoComplete="off"
+            onChange={(e) => setSig(e.target.value)}
+            data-testid={testId}
+          />
+        )}
+      </Field>
+      <div>
+        <Button type="submit" variant="secondary" busy={busy}>
+          Verify signature
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function SolanaSigner({ destination, message, busy, run, submit }: SignerProps) {
+  const [wallets, setWallets] = useState<SolanaWallet[]>();
+  return (
+    <div className="np-stack" data-testid="solana-signer">
+      <div className="wallets">
+        {!wallets && (
+          <Button busy={busy} onClick={() => void discoverSolanaWallets().then(setWallets)}>
+            Sign with Solana wallet
+          </Button>
+        )}
+        {wallets?.map((w) => (
+          <Button
+            key={w.id}
+            busy={busy}
+            onClick={() =>
+              void run(async () => {
+                const signature = await signSolanaMessage(w, destination.address, message);
+                await submit({ standard: "solana", signature });
+              })
+            }
+          >
+            Sign with {w.name}
+          </Button>
+        ))}
+      </div>
+      {wallets?.length === 0 && (
+        <Note tone="warn">
+          No Solana wallet found in this browser. Install or unlock Phantom, Solflare or Backpack and retry, or paste a
+          signature below.
+        </Note>
+      )}
+      <details className="dash-disclosure">
+        <summary>Signed somewhere else? Paste the signature</summary>
+        <div className="np-stack">
+          <p className="np-text-small np-text-secondary">
+            Sign the exact message above as raw UTF-8 bytes with the key of <Mono>{destination.address}</Mono>, then
+            paste the 64-byte signature in base58. Not accepted: Ledger's Solana app and other "off-chain message"
+            signing, Sign-In-With-Solana, and base64 signatures.
+          </p>
+          <PasteSignature
+            label="Signature (base58)"
+            hint="Letters and digits only, about 88 characters."
+            check={checkSolanaSignature}
+            busy={busy}
+            testId="solana-signature"
+            onSubmit={(signature) => void run(() => submit({ standard: "solana", signature }))}
+          />
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function BitcoinSigner({ destination, message, busy, run, submit }: SignerProps) {
+  const [wallets] = useState<BitcoinWallet[]>(() => detectBitcoinWallets());
+  const addr = checkBitcoinAddress(destination.address);
+  const type = addr.ok ? addr.type : "p2wpkh";
+  return (
+    <div className="np-stack" data-testid="bitcoin-signer">
+      {wallets.length ? (
+        <div className="wallets">
+          {wallets.map((w) => (
+            <Button
+              key={w.id}
+              busy={busy}
+              onClick={() =>
+                void run(async () => {
+                  const signature = await signBip322(w, destination.address, message);
+                  const problem = checkBip322Signature(signature, type);
+                  if (problem) throw new Error(problem);
+                  await submit({ standard: "bip322", signature });
+                })
+              }
+            >
+              Sign with {w.name}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+      <div className="np-stack">
+        <p className="np-text-small">
+          Sign the message above with the wallet that holds <Mono>{destination.address}</Mono> using{" "}
+          <strong>BIP-322</strong> message signing, then paste the signature.
+        </p>
+        <ul className="dash-steps np-text-small np-text-secondary">
+          <li>Sparrow: Tools → Sign/Verify Message → choose this address → paste the message → Format BIP322 → Sign.</li>
+          <li>Xverse, Leather, UniSat, OKX: use "Sign message" with this address; they sign BIP-322 for bc1q/bc1p.</li>
+          <li>Bitcoin Core's signmessage and "Electrum/legacy" formats aren't accepted.</li>
+        </ul>
+        <CopyText value={message} label="Copy message" data-testid="copy-challenge">
+          Copy message
+        </CopyText>
+        <PasteSignature
+          label="Signature (base64)"
+          hint={type === "p2tr" ? "Taproot signatures are about 88 characters." : "Usually about 144 characters."}
+          check={(sig) => checkBip322Signature(sig, type)}
+          busy={busy}
+          testId="bip322-signature"
+          onSubmit={(signature) => void run(() => submit({ standard: "bip322", signature }))}
+        />
+      </div>
+    </div>
   );
 }
 
