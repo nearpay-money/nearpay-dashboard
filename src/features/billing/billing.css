@@ -1,0 +1,219 @@
+/* Billing modules layout (module-local, unlayered; kit tokens only). Figma b02 billing frames. */
+.npf-billing__line {
+  display: flex;
+  flex-direction: column;
+  gap: var(--np-space-0-5);
+  min-width: 0;
+}
+.npf-billing__mono {
+  font-family: var(--np-font-mono);
+  font-size: var(--np-text-small);
+  overflow-wrap: anywhere;
+}
+.npf-billing__inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--np-space-2);
+  flex-wrap: wrap;
+}
+.npf-billing__totals {
+  display: flex;
+  justify-content: flex-end;
+}
+.npf-billing__totals > * {
+  width: min(100%, 380px);
+}
+.npf-billing__columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--np-space-8);
+  align-items: start;
+}
+.npf-billing__link-row {
+  display: flex;
+  align-items: center;
+  gap: var(--np-space-3);
+  flex-wrap: wrap;
+  padding: var(--np-space-3) var(--np-space-4);
+  border: 1px solid var(--np-color-border);
+  border-radius: var(--np-radius-control);
+  background: var(--np-color-surface);
+}
+.npf-billing__link {
+  flex: 1 1 260px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Create invoice / new subscription: form + sticky summary card (Figma "Create invoice") */
+.npf-billing__form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 416px);
+  gap: var(--np-space-12);
+  align-items: start;
+}
+.npf-billing__aside {
+  position: sticky;
+  top: calc(var(--np-size-topbar) + var(--np-space-6));
+}
+.npf-billing__row-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--np-space-4);
+}
+.npf-billing__items,
+.npf-billing__checks,
+.npf-billing__fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--np-space-3);
+}
+.npf-billing__items > legend,
+.npf-billing__checks > legend,
+.npf-billing__fieldset > legend {
+  padding: 0;
+  margin-bottom: var(--np-space-2);
+}
+.npf-billing__item {
+  border: 1px solid var(--np-color-border);
+  border-radius: var(--np-radius-card);
+  background: var(--np-color-surface);
+  padding: var(--np-space-3) var(--np-space-4) var(--np-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--np-space-3);
+}
+.npf-billing__item-head,
+.npf-billing__item-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--np-space-3);
+  flex-wrap: wrap;
+}
+.npf-billing__item-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(64px, 0.6fr) minmax(0, 1.2fr);
+  gap: var(--np-space-3);
+}
+.npf-billing__item-grid--sub {
+  grid-template-columns: minmax(0, 1fr) minmax(72px, 120px);
+}
+.npf-billing__item-amount {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--np-weight-medium);
+}
+.npf-billing__error {
+  margin: 0;
+  color: var(--np-color-danger-fg);
+  font-size: var(--np-text-small);
+}
+.npf-billing__more > summary {
+  cursor: pointer;
+  color: var(--np-color-accent-text);
+  font-size: var(--np-text-small);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.npf-billing__more[open] > summary {
+  margin-bottom: var(--np-space-3);
+}
+
+/* Live tail (developers) */
+.npf-tail__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--np-space-3);
+  flex-wrap: wrap;
+}
+.npf-tail__state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--np-space-2);
+}
+.npf-tail__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--np-color-border);
+  border-radius: var(--np-radius-card);
+  background: var(--np-color-surface);
+  max-height: 560px;
+  overflow: auto;
+}
+.npf-tail__row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: var(--np-space-3);
+  align-items: center;
+  padding: var(--np-space-3) var(--np-space-4);
+  border-bottom: 1px solid var(--np-color-border);
+  font-size: var(--np-text-small);
+}
+.npf-tail__row:last-child {
+  border-bottom: 0;
+}
+.npf-tail__time {
+  font-variant-numeric: tabular-nums;
+  color: var(--np-color-text-secondary);
+}
+.npf-tail__type {
+  font-family: var(--np-font-mono);
+  overflow-wrap: anywhere;
+}
+
+/* CLI authorize */
+.npf-cli__code {
+  font-family: var(--np-font-mono);
+  font-size: var(--np-text-h3);
+  letter-spacing: 0.08em;
+  text-align: center;
+  padding: var(--np-space-3);
+  border: 1px dashed var(--np-color-border-control);
+  border-radius: var(--np-radius-control);
+  background: var(--np-color-surface-muted);
+}
+.npf-cli__actions {
+  display: flex;
+  gap: var(--np-space-3);
+  flex-wrap: wrap;
+}
+.npf-cli__actions > * {
+  flex: 1 1 160px;
+}
+
+@media (max-width: 1100px) {
+  .npf-billing__form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--np-space-8);
+  }
+  .npf-billing__aside {
+    position: static;
+  }
+}
+@media (max-width: 900px) {
+  .npf-billing__columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .npf-billing__item-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .npf-billing__row-2,
+  .npf-billing__item-grid,
+  .npf-billing__item-grid--sub {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .npf-tail__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .npf-tail__row > .npf-tail__time {
+    grid-column: 1 / -1;
+  }
+}
