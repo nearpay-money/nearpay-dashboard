@@ -130,3 +130,35 @@ export function relativeDay(unix: number | null, now = Date.now()): string {
   if (diff === 1) return "Yesterday";
   return new Intl.DateTimeFormat(undefined, { dateStyle: "medium" }).format(unix * 1000);
 }
+
+/**
+ * Totals from the API (spec 0.2.1 `Customer.total_paid` / `last_payment_at`), or undefined when the server
+ * does not send them yet (then the list falls back to summing the customer's succeeded payments).
+ */
+export function serverTotals(
+  c: Pick<Customer, "total_paid" | "last_payment_at">,
+  assets: ReadonlyMap<string, { symbol: string; decimals: number }>,
+): Totals | undefined {
+  if (!c.total_paid) return undefined;
+  const parts = c.total_paid.map((t) =>
+    t.currency === "asset"
+      ? (() => {
+          const a = assets.get(t.asset_id ?? "");
+          return a
+            ? formatMoney({ amount: String(t.amount), decimals: a.decimals, symbol: a.symbol })
+            : `${t.amount} base units`;
+        })()
+      : (() => {
+          const d = currencyDigits(t.currency);
+          const sym =
+            ({ usd: "$", eur: "€", gbp: "£" } as Record<string, string>)[t.currency] ?? t.currency.toUpperCase();
+          return formatMoney({ amount: BigInt(t.amount), decimals: d, symbol: sym, minFraction: d });
+        })(),
+  );
+  return {
+    parts,
+    count: c.total_paid.reduce((n, t) => n + t.count, 0),
+    lastPaid: c.last_payment_at ?? null,
+    partial: false,
+  };
+}

@@ -1,5 +1,12 @@
 /** Customer detail: contact, wallets, paid totals and the customer's payments; edit and delete. */
-import { type Customer, deleteCustomer, type PaymentIntent, updateCustomer } from "@nearpay/spec";
+import {
+  type Customer,
+  createInvoice,
+  createSubscription,
+  deleteCustomer,
+  type PaymentIntent,
+  updateCustomer,
+} from "@nearpay/spec";
 import {
   Button,
   Card,
@@ -13,13 +20,17 @@ import {
   StatGroup,
   StatusBadge,
   Table,
+  Tabs,
 } from "@nearpay-internal/ui";
 import { useRef, useState } from "react";
-import { useApp } from "../../app/context";
+import { Link, useApp } from "../../app/context";
+import { FEATURE_STAGE } from "../../app/registry";
 import { roleAllows } from "../../lib/permissions";
+import { InvoiceTable } from "../invoices/InvoiceList";
+import { SubscriptionTable } from "../subscriptions/SubscriptionList";
 import { useCustomer, useCustomerCalls, useCustomerPayments, useTotals } from "./api";
 import { CustomerDialog } from "./CustomerForm";
-import { chainName, customerName, paidTotals, relativeDay } from "./logic";
+import { chainName, customerName, paidTotals, relativeDay, serverTotals } from "./logic";
 import { ActionError, ErrorState, PageSkeleton } from "./parts";
 import { fmtDate, useSpaLinks } from "./ui";
 import "./customers.css";
@@ -43,7 +54,9 @@ function CustomerView({ initial }: { initial: Customer }) {
   const [announce, setAnnounce] = useState(() =>
     new URLSearchParams(app.location.search).get("created") === "1" ? "Customer added." : "",
   );
-  const totals = useTotals([customer.id]).get(customer.id);
+  const fromApi = serverTotals(customer, app.assets);
+  const scanned = useTotals(fromApi ? [] : [customer.id]).get(customer.id);
+  const totals = fromApi ?? scanned;
   const root = useRef<HTMLDivElement>(null);
   useSpaLinks(root);
   const canEdit = roleAllows(updateCustomer, app.session?.role);
@@ -120,7 +133,7 @@ function CustomerView({ initial }: { initial: Customer }) {
           )}
         </div>
       </Card>
-      <CustomerPayments customerId={customer.id} />
+      <CustomerActivity customerId={customer.id} />
       <CustomerDialog
         open={editing}
         customer={customer}
@@ -159,6 +172,74 @@ const INTENT_LABELS: Readonly<Record<string, string>> = {
   canceled: "Canceled",
   expired: "Expired",
 };
+
+type ActivityTab = "payments" | "invoices" | "subscriptions";
+
+/** Payments · Invoices · Subscriptions of the customer (billing tabs from Stage 3; tab kept in `?tab=`). */
+function CustomerActivity({ customerId }: { customerId: string }) {
+  const app = useApp();
+  const billing = FEATURE_STAGE >= 3;
+  const raw = new URLSearchParams(app.location.search).get("tab");
+  const tab: ActivityTab = billing && (raw === "invoices" || raw === "subscriptions") ? raw : "payments";
+  if (!billing) return <CustomerPayments customerId={customerId} />;
+  const select = (t: string) => {
+    const q = new URLSearchParams(app.location.search);
+    if (t === "payments") q.delete("tab");
+    else q.set("tab", t);
+    q.delete("created");
+    const qs = q.toString();
+    app.navigate(`${app.location.pathname}${qs ? `?${qs}` : ""}`, { replace: true });
+  };
+  return (
+    <Tabs
+      label="Customer activity"
+      value={tab}
+      onChange={select}
+      items={[
+        { id: "payments", label: "Payments" },
+        { id: "invoices", label: "Invoices" },
+        { id: "subscriptions", label: "Subscriptions" },
+      ]}
+    >
+      {tab === "payments" ? <CustomerPayments customerId={customerId} /> : null}
+      {tab === "invoices" ? (
+        <div className="np-stack" data-testid="customer-invoices">
+          {roleAllows(createInvoice, app.session?.role) ? (
+            <div>
+              <Link
+                to={`/billing/invoices/new?customer=${customerId}`}
+                className="np-button np-button--secondary np-button--sm"
+              >
+                <span>Create invoice</span>
+              </Link>
+            </div>
+          ) : null}
+          <InvoiceTable
+            filter={{ status: "", customer: customerId }}
+            showCustomer={false}
+            pageSize={10}
+            caption="Invoices of this customer"
+          />
+        </div>
+      ) : null}
+      {tab === "subscriptions" ? (
+        <div className="np-stack" data-testid="customer-subscriptions">
+          {roleAllows(createSubscription, app.session?.role) ? (
+            <div>
+              <Link
+                to={`/billing/subscriptions/new?customer=${customerId}`}
+                className="np-button np-button--secondary np-button--sm"
+              >
+                <span>New subscription</span>
+              </Link>
+            </div>
+          ) : null}
+          <SubscriptionTable filter={{ status: "", customer: customerId }} showCustomer={false} pageSize={10} />
+        </div>
+      ) : null}
+    </Tabs>
+  );
+}
 
 function CustomerPayments({ customerId }: { customerId: string }) {
   const app = useApp();
