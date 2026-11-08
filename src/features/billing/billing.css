@@ -217,3 +217,7 @@
     grid-column: 1 / -1;
   }
 }
+.npf-tail__bar .dash-inline-field .np-select {
+  width: 240px;
+  max-width: 100%;
+}

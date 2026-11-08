@@ -3,20 +3,28 @@ import { Link, useApp } from "../../app/context";
 import { Page } from "../../ui/page";
 import { ApiKeys } from "./ApiKeys";
 import { EventDetail, Events } from "./Events";
+import { LiveTail } from "./LiveTail";
 import { WebhookDetail, Webhooks } from "./Webhooks";
 
 const TABS: [string, string][] = [
   ["/developers", "API keys"],
   ["/developers/webhooks", "Notifications"],
   ["/developers/events", "Events"],
+  ["/developers/live", "Live tail"],
 ];
 
-export type DevelopersTab = "keys" | "webhooks" | "webhook" | "events" | "event";
+export type DevelopersTab = "keys" | "webhooks" | "webhook" | "events" | "event" | "live";
 
 export function Developers({ tab, id }: { tab: DevelopersTab; id?: string }) {
   const app = useApp();
   const current =
-    tab === "keys" ? "/developers" : tab.startsWith("webhook") ? "/developers/webhooks" : "/developers/events";
+    tab === "keys"
+      ? "/developers"
+      : tab.startsWith("webhook")
+        ? "/developers/webhooks"
+        : tab === "live"
+          ? "/developers/live"
+          : "/developers/events";
   return (
     <Page
       title="Developers"
@@ -50,6 +58,7 @@ export function Developers({ tab, id }: { tab: DevelopersTab; id?: string }) {
       {tab === "webhook" && id && <WebhookDetail id={id} />}
       {tab === "events" && <Events />}
       {tab === "event" && id && <EventDetail id={id} />}
+      {tab === "live" && <LiveTail />}
     </Page>
   );
 }
