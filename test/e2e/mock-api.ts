@@ -670,6 +670,20 @@ export class MockApi {
           this.deliveries.set(d.webhook_endpoint, [d, ...(this.deliveries.get(d.webhook_endpoint) ?? [])]);
         return ok({ object: "event_resend", event: params.id, deliveries });
       }
+      case "listMembers":
+        // the signed-in owner only; the team feature mock seeds a fuller team
+        return ok(
+          list("/v1/account/members", [
+            {
+              object: "member",
+              user: { id: "usr_01jbz9k3m4n5p6q7r8s9t0v1w2", email: "owner@acme.example" },
+              role: this.role,
+              created: NOW - 9e5,
+              last_login_at: NOW - 60,
+              security: { passkeys: 2, recovered_at: null },
+            },
+          ]),
+        );
       default:
         this.unexpected.push(route.id);
         return err(500, "api_error", "api_error", `mock: ${route.id} not implemented`);

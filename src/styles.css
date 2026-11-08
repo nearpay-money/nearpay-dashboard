@@ -755,3 +755,6 @@ fieldset.dash-filters {
 .np-modal-backdrop:has(.dash-stepup) {
   z-index: calc(var(--np-z-overlay) + 50);
 }
+.dash-block {
+  display: block;
+}

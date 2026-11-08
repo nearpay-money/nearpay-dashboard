@@ -209,6 +209,12 @@ export function PaymentDetail({ id }: { id: string }) {
     intent.status === "succeeded" && refundable > 0n && app.registry.hasPath(`/payments/${intent.id}/refund`);
   const refundBlocked = app.gate(createRefund);
   const customersRoute = intent.customer && app.registry.hasPath(`/customers/${intent.customer}`);
+  // spec 0.2.1: what the payer sent (origin asset) and their refund address, from the paying attempt
+  const paid =
+    [...intent.attempts].reverse().find((a) => a.status === "succeeded" && a.origin_amount) ??
+    [...intent.attempts].reverse().find((a) => a.origin_amount);
+  const payer = [...intent.attempts].reverse().find((a) => a.refund_to);
+  const feeText = fee ? formatAsset(fee.amount_estimated, fee.asset_id, app.assets) : `${intent.fee.total_bps} bps`;
 
   return (
     <Page
@@ -242,11 +248,17 @@ export function PaymentDetail({ id }: { id: string }) {
       <StatRow
         items={[
           { label: "Purchase", value: formatPrice(intent, app.assets), sub: status.label },
-          {
-            label: "Payment fee",
-            value: fee ? formatAsset(fee.amount_estimated, fee.asset_id, app.assets) : `${intent.fee.total_bps} bps`,
-            sub: `${fee ? `${intent.fee.total_bps} bps · ` : ""}${intent.fee.bearer === "payer" ? "Paid by the payer" : "Deducted from your settlement"}`,
-          },
+          paid?.origin_amount
+            ? {
+                label: "Payer sent",
+                value: formatAsset(paid.origin_amount, paid.origin_asset_id, app.assets),
+                sub: `${networkName(paid.origin_chain)} · fee ${feeText} ${intent.fee.bearer === "payer" ? "paid by the payer" : "deducted from your settlement"}`,
+              }
+            : {
+                label: "Payment fee",
+                value: feeText,
+                sub: `${fee ? `${intent.fee.total_bps} bps · ` : ""}${intent.fee.bearer === "payer" ? "Paid by the payer" : "Deducted from your settlement"}`,
+              },
           {
             label: "You received",
             value: formatAsset(intent.amount_settled, intent.settlement_asset_id, app.assets),
@@ -367,6 +379,15 @@ export function PaymentDetail({ id }: { id: string }) {
                   ? "Customer record attached"
                   : "No customer record. Payers don't need an account or email."}
               </p>
+              {payer?.refund_to ? (
+                <p className="np-text-small" data-testid="payer-address">
+                  Payer address <Mono title={payer.refund_to}>{shorten(payer.refund_to, 6)}</Mono> ·{" "}
+                  {networkName(payer.origin_chain)}
+                  <span className="np-text-caption np-text-secondary dash-block">
+                    Given at checkout; refunds return here.
+                  </span>
+                </p>
+              ) : null}
               {session.data ? (
                 <p className="np-text-caption np-text-secondary">
                   Checkout session {shortId(session.data.id)} · <Badge kind="session" value={session.data.status} />

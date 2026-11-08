@@ -72,3 +72,8 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.npf-payment-links__name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--np-space-0-5);
+}

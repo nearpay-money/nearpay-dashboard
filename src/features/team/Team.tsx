@@ -31,6 +31,7 @@ import { useApp } from "../../app/context";
 import { ApiError } from "../../lib/errors";
 import { roleAllows } from "../../lib/permissions";
 import { usePendingApprovals, useTeam, useTeamCalls } from "./api";
+import { TENURE_COPY } from "./approval-copy";
 import {
   alreadyApproved,
   approvalStep,
@@ -461,6 +462,7 @@ function Approvals({
       )}
       <ApproveDialog
         destination={reviewing}
+        memberEmail={(id) => email(id) ?? "A team member"}
         onClose={() => setReviewing(null)}
         onDone={(msg) => {
           setReviewing(null);
@@ -474,10 +476,12 @@ function Approvals({
 
 function ApproveDialog({
   destination: d,
+  memberEmail,
   onClose,
   onDone,
 }: {
   destination: SettlementDestination | null;
+  memberEmail: (userId: string) => string;
   onClose: () => void;
   onDone: (message: string) => void;
 }) {
@@ -545,8 +549,10 @@ function ApproveDialog({
             { label: "Fingerprint", value: <code className="npf-team__mono">{d.fingerprint}</code> },
             { label: "Default destination", value: d.is_default ? "Yes" : "No" },
             { label: "Approvals", value: approvalStep(d) },
+            ...(d.created_by ? [{ label: "Added by", value: memberEmail(d.created_by) }] : []),
           ]}
         />
+        <p className="np-text-small np-text-secondary">{TENURE_COPY} Pending destinations expire after 7 days.</p>
         {mine && (
           <Callout tone="neutral" title="You already approved this change">
             Another owner or admin must give the second approval.
@@ -554,7 +560,8 @@ function ApproveDialog({
         )}
         {conflict ? (
           <Callout tone="warning" title="Another approver is needed" role="alert">
-            Another owner or admin must approve this change — you created it or already approved it.
+            Another owner or admin must approve this change — you created it or already approved it, or your approval
+            doesn't count yet: {TENURE_COPY}
           </Callout>
         ) : (
           <ActionError error={error} />

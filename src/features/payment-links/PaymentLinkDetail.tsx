@@ -81,8 +81,8 @@ function LinkView({ initial }: { initial: PaymentLink }) {
     <div className="np-stack np-stack--lg" ref={root}>
       <LiveRegion>{announce}</LiveRegion>
       <PageHeader
-        title={link.description}
-        subtitle="Payment link"
+        title={link.name ?? link.description}
+        subtitle={link.name ? `Payment link · “${link.description}” on checkout` : "Payment link"}
         status={<StatusBadge data-testid="link-status">{status.label}</StatusBadge>}
         actions={
           <>
@@ -271,6 +271,7 @@ function EditLink({
 }) {
   const calls = useLinkCalls();
   const [title, setTitle] = useState(link.description);
+  const [name, setName] = useState(link.name ?? "");
   const [maxUses, setMaxUses] = useState(link.max_uses === null ? "" : String(link.max_uses));
   const [successUrl, setSuccessUrl] = useState(link.success_url ?? "");
   const [collectEmail, setCollectEmail] = useState(link.collect_email);
@@ -302,6 +303,7 @@ function EditLink({
                 onSaved(
                   await calls.update(link.id, {
                     description: title.trim(),
+                    ...(name.trim() !== (link.name ?? "") ? { name: name.trim() || null } : {}),
                     max_uses: uses,
                     success_url: url,
                     collect_email: collectEmail,
@@ -323,6 +325,9 @@ function EditLink({
       <div className="np-stack">
         <Field label="Title" error={touched ? titleErr : undefined} required>
           <Input value={title} maxLength={500} onChange={(e) => setTitle(e.target.value)} />
+        </Field>
+        <Field label="Internal name (optional)" hint="Only your team sees it.">
+          <Input value={name} maxLength={100} onChange={(e) => setName(e.target.value)} data-testid="edit-link-name" />
         </Field>
         <Field
           label="Stop after this many payments"

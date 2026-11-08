@@ -73,6 +73,7 @@ export class PaymentLinksMock {
           currency: b.currency,
           asset_id: b.asset_id ?? null,
           description: b.description,
+          name: b.name ?? null,
           settlement_destination: b.settlement_destination ?? null,
           success_url: b.success_url ?? null,
           max_uses: b.max_uses ?? null,
