@@ -94,7 +94,7 @@ function Page_() {
   );
   if (route?.layout === "focus") {
     return (
-      <div key={`${app.session?.account.id}:${app.mode}`} className="dash-route">
+      <div key={`${app.session?.account.id}:${app.mode}`} className="dash-focus">
         {content}
       </div>
     );

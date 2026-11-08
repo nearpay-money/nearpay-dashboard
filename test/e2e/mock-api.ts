@@ -48,11 +48,12 @@ type Reply = {
   raw?: { contentType: string; body: string | Buffer; headers?: Record<string, string> };
 };
 
+// static paths win over parameters, like the gateway (`/v1/events/stream` before `/v1/events/{id}`)
 const matchers = PUBLIC_ROUTES.map((r) => ({
   route: r,
   re: pathMatcher(r.path),
   names: [...r.path.matchAll(/\{([a-z_]+)\}/g)].map((m) => m[1] as string),
-}));
+})).sort((a, b) => a.names.length - b.names.length);
 
 function parseQuery(search: string): Record<string, unknown> {
   const out: Record<string, unknown> = {};
