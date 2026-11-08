@@ -20,8 +20,12 @@
  *   content — start it with `<Page>` from `src/ui/page.tsx`. Signed-in routes only.
  * - `nav`: an entry fills one of the fixed sidebar slots (order and labels follow the Figma). A slot
  *   without an entry is not shown. `stage` hides an entry until `FEATURE_STAGE` (build-time
- *   `VITE_NP_STAGE`, default 2) reaches it — Billing is a Stage 3 slot.
+ *   `VITE_NP_STAGE`, default 3) reaches it — Billing is a Stage 3 slot.
  * - `settingsCards`: link cards on the Settings index (`/settings`).
+ * - `roles` on a route: the spec read route's roles; other roles get a notice instead of the page.
+ * - `layout: "focus"`: a signed-in page without the shell (centred card), e.g. `/cli/authorize`.
+ * - Code splitting: wrap page components with `lazyPage(() => import("./Page"), "Page")` from
+ *   `src/app/lazy.tsx`, so an area's code loads on first visit (one chunk per area).
  * - `overviewChecklist`: not provided; the Overview checklist links to fixed routes
  *   (`/settings/business` for business details).
  *
@@ -34,6 +38,7 @@
  * - UI: `@nearpay-internal/ui` components; page patterns in `src/ui/page.tsx` (`Page`, `Section`, `LoadingState`,
  *   `ErrorState`, `ConfirmDialog`, `StatRow`); legacy helpers in `src/ui/ui.tsx` stay supported.
  */
+import type { Role } from "@nearpay/spec";
 import type { ReactNode } from "react";
 
 /** Sidebar slots, in Figma order. */
@@ -64,6 +69,13 @@ export interface RouteDef {
   readonly render: (params: RouteParams) => ReactNode;
   /** Hidden until this stage is enabled (`FEATURE_STAGE`). */
   readonly stage?: number;
+  /** Roles that may open the page (the spec read route's `roles`); others see a role notice. */
+  readonly roles?: readonly Role[];
+  /**
+   * `shell` (default): inside the workspace shell. `focus`: a centred single-task page without the
+   * sidebar (still signed-in only), e.g. `/cli/authorize`.
+   */
+  readonly layout?: "shell" | "focus";
 }
 
 export interface NavEntry {
@@ -95,8 +107,8 @@ export function defineFeature(m: FeatureModule): FeatureModule {
   return m;
 }
 
-/** Highest product stage whose pages are shown (build-time `VITE_NP_STAGE`, default 2). */
-export const FEATURE_STAGE: number = Number(import.meta.env.VITE_NP_STAGE ?? 2) || 2;
+/** Highest product stage whose pages are shown (build-time `VITE_NP_STAGE`, default 3 since step 3.3). */
+export const FEATURE_STAGE: number = Number(import.meta.env.VITE_NP_STAGE ?? 3) || 3;
 
 export interface Registry {
   readonly routes: readonly RouteDef[];

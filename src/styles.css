@@ -711,7 +711,16 @@ body {
   }
   .dash-tab {
     min-width: 0;
-    flex: 1;
+    flex: 1 0 auto;
+    white-space: nowrap;
+  }
+  /* four or more tabs scroll sideways instead of wrapping (Billing, Developers) */
+  .dash-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-inline: calc(-1 * var(--np-space-1));
+    padding: var(--np-space-1);
   }
   .dash-inline-field .np-field {
     flex-direction: column;

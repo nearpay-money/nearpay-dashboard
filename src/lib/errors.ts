@@ -75,6 +75,22 @@ const FRIENDLY: Readonly<Record<string, string>> = {
   scope_unknown: "One of the selected permissions isn't recognised. Refresh and try again.",
   invalid_setting: "One of the settings isn't valid.",
   link_expired: "This link has expired. Request a new one.",
+  // billing (spec 0.3.0)
+  currency_mismatch: "Every line must use the invoice currency. Pick prices in the same currency.",
+  currency_unsupported: "NearPay can't take payments in this currency yet. Choose another currency.",
+  interval_mismatch: "All prices of a subscription must bill on the same schedule (for example, monthly).",
+  price_inactive: "One of the prices is archived. Choose an active price.",
+  price_type_invalid: "Invoices take one-time prices; subscriptions take recurring prices.",
+  tax_rate_inactive: "One of the tax rates is archived. Choose an active rate.",
+  tax_rates_mixed: "A line can't mix inclusive and exclusive tax rates.",
+  invoice_empty: "Add at least one line with an amount above zero.",
+  customer_email_missing: "This customer has no email address. Add one on the customer page, then send again.",
+  customer_deleted: "This customer was deleted. Choose another customer.",
+  attempt_in_flight: "A payment for this invoice may still be settling. Try again in a few minutes.",
+  destination_not_active:
+    "Your settlement destination isn't active yet. Activate a destination in Settlement, then try again.",
+  amount_below_destination_minimum: "The total is below the minimum your settlement destination accepts.",
+  invoice_not_payable: "This invoice can't be paid right now.",
 };
 
 export interface FriendlyError {

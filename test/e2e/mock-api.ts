@@ -41,7 +41,12 @@ export interface Call {
   readonly body: unknown;
 }
 
-type Reply = { status: number; body?: unknown };
+/** `raw`: a non-JSON success body (PDF downloads, SSE streams) sent as is. */
+type Reply = {
+  status: number;
+  body?: unknown;
+  raw?: { contentType: string; body: string | Buffer; headers?: Record<string, string> };
+};
 
 const matchers = PUBLIC_ROUTES.map((r) => ({
   route: r,
@@ -166,6 +171,15 @@ export class MockApi {
     this.calls.push({ routeId: m.route.id, method: req.method(), path, headers, query, body });
     const reply =
       this.check(m.route, headers, params, query, body) ?? this.dispatch(m.route, params, query, body, headers);
+    if (reply.raw) {
+      await r.fulfill({
+        status: reply.status,
+        contentType: reply.raw.contentType,
+        headers: { "x-request-id": newId("req"), ...(reply.raw.headers ?? {}) },
+        body: reply.raw.body,
+      });
+      return;
+    }
     if (reply.status < 300 && m.route.response) {
       // tolerant: a test may play a newer server that sends an open-enum value this spec does not list
       const v = safeParseTolerant(m.route.response, reply.body);

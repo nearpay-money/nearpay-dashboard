@@ -16,6 +16,9 @@ export type StatusKind =
   | "kyb"
   | "session"
   | "key"
+  | "invoice"
+  | "subscription"
+  | "cli_login"
   | "generic";
 
 type Entry = readonly [label: string, tone: Tone];
@@ -84,6 +87,28 @@ const TABLES: Readonly<Record<StatusKind, Readonly<Record<string, Entry>>>> = {
     secret: ["Secret", "neutral"],
     publishable: ["Publishable", "neutral"],
     restricted: ["Restricted", "neutral"],
+  },
+  invoice: {
+    draft: ["Draft", "neutral"],
+    open: ["Open", "warning"],
+    paid: ["Paid", "success"],
+    void: ["Void", "neutral"],
+    uncollectible: ["Uncollectible", "danger"],
+  },
+  subscription: {
+    incomplete: ["Incomplete", "warning"],
+    trialing: ["Trialing", "info"],
+    active: ["Active", "success"],
+    past_due: ["Past due", "warning"],
+    canceled: ["Canceled", "neutral"],
+    unpaid: ["Unpaid", "danger"],
+  },
+  cli_login: {
+    pending: ["Awaiting approval", "warning"],
+    approved: ["Approved", "success"],
+    redeemed: ["Approved", "success"],
+    denied: ["Denied", "neutral"],
+    expired: ["Expired", "danger"],
   },
   generic: {},
 };
