@@ -205,10 +205,21 @@
   }
 }
 @media (max-width: 600px) {
-  .npf-billing__row-2,
-  .npf-billing__item-grid,
-  .npf-billing__item-grid--sub {
+  .npf-billing__row-2 {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* product and description full width; quantity and unit price side by side */
+  .npf-billing__item-grid {
+    grid-template-columns: minmax(72px, 0.6fr) minmax(0, 1fr);
+  }
+  .npf-billing__item-grid > :nth-child(-n + 2) {
+    grid-column: 1 / -1;
+  }
+  .npf-billing__item-grid--sub {
+    grid-template-columns: minmax(0, 1fr) 96px;
+  }
+  .npf-billing__item-grid--sub > :nth-child(-n + 2) {
+    grid-column: auto;
   }
   .npf-tail__row {
     grid-template-columns: minmax(0, 1fr) auto;

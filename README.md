@@ -60,6 +60,20 @@ only and sent as `X-CSRF-Token` on unsafe methods. A reload or a new tab recover
 - Tests: `test/unit` + `src/features/**/*.test.ts` (Vitest); Playwright runs `test/e2e/**/*.spec.ts` and
   `src/features/**/*.e2e.ts`. `NP_SHOTS=<dir> pnpm e2e shots` saves review screenshots (1440 / 390 px).
 
+## Step 3.3 (Stage 3 clients)
+
+- Billing (`/billing…`, Figma b02): hub with stats and tabs; invoices (status filters, draft create/edit with a tax
+  preview from the spec's `computeInvoiceTotals`, finalize, send with the 10-minute limit, void, mark
+  uncollectible, payment link, PDF via `ApiClient.download`, activity from events, linked payments); subscriptions
+  (create, cancel now / at period end, upcoming renewal estimate, dunning status); products & prices; tax rates
+  (exact decimal percentages). Customer pages gain Invoices / Subscriptions tabs.
+- `/cli/authorize?code=` (focus layout): approve a `nearpay login` with passkey step-up, or deny.
+- Developers → Live tail (`/developers/live`): `GET /v1/events/stream` read with `fetch` (`src/lib/sse.ts`) so the
+  session mode follows the Test/Live switch; resumes with `Last-Event-ID`; pause / resume / clear.
+- Spec 0.2.1 CRs: customer totals, payment link names, saved checkout theme and corners, payer sent / refund
+  address, member security, destination `created_by` and expiry, approver tenure.
+- Stage 3 pages show by default (`VITE_NP_STAGE` defaults to 3).
+
 ## Build and deploy
 
 ```

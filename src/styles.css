@@ -703,6 +703,21 @@ body {
   .dash-page .np-page-header__actions .np-button {
     width: 100%;
   }
+  /* several actions wrap; the primary one leads (invoice: Send, then PDF, More) */
+  .dash-page .np-page-header__actions {
+    flex-wrap: wrap;
+  }
+  .dash-page .np-page-header__actions > * {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+  .dash-page .np-page-header__actions .np-button {
+    min-width: 0;
+  }
+  .dash-page .np-page-header__actions > .np-button--primary {
+    order: -1;
+    flex-basis: 100%;
+  }
   .dash-filter,
   .dash-filter__control,
   .dash-filter--button {

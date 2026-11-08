@@ -143,7 +143,7 @@ function SubscriptionView({ initial }: { initial: Subscription }) {
             value:
               sub.status === "trialing" && sub.trial_end
                 ? formatDate(sub.trial_end)
-                : `${formatDate(sub.current_period_start)} – ${formatDate(sub.current_period_end)}`,
+                : `${formatDate(sub.current_period_start).replace(/ \d{4}$/, "")} – ${formatDate(sub.current_period_end)}`,
           },
           {
             label: "Next invoice",

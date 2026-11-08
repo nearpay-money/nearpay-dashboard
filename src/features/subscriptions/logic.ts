@@ -203,7 +203,7 @@ export function subscriptionActions(s: Pick<Subscription, "status" | "cancel_at_
 
 /** What happens when reminders run out (subscription `dunning.on_exhausted`). */
 export function dunningText(d: Subscription["dunning"]): string {
-  const when = d.reminder_days.length ? `Reminders ${reminderDaysText(d.reminder_days)} the due date` : "No reminders";
+  const when = d.reminder_days.length ? `Reminders ${reminderDaysText(d.reminder_days)}` : "No reminders";
   const after =
     d.on_exhausted === "unpaid"
       ? "if still unpaid after the last one, the subscription becomes Unpaid and stops invoicing until paid"
