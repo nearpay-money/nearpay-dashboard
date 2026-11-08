@@ -7,6 +7,7 @@
 import {
   approveSettlementDestination,
   disableSettlementDestination,
+  listMembers,
   listSettlementDestinations,
   type SettlementDestination,
   setDefaultSettlementDestination,
@@ -18,9 +19,11 @@ import { networkName } from "../../lib/chains";
 import { formatDate, relative, shorten } from "../../lib/format";
 import { useAsync, useMutation, useNow } from "../../lib/hooks";
 import { assetLabel, formatFiat } from "../../lib/money";
+import { roleAllows } from "../../lib/permissions";
 import { statusOf } from "../../lib/status";
 import { ConfirmDialog, Empty, ErrorState, LoadingState, Page, useConfirm } from "../../ui/page";
 import { Button, ErrorNote, Mono } from "../../ui/ui";
+import { TENURE_COPY } from "../team/approval-copy";
 
 type Dest = SettlementDestination;
 
@@ -37,10 +40,17 @@ export function approvalText(d: Pick<Dest, "approval">): string | null {
 }
 
 function DestinationStatus({ d, now }: { d: Dest; now: number }) {
-  const s = statusOf("destination", d.status);
+  // spec 0.2.1: pending destinations not approved within 7 days are disabled with reason `expired`
+  const expired = d.status === "disabled" && d.disabled_reason === "expired";
+  const s = expired ? { label: "Expired", tone: "danger" as const } : statusOf("destination", d.status);
   return (
     <div className="dash-cell-stack">
       <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+      {expired ? (
+        <span className="np-text-caption np-text-secondary" data-testid="expired">
+          Not approved within 7 days. Add it again.
+        </span>
+      ) : null}
       {d.status === "cooling_off" && d.active_at ? (
         <span className="np-text-caption np-text-secondary" data-testid="cooloff">
           Activates {relative(d.active_at, now)}
@@ -49,6 +59,11 @@ function DestinationStatus({ d, now }: { d: Dest; now: number }) {
       {d.status === "pending_approval" && approvalText(d) ? (
         <span className="np-text-caption np-text-secondary" data-testid="approval">
           {approvalText(d)}
+        </span>
+      ) : null}
+      {d.status === "pending_approval" ? (
+        <span className="np-text-caption np-text-secondary" data-testid="approval-expiry">
+          Expires {formatDate(d.created + 7 * 86_400)} if not approved
         </span>
       ) : null}
     </div>
@@ -60,6 +75,14 @@ export function Destinations() {
   const toast = useToast();
   const now = useNow(30_000);
   const list = useAsync(() => app.api.call(listSettlementDestinations, { query: { limit: 100 } }), [app.api, app.mode]);
+  // who added each destination (spec 0.2.1 `created_by`): names from the team list when the role may read it
+  const canSeeTeam = roleAllows(listMembers, app.session?.role);
+  const team = useAsync(
+    async () => (canSeeTeam ? (await app.api.call(listMembers, { query: { limit: 100 } })).data : []),
+    [app.api, canSeeTeam],
+  );
+  const memberEmail = (id: string) =>
+    id === app.session?.user.id ? "you" : (team.data?.find((m) => m.user.id === id)?.user.email ?? "a team member");
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<unknown>();
   const disabling = useConfirm<Dest>();
@@ -149,6 +172,7 @@ export function Destinations() {
                       {d.is_default ? " · Default" : ""}
                     </span>
                     <span className="np-text-caption np-text-secondary">
+                      {d.created_by ? `Added by ${memberEmail(d.created_by)} · ` : ""}
                       {d.type === "intents_account" ? "NEAR Intents account" : "Wallet address"}
                       {d.verification === "unverified" ? " · Unverified (capped)" : ""}
                       {d.min_payment_amount ? ` · Min ${formatFiat(d.min_payment_amount.amount, "usd")}` : ""}
@@ -270,6 +294,11 @@ export function Destinations() {
           />
         </div>
       )}
+      {(list.data?.data ?? []).some((d) => d.status === "pending_approval") ? (
+        <Callout title="How approvals count" data-testid="approval-rules">
+          {TENURE_COPY} A destination that isn't fully approved within 7 days of being added expires.
+        </Callout>
+      ) : null}
       {coolingOff.map((d) => (
         <p key={d.id} className="np-text-caption np-text-secondary">
           {d.label} activates {clock(d.active_at as number)} ·{" "}

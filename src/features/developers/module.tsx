@@ -42,6 +42,14 @@ export default defineFeature({
       render: () => <Developers tab="events" />,
     },
     {
+      name: "events-live",
+      pattern: "/developers/live",
+      section: "developers",
+      title: "Live tail",
+      stage: 3,
+      render: () => <Developers tab="live" />,
+    },
+    {
       name: "event",
       pattern: "/developers/events/:id",
       section: "developers",

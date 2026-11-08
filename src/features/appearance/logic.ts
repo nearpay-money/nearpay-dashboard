@@ -1,7 +1,7 @@
 /**
- * Checkout appearance logic: the account's checkout branding (`settings.branding.accent_color`,
- * `display_name`; spec `updateAccount`) plus preview-only theme and corner style (no account setting in
- * spec 0.2.0 — requested). Accents are adjusted by the ui `deriveAccent` to keep WCAG AA.
+ * Checkout appearance logic: the account's checkout branding (`settings.branding.accent_color`, `theme`,
+ * `corner_radius` — the last two since spec 0.2.1 — and `display_name`; spec `updateAccount`). Accents are
+ * adjusted by the ui `deriveAccent` to keep WCAG AA.
  */
 import { deriveAccent } from "@nearpay-internal/ui";
 
@@ -46,10 +46,24 @@ export function accentAdjusted(hex: string): boolean {
   return t["--np-color-accent"].toLowerCase() !== h || t["--np-color-accent-text"].toLowerCase() !== h;
 }
 
+export type Theme = "auto" | "light" | "dark";
+
 export interface AppearanceForm {
   readonly displayName: string;
   readonly accent: string;
+  readonly theme?: Theme;
+  /** Corner radius in px as a string (`"8"`). */
+  readonly corner?: string;
 }
+
+export interface SavedAppearance {
+  readonly display_name: string;
+  readonly accent_color: string | null;
+  readonly theme?: string;
+  readonly corner_radius?: number;
+}
+
+export type BrandingPatch = { accent_color?: string; theme?: Theme; corner_radius?: number };
 
 export function validate(f: AppearanceForm): { displayName?: string; accent?: string } {
   const e: { displayName?: string; accent?: string } = {};
@@ -63,13 +77,17 @@ export function validate(f: AppearanceForm): { displayName?: string; accent?: st
 /** `updateAccount` body with only what changed (no step-up: branding is not a money setting). */
 export function updateBody(
   f: AppearanceForm,
-  current: { display_name: string; accent_color: string | null },
-): { display_name?: string; settings?: { branding: { accent_color: string } } } | null {
-  const body: { display_name?: string; settings?: { branding: { accent_color: string } } } = {};
+  current: SavedAppearance,
+): { display_name?: string; settings?: { branding: BrandingPatch } } | null {
+  const body: { display_name?: string; settings?: { branding: BrandingPatch } } = {};
+  const branding: BrandingPatch = {};
   const name = f.displayName.trim();
   const hex = normalizeHex(f.accent);
   if (name && name !== current.display_name) body.display_name = name;
-  if (hex && hex.toUpperCase() !== (current.accent_color ?? DEFAULT_ACCENT).toUpperCase())
-    body.settings = { branding: { accent_color: hex } };
+  if (hex && hex.toUpperCase() !== (current.accent_color ?? DEFAULT_ACCENT).toUpperCase()) branding.accent_color = hex;
+  if (f.theme && f.theme !== (current.theme ?? "auto")) branding.theme = f.theme;
+  if (f.corner !== undefined && Number(f.corner) !== (current.corner_radius ?? 8))
+    branding.corner_radius = Number(f.corner);
+  if (Object.keys(branding).length) body.settings = { branding };
   return Object.keys(body).length ? body : null;
 }

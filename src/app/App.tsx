@@ -1,4 +1,4 @@
-import { ToastProvider } from "@nearpay-internal/ui";
+import { Callout, ToastProvider } from "@nearpay-internal/ui";
 import { type MouseEvent, useEffect, useMemo } from "react";
 import { SignIn } from "../features/auth/SignIn";
 import { SignUp } from "../features/auth/SignUp";
@@ -39,6 +39,17 @@ function NotFound() {
   );
 }
 
+function RoleNotice({ title }: { title: string }) {
+  const app = useApp();
+  return (
+    <Page title={title}>
+      <Callout tone="neutral" title="Not available for your role">
+        Your role ({app.session?.role ?? "none"}) can't open this page. Ask an owner or admin.
+      </Callout>
+    </Page>
+  );
+}
+
 function Page_() {
   const app = useApp();
   const routes = app.registry.routes;
@@ -72,6 +83,23 @@ function Page_() {
   if (m?.name === "signup") return <SignUp />;
   if (m?.name === "verify") return <VerifyMagicLink />;
 
+  const role = app.session?.role;
+  const forbidden = route?.roles !== undefined && (!role || !route.roles.includes(role));
+  const content = !route ? (
+    <NotFound />
+  ) : forbidden ? (
+    <RoleNotice title={title ?? "This page"} />
+  ) : (
+    route.render(params)
+  );
+  if (route?.layout === "focus") {
+    return (
+      <div key={`${app.session?.account.id}:${app.mode}`} className="dash-focus">
+        {content}
+      </div>
+    );
+  }
+
   const nav = app.registry.nav.find((n) => n.slot === route?.section);
   // pages below their section (details, forms) get a third breadcrumb item
   const deeper = route && nav && title && nav.href !== route.pattern ? title : undefined;
@@ -79,7 +107,7 @@ function Page_() {
     <Shell section={route?.section} crumb={deeper}>
       {/* a different account or mode is a different data set: remount the page */}
       <div key={`${app.session?.account.id}:${app.mode}`} className="dash-route">
-        {route ? route.render(params) : <NotFound />}
+        {content}
       </div>
     </Shell>
   );

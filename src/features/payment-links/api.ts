@@ -18,6 +18,8 @@ export const PAGE_SIZE = 20;
 export interface CreateLinkInput {
   readonly pricing: Pricing;
   readonly description: string;
+  /** Internal name (spec 0.2.1; never shown to payers). */
+  readonly name?: string;
   readonly settlement_destination?: string;
   readonly success_url?: string;
   readonly max_uses?: number;
@@ -27,6 +29,7 @@ export interface CreateLinkInput {
 export interface UpdateLinkInput {
   readonly active?: boolean;
   readonly description?: string;
+  readonly name?: string | null;
   readonly success_url?: string | null;
   readonly max_uses?: number | null;
   readonly collect_email?: boolean;
@@ -42,6 +45,7 @@ export function useLinkCalls() {
           currency: b.pricing.currency,
           ...(b.pricing.asset_id ? { asset_id: b.pricing.asset_id } : {}),
           description: b.description,
+          ...(b.name ? { name: b.name } : {}),
           ...(b.settlement_destination ? { settlement_destination: b.settlement_destination } : {}),
           ...(b.success_url ? { success_url: b.success_url } : {}),
           ...(b.max_uses ? { max_uses: b.max_uses } : {}),

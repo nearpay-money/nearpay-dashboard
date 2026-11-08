@@ -41,13 +41,19 @@ export interface Call {
   readonly body: unknown;
 }
 
-type Reply = { status: number; body?: unknown };
+/** `raw`: a non-JSON success body (PDF downloads, SSE streams) sent as is. */
+type Reply = {
+  status: number;
+  body?: unknown;
+  raw?: { contentType: string; body: string | Buffer; headers?: Record<string, string> };
+};
 
+// static paths win over parameters, like the gateway (`/v1/events/stream` before `/v1/events/{id}`)
 const matchers = PUBLIC_ROUTES.map((r) => ({
   route: r,
   re: pathMatcher(r.path),
   names: [...r.path.matchAll(/\{([a-z_]+)\}/g)].map((m) => m[1] as string),
-}));
+})).sort((a, b) => a.names.length - b.names.length);
 
 function parseQuery(search: string): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -166,6 +172,15 @@ export class MockApi {
     this.calls.push({ routeId: m.route.id, method: req.method(), path, headers, query, body });
     const reply =
       this.check(m.route, headers, params, query, body) ?? this.dispatch(m.route, params, query, body, headers);
+    if (reply.raw) {
+      await r.fulfill({
+        status: reply.status,
+        contentType: reply.raw.contentType,
+        headers: { "x-request-id": newId("req"), ...(reply.raw.headers ?? {}) },
+        body: reply.raw.body,
+      });
+      return;
+    }
     if (reply.status < 300 && m.route.response) {
       // tolerant: a test may play a newer server that sends an open-enum value this spec does not list
       const v = safeParseTolerant(m.route.response, reply.body);
@@ -655,6 +670,20 @@ export class MockApi {
           this.deliveries.set(d.webhook_endpoint, [d, ...(this.deliveries.get(d.webhook_endpoint) ?? [])]);
         return ok({ object: "event_resend", event: params.id, deliveries });
       }
+      case "listMembers":
+        // the signed-in owner only; the team feature mock seeds a fuller team
+        return ok(
+          list("/v1/account/members", [
+            {
+              object: "member",
+              user: { id: "usr_01jbz9k3m4n5p6q7r8s9t0v1w2", email: "owner@acme.example" },
+              role: this.role,
+              created: NOW - 9e5,
+              last_login_at: NOW - 60,
+              security: { passkeys: 2, recovered_at: null },
+            },
+          ]),
+        );
       default:
         this.unexpected.push(route.id);
         return err(500, "api_error", "api_error", `mock: ${route.id} not implemented`);

@@ -3,6 +3,7 @@ import {
   createApiKey,
   createSettlementDestination,
   getDashboardSession,
+  getInvoicePdf,
   getPaymentIntent,
   listCheckoutSessions,
   listWebhookEndpointDeliveries,
@@ -10,7 +11,7 @@ import {
   revokeApiKey,
 } from "@nearpay/spec";
 import { describe, expect, it, vi } from "vitest";
-import { ApiClient, encodeQuery } from "../../src/lib/api";
+import { ApiClient, encodeQuery, filenameOf } from "../../src/lib/api";
 import { ApiError, describeError, StepUpCanceled } from "../../src/lib/errors";
 import { apiKey, delivery, destination, endpoint, intent } from "../e2e/fixtures";
 
@@ -243,5 +244,47 @@ describe("ApiError", () => {
     expect(describeError(new Error("plain"))).toBe("plain");
     expect(describeError("str")).toBe("str");
     expect(new StepUpCanceled().message).toMatch(/canceled/);
+  });
+});
+
+describe("ApiClient.download (binary routes)", () => {
+  it("fetches the PDF with mode header and returns blob + file name", async () => {
+    const pdf = new Response(new Uint8Array([37, 80, 68, 70]), {
+      status: 200,
+      headers: { "content-type": "application/pdf", "content-disposition": 'attachment; filename="ACME-T-00012.pdf"' },
+    });
+    const { f, seen } = fakeFetch([pdf]);
+    const r = await client(f, { mode: () => "live" }).download(getInvoicePdf, { params: { id: "in_1" } });
+    expect(seen[0]?.url).toBe("/api/v1/invoices/in_1/pdf");
+    expect(h(seen[0] as Seen).Accept).toBe("application/pdf");
+    expect(h(seen[0] as Seen)["NearPay-Mode"]).toBe("live");
+    expect(r.filename).toBe("ACME-T-00012.pdf");
+    expect(new Uint8Array(await r.blob.arrayBuffer())).toEqual(new Uint8Array([37, 80, 68, 70]));
+  });
+  it("maps errors (draft → 409) and refuses a non-PDF body", async () => {
+    const { f } = fakeFetch([envelope(409, "invalid_request_error", "state_conflict"), json(200, { not: "a pdf" })]);
+    const c = client(f);
+    await expect(c.download(getInvoicePdf, { params: { id: "in_1" } })).rejects.toMatchObject({
+      code: "state_conflict",
+    });
+    await expect(c.download(getInvoicePdf, { params: { id: "in_1" } })).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+  });
+  it("readHeaders carries mode and API version", () => {
+    const { f } = fakeFetch([]);
+    expect(client(f, { mode: () => "test" }).readHeaders()).toEqual({
+      "NearPay-Mode": "test",
+      "NearPay-Version": API_VERSION,
+    });
+  });
+  it("filenameOf strips paths, quotes and control characters", () => {
+    expect(filenameOf(null)).toBeUndefined();
+    expect(filenameOf("attachment")).toBeUndefined();
+    expect(filenameOf('attachment; filename="../../etc/x.pdf"')).toBe("....etcx.pdf");
+    expect(filenameOf("attachment; filename*=UTF-8''INV%2001.pdf")).toBe("INV 01.pdf");
+    expect(filenameOf("attachment; filename=%E0%A4%A.pdf")).toBe("%E0%A4%A.pdf");
+    expect(filenameOf('attachment; filename="a\u0001b.pdf"')).toBe("ab.pdf");
+    expect(filenameOf('attachment; filename=" "')).toBeUndefined();
   });
 });

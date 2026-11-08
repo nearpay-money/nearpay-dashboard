@@ -12,6 +12,8 @@ export interface MockCtx {
   readonly role: Role;
   readonly userId: string;
   readonly intents: Record<"test" | "live", Array<Record<string, unknown>>>;
+  /** Request headers (lower-case), e.g. `last-event-id` for the events stream. */
+  readonly headers?: Record<string, string>;
 }
 export type Reply = { status: number; body?: unknown };
 const ok = (body: unknown, status = 200): Reply => ({ status, body });
@@ -114,5 +116,6 @@ export function installFeatureMock(api: object, mock: { handle(c: MockCtx): Repl
       role: a.role,
       userId: "usr_01jbz9k3m4n5p6q7r8s9t0v1w2",
       intents: a.intents,
+      headers: h,
     }) ?? base(route, params, query, body, h);
 }

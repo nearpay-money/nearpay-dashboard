@@ -1,8 +1,8 @@
 /**
  * Checkout appearance (Figma b04): display name, accent colour, theme and corner style with a live
  * preview themed by the ui `ThemeRoot` / `applyAppearance` (CSSOM only, CSP-safe). Saved to the account
- * (`updateAccount`: `display_name`, `settings.branding.accent_color`). Theme and corner style have no
- * account setting in spec 0.2.0, so they are preview-only and labelled as such.
+ * (`updateAccount`: `display_name`, `settings.branding.accent_color`, and since spec 0.2.1 `theme` and
+ * `corner_radius`).
  */
 import { updateAccount } from "@nearpay/spec";
 import { Button, Callout, Card, Field, Input, LiveRegion, PageHeader, Select, ThemeRoot } from "@nearpay-internal/ui";
@@ -17,11 +17,19 @@ import {
   normalizeHex,
   PRESETS,
   THEMES,
+  type Theme,
   updateBody,
   validate,
 } from "./logic";
 import { ActionError, PageSkeleton, RoleNotice } from "./parts";
 import "./appearance.css";
+
+const asTheme = (v: string | undefined): Theme => (v === "light" || v === "dark" ? v : "auto");
+/** The presets, plus the saved radius when it is not one of them (set through the API). */
+const cornerOptions = (current: string) =>
+  CORNERS.some((c) => c.value === current)
+    ? CORNERS
+    : [...CORNERS, { value: current, label: `Custom · ${current} px` }];
 
 const HEADER = <PageHeader title="Checkout appearance" subtitle="Make checkout feel like part of your business." />;
 
@@ -41,14 +49,17 @@ export function Appearance() {
 function AppearanceForm() {
   const app = useApp();
   const account = app.account;
+  const branding = account?.settings.branding;
   const saved = {
     display_name: account?.display_name ?? "",
-    accent_color: account?.settings.branding.accent_color ?? null,
+    accent_color: branding?.accent_color ?? null,
+    theme: branding?.theme ?? "auto",
+    corner_radius: branding?.corner_radius ?? 8,
   };
   const [displayName, setDisplayName] = useState(saved.display_name);
   const [accent, setAccent] = useState(saved.accent_color ?? DEFAULT_ACCENT);
-  const [theme, setTheme] = useState<"auto" | "light" | "dark">("auto");
-  const [corner, setCorner] = useState("8");
+  const [theme, setTheme] = useState<Theme>(asTheme(saved.theme));
+  const [corner, setCorner] = useState(String(saved.corner_radius));
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
@@ -59,13 +70,15 @@ function AppearanceForm() {
     if (!touched) {
       setDisplayName(saved.display_name);
       setAccent(saved.accent_color ?? DEFAULT_ACCENT);
+      setTheme(asTheme(saved.theme));
+      setCorner(String(saved.corner_radius));
     }
-  }, [saved.display_name, saved.accent_color, touched]);
+  }, [saved.display_name, saved.accent_color, saved.theme, saved.corner_radius, touched]);
 
   const errors = validate({ displayName, accent });
   const shown = touched ? errors : {};
   const hex = normalizeHex(accent);
-  const body = updateBody({ displayName, accent }, saved);
+  const body = updateBody({ displayName, accent, theme, corner }, saved);
   const merchant = account?.verified_legal_name ?? (displayName.trim() || "Your business");
 
   const save = async () => {
@@ -170,11 +183,27 @@ function AppearanceForm() {
                 />
               ))}
             </fieldset>
-            <Field label="Theme" hint="Preview only for now — saving this setting isn't available yet.">
-              <Select value={theme} options={THEMES} onChange={(e) => setTheme(e.target.value as typeof theme)} />
+            <Field label="Theme" hint="Saved with your checkout branding.">
+              <Select
+                value={theme}
+                options={THEMES}
+                onChange={(e) => {
+                  setTheme(asTheme(e.target.value));
+                  setTouched(true);
+                }}
+                data-testid="appearance-theme"
+              />
             </Field>
-            <Field label="Corner style" hint="Preview only for now — saving this setting isn't available yet.">
-              <Select value={corner} options={CORNERS} onChange={(e) => setCorner(e.target.value)} />
+            <Field label="Corner style">
+              <Select
+                value={corner}
+                options={cornerOptions(corner)}
+                onChange={(e) => {
+                  setCorner(e.target.value);
+                  setTouched(true);
+                }}
+                data-testid="appearance-corner"
+              />
             </Field>
             <Button
               type="submit"

@@ -37,6 +37,7 @@ export function CreatePaymentLink() {
   const [successUrl, setSuccessUrl] = useState("");
   const [collectEmail, setCollectEmail] = useState(false);
   const [touched, setTouched] = useState(false);
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
 
@@ -75,6 +76,7 @@ export function CreatePaymentLink() {
       const link = await calls.create({
         pricing: price.pricing,
         description: title.trim(),
+        ...(name.trim() ? { name: name.trim() } : {}),
         ...(destination ? { settlement_destination: destination } : {}),
         ...(url ? { success_url: url } : {}),
         ...(uses ? { max_uses: uses } : {}),
@@ -120,6 +122,9 @@ export function CreatePaymentLink() {
               placeholder="Acme Pro"
               data-testid="link-title"
             />
+          </Field>
+          <Field label="Internal name (optional)" hint="Only your team sees it, e.g. “Pro — launch campaign”.">
+            <Input value={name} maxLength={100} onChange={(e) => setName(e.target.value)} data-testid="link-name" />
           </Field>
           <div className="npf-payment-links__price">
             <Field label="Price" error={touched && !price.ok ? price.error : undefined} required>

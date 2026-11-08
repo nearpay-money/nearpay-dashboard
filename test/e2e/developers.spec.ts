@@ -80,7 +80,8 @@ test.describe("developers", () => {
         attempts: 3,
         last_status_code: 500,
         last_error: "non-2xx response",
-        next_attempt_at: NOW + 600,
+        // relative to the test's own clock: fixtures' NOW is fixed at import, minutes before this test runs
+        next_attempt_at: Math.floor(Date.now() / 1000) + 600,
         succeeded_at: null,
       }),
       delivery(ep.id, {

@@ -19,6 +19,21 @@ describe("appearance", () => {
       settings: { branding: { accent_color: "#1D4ED8" } },
     });
   });
+  it("saves theme and corner radius only when they change (spec 0.2.1)", () => {
+    const cur = { display_name: "Acme", accent_color: null, theme: "auto", corner_radius: 8 };
+    expect(updateBody({ displayName: "Acme", accent: "#087A68", theme: "auto", corner: "8" }, cur)).toBeNull();
+    expect(updateBody({ displayName: "Acme", accent: "#087A68", theme: "dark", corner: "16" }, cur)).toEqual({
+      settings: { branding: { theme: "dark", corner_radius: 16 } },
+    });
+    expect(
+      updateBody(
+        { displayName: "Acme", accent: "#087A68", theme: "light" },
+        { display_name: "Acme", accent_color: null },
+      ),
+    ).toEqual({
+      settings: { branding: { theme: "light" } },
+    });
+  });
   it("flags accents the checkout adjusts for contrast", () => {
     expect(accentAdjusted("#087A68")).toBe(false);
     expect(accentAdjusted("#FFFF00")).toBe(true);

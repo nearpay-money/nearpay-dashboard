@@ -54,8 +54,32 @@ export interface TeamRow {
   readonly expiresAt?: number;
 }
 
+/** Recovery lock after an email recovery (identity §6: 48 h without destination or team changes). */
+export const RECOVERY_LOCK_S = 48 * 3600;
+
+/**
+ * Security column (spec 0.2.1 `Member.security`): passkey count and a recent recovery; servers without
+ * the summary fall back to "Passkey sign-in" (every dashboard user signs in with a passkey).
+ */
+export function securityText(
+  s: { passkeys: number; recovered_at: number | null } | undefined,
+  now = Math.floor(Date.now() / 1000),
+): string {
+  if (!s) return "Passkey sign-in";
+  const keys = s.passkeys === 0 ? "No passkey" : s.passkeys === 1 ? "1 passkey" : `${s.passkeys} passkeys`;
+  if (s.recovered_at !== null && s.recovered_at + RECOVERY_LOCK_S > now)
+    return `${keys} · recovered, changes locked 48 h`;
+  if (s.recovered_at !== null) return `${keys} · recovered by email`;
+  return keys;
+}
+
 export function teamRows(
-  members: readonly { user: { id: string; email: string }; role: Role; last_login_at: number | null }[],
+  members: readonly {
+    user: { id: string; email: string };
+    role: Role;
+    last_login_at: number | null;
+    security?: { passkeys: number; recovered_at: number | null } | undefined;
+  }[],
   invitations: readonly { id: string; email: string; role: Role; status: string; expires_at: number }[],
 ): TeamRow[] {
   const rows: TeamRow[] = members.map((m) => ({
@@ -65,8 +89,7 @@ export function teamRows(
     role: m.role,
     userId: m.user.id,
     status: "Active",
-    // every dashboard user signs in with a passkey (identity §6: no passwords)
-    security: "Passkey sign-in",
+    security: securityText(m.security),
     lastLogin: m.last_login_at,
   }));
   for (const i of invitations) {

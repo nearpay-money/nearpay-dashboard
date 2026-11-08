@@ -19,7 +19,7 @@ import { useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";
 import { PAGE_SIZE, useCustomerList, useTotals } from "./api";
 import { CustomerDialog } from "./CustomerForm";
-import { customerName, relativeDay } from "./logic";
+import { customerName, relativeDay, serverTotals, type Totals } from "./logic";
 import { ErrorState, RoleNotice } from "./parts";
 import { useSpaLinks } from "./ui";
 import "./customers.css";
@@ -33,7 +33,10 @@ export function Customers() {
   const [adding, setAdding] = useState(false);
   const list = useCustomerList(email);
   const rows = list.data?.data ?? [];
-  const totals = useTotals(rows.map((c) => c.id));
+  const server = new Map<string, Totals | undefined>(rows.map((c) => [c.id, serverTotals(c, app.assets)]));
+  // spec 0.2.1 servers send totals; older ones are summed from payments (first 100 per customer)
+  const scanned = useTotals(rows.filter((c) => !server.get(c.id)).map((c) => c.id));
+  const totals = { get: (id: string) => server.get(id) ?? scanned.get(id) };
   const root = useRef<HTMLDivElement>(null);
   useSpaLinks(root);
   const canAdd = roleAllows(createCustomer, app.session?.role);

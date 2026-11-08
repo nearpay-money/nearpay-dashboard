@@ -40,7 +40,21 @@ export function PaymentLinks() {
   ) : undefined;
 
   const columns: TableColumn<PaymentLink>[] = [
-    { key: "link", header: "Link", primary: true, cell: (l) => l.description },
+    {
+      key: "link",
+      header: "Link",
+      primary: true,
+      // spec 0.2.1 `name` (internal) first, the payer-facing title under it
+      cell: (l) =>
+        l.name ? (
+          <span className="npf-payment-links__name">
+            <span>{l.name}</span>
+            <span className="np-text-small np-text-secondary">{l.description}</span>
+          </span>
+        ) : (
+          l.description
+        ),
+    },
     { key: "price", header: "Price", numeric: true, cell: (l) => priceText(l, app.assets) },
     { key: "uses", header: "Payments", numeric: true, cell: (l) => usesText(l) },
     {
