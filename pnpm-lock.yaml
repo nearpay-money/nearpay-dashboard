@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@nearpay/spec': 0.3.1
+  '@nearpay/spec': 0.4.0
 
 importers:
 
