@@ -1,5 +1,5 @@
 /**
- * Stage 4 Solana / Bitcoin settlement destinations (identity §20, spec 0.4.0 via the placeholder): live
+ * Stage 4 Solana / Bitcoin settlement destinations (identity §20, spec 0.4.0): live
  * Solana destination verified with a Wallet Standard wallet signing the raw challenge (ed25519, checked by
  * the mock), Bitcoin address types (P2WPKH/P2TR only, explained), lower-case normalisation, BIP-322
  * "simple" signature pasted as base64 (shape-checked before sending), program-derived Solana addresses
@@ -7,10 +7,12 @@
  */
 import { generateKeyPairSync, sign } from "node:crypto";
 import { mkdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import type { Page } from "@playwright/test";
 import { BTC_BITCOIN, SOL_SOLANA } from "../../../test/e2e/fixtures";
 import { expect, signIn, test } from "../../../test/e2e/harness";
 
+const require = createRequire(import.meta.url);
 const SHOTS = process.env.NP_SHOTS ?? "/home/claude/shots/dashboard-4.3";
 mkdirSync(SHOTS, { recursive: true });
 test.use({ viewport: { width: 1440, height: 900 } });
@@ -130,7 +132,9 @@ test("live Bitcoin destination: P2WPKH/P2TR only, lower-cased, BIP-322 simple pa
   page,
   api,
 }) => {
-  const vec = JSON.parse(readFileSync("test/unit/fixtures/destination-attestation.v0.4.0.json", "utf8")) as {
+  const vec = JSON.parse(
+    readFileSync(require.resolve("@nearpay/spec/test-vectors/destination-attestation.json"), "utf8"),
+  ) as {
     bip322: { nearpay: { type: string; cases: { signature: string; valid: boolean; name: string }[] }[] };
   };
   const p2wpkh = vec.bip322.nearpay.find((v) => v.type === "p2wpkh");

@@ -14,6 +14,7 @@ import {
   rotateWebhookEndpointSecret,
   testWebhookEndpoint,
   updateWebhookEndpoint,
+  WEBHOOK_TYPE_NAMES,
   type WebhookDelivery as WebhookDeliverySchema,
   type WebhookEndpoint as WebhookEndpointSchema,
   type z,
@@ -23,7 +24,6 @@ import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatTime, formatWhen, relative } from "../../lib/format";
 import { useAsync, useCursorList, useMutation } from "../../lib/hooks";
-import { WEBHOOK_TYPE_NAMES_V4 as WEBHOOK_TYPE_NAMES } from "../../lib/spec-next";
 import { statusOf } from "../../lib/status";
 import { ConfirmDialog, ErrorState, LoadingState, Section, useConfirm } from "../../ui/page";
 import { Badge, Button, ErrorNote, Field, KeyValue, Modal, Mono, Pager, SecretOnce } from "../../ui/ui";

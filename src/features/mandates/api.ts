@@ -1,8 +1,14 @@
-/** Mandate API hooks (spec 0.4.0 `mandates`, via the placeholder `lib/spec-next`). */
-import { type Invoice, listInvoices, listSettlementDestinations } from "@nearpay/spec";
+/** Mandate API hooks (spec 0.4.0 `mandates`). */
+import {
+  getMandate,
+  type Invoice,
+  listInvoices,
+  listMandates,
+  listSettlementDestinations,
+  type Mandate,
+} from "@nearpay/spec";
 import { useApp } from "../../app/context";
 import { useAsync, useCursorList } from "../../lib/hooks";
-import { getMandate, listMandates, type Mandate } from "../../lib/spec-next";
 
 export const PAGE_SIZE = 20;
 

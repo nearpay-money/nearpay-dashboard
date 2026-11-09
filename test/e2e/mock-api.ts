@@ -10,7 +10,6 @@
 import { createPublicKey, randomBytes, verify } from "node:crypto";
 import { type AnyRoute, PUBLIC_ROUTES, pathMatcher, type Role, safeParseTolerant } from "@nearpay/spec";
 import type { Page, Route } from "@playwright/test";
-import { NEXT_ROUTES } from "../../src/lib/spec-next";
 import {
   type AccountT,
   ASSETS,
@@ -50,13 +49,7 @@ type Reply = {
 };
 
 // static paths win over parameters, like the gateway (`/v1/events/stream` before `/v1/events/{id}`)
-// Phase A: spec 0.4.0 routes from the placeholder replace/extend the 0.3.1 table (Phase B: PUBLIC_ROUTES only)
-const NEXT_IDS = new Set<string>(NEXT_ROUTES.map((r) => r.id));
-const ROUTES: readonly AnyRoute[] = [
-  ...PUBLIC_ROUTES.filter((r) => !NEXT_IDS.has(r.id)),
-  ...(NEXT_ROUTES as unknown as AnyRoute[]),
-];
-const matchers = ROUTES.map((r) => ({
+const matchers = PUBLIC_ROUTES.map((r) => ({
   route: r,
   re: pathMatcher(r.path),
   names: [...r.path.matchAll(/\{([a-z_]+)\}/g)].map((m) => m[1] as string),

@@ -4,6 +4,8 @@
  * reused on the subscription page. Rows come from the chain only (billing §14 d1): a mandate appears once
  * the customer's funding transaction landed.
  */
+
+import type { Mandate } from "@nearpay/spec";
 import { NearAccountId } from "@nearpay/spec";
 import {
   Button,
@@ -18,7 +20,6 @@ import {
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatDate } from "../../lib/format";
-import type { Mandate } from "../../lib/spec-next";
 import { Empty } from "../../ui/page";
 import { ErrorNote } from "../../ui/ui";
 import { BillingHub } from "../billing/Hub";

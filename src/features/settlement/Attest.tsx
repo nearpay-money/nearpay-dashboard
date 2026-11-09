@@ -7,7 +7,13 @@
  * over the raw message bytes, base58) and Bitcoin (`standard: bip322`, BIP-322 "simple", base64) — from a
  * detected wallet, or by pasting a signature made elsewhere (shape-checked before it is sent).
  */
-import { challengeSettlementDestination, getSettlementDestination, type SettlementDestination } from "@nearpay/spec";
+import {
+  attestSettlementDestination,
+  challengeSettlementDestination,
+  type DESTINATION_SIGNING_STANDARDS,
+  getSettlementDestination,
+  type SettlementDestination,
+} from "@nearpay/spec";
 import { CopyText, Textarea } from "@nearpay-internal/ui";
 import { useEffect, useState } from "react";
 import { Link, useApp } from "../../app/context";
@@ -15,7 +21,9 @@ import { checkBip322Signature, checkBitcoinAddress, checkSolanaSignature, networ
 import { formatTime, relative } from "../../lib/format";
 import { useAsync } from "../../lib/hooks";
 import { assetLabel } from "../../lib/money";
-import { attestSettlementDestinationV4, type SigningStandard } from "../../lib/spec-next";
+
+type SigningStandard = (typeof DESTINATION_SIGNING_STANDARDS)[number];
+
 import { Page } from "../../ui/page";
 import { Badge, Button, Card, ErrorNote, Field, KeyValue, Loading, Mono, Note } from "../../ui/ui";
 import { type BitcoinWallet, detectBitcoinWallets, signBip322 } from "../../wallets/bitcoin";
@@ -95,7 +103,7 @@ export function AttestPanel({
   const expired = c.expires_at <= now;
 
   const submit = async (body: { standard: SigningStandard; signature: string; public_key?: string }) => {
-    const d = await app.api.call(attestSettlementDestinationV4, {
+    const d = await app.api.call(attestSettlementDestination, {
       params: { id: destination.id },
       body: { challenge_id: c.id, ...body },
     });

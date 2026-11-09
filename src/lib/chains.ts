@@ -5,7 +5,7 @@
  * only explain problems before a request is sent. Kit gap: kit 0.4.0 `chains` brings the same helpers
  * (`btc address-type`, base58) — switch then.
  */
-import { BITCOIN_MAINNET, SOLANA_MAINNET } from "./spec-next";
+import { BITCOIN_MAINNET, SOLANA_MAINNET } from "@nearpay/spec";
 
 const NAMES: Readonly<Record<string, string>> = {
   "near:mainnet": "NEAR",

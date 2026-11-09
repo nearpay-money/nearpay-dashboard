@@ -8,15 +8,17 @@
  * sandbox vault is not on NEAR, so it points at the payer simulation instead. After sending, the mandate
  * is polled until the vault's `canceled` event reaches billing (INV-2: the page never assumes success).
  */
+
+import { getMandate, type Mandate, prepareMandateCancel } from "@nearpay/spec";
 import { CopyField, KeyValueList, LiveRegion } from "@nearpay-internal/ui";
 import { useEffect, useState } from "react";
 import { useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";
-import { getMandate, type Mandate, type MandateCancelInstructions, prepareMandateCancel } from "../../lib/spec-next";
 import { Button, ErrorNote, Modal, Note } from "../../ui/ui";
 import { nearConnector, signAndSendNear } from "../../wallets/near";
 import { checkCancelTx, gasText, isEvmKeyedAccount, nearCliCommand, yoctoText } from "./logic";
 import { NearTx, useToken } from "./parts";
+import type { MandateCancelInstructions } from "./types";
 
 type Step = { kind: "intro" } | { kind: "review"; ix: MandateCancelInstructions } | { kind: "sent"; tx?: string };
 

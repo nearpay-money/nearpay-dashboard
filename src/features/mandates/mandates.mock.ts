@@ -1,13 +1,12 @@
 /**
- * E2E mock of the Stage 4 auto-debit routes (spec 0.4.0 `mandates`, via the placeholder `lib/spec-next`)
+ * E2E mock of the Stage 4 auto-debit routes (spec 0.4.0 `mandates`)
  * as a feature extension of test/e2e/mock-api.ts on top of the billing mock. Requests are still checked by
  * MockApi (session, CSRF, roles, idempotency keys, request schemas) and responses validated against the
  * route schemas. Mandates come from "the chain" only (seeded or simulated, billing §14 d1). Test-only.
  */
 import { randomBytes } from "node:crypto";
-import { API_VERSION } from "@nearpay/spec";
+import { API_VERSION, Event, MANDATE_FUNDING_PAYER_NOTICE } from "@nearpay/spec";
 import { NOW, newId, USDC_NEAR } from "../../../test/e2e/fixtures";
-import { AnyEvent, MANDATE_FUNDING_PAYER_NOTICE } from "../../lib/spec-next";
 import type { BillingMock } from "../billing/billing.mock";
 import { installFeatureMock, type MockCtx, type Reply } from "../customers/customers.mock";
 
@@ -145,7 +144,7 @@ export class MandatesMock {
   }
 
   private emit(mode: Mode, type: string, md: Obj) {
-    const e = AnyEvent.parse({
+    const e = Event.parse({
       id: newId("evt"),
       object: "event",
       type,

@@ -1,5 +1,5 @@
 /**
- * Stage 4 auto-debit E2E (mock-backed, spec 0.4.0 via the placeholder): Billing → Auto-debit list with
+ * Stage 4 auto-debit E2E (mock-backed, spec 0.4.0): Billing → Auto-debit list with
  * filters, mandate page (collections with evidence, keeper failures, test helpers), merchant cancel signed
  * with the NEAR wallet (exact prepared transaction), the subscription panel (linked mandate, amount lock,
  * setup link, prepared funding, simulated funding), create with auto-debit + eligibility, switching the
@@ -154,7 +154,7 @@ test("merchant cancel (live): prepared cancel checked, signed verbatim with the 
   await expect(dlg).toContainText("98 USDC");
   await shots(page, "mandate-cancel");
   await page.getByTestId("sign-cancel").click();
-  await page.getByRole("button", { name: /Test NEAR Wallet/ }).click();
+  await page.locator('.connect-item[data-type="test-near-wallet"]').click();
   await expect(dlg).toContainText("Cancel sent");
   const txs = await page.evaluate(() => (window as unknown as { __nearTxs: unknown[] }).__nearTxs);
   expect(txs).toEqual([
@@ -215,7 +215,8 @@ test("subscription panel: linked mandate and amount lock; setup link, prepared f
   });
   expect(api.callsTo("prepareMandate")[0]?.headers["idempotency-key"]).toBeTruthy();
   await shots(page, "funding-dialog");
-  await page.getByRole("button", { name: "Close" }).click();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("funding-dialog")).toHaveCount(0);
   await page.getByTestId("simulate-funding").click();
   await expect(page.getByTestId("linked-mandate-link")).toBeVisible();
   await expect(page.getByTestId("amount-locked")).toBeVisible();

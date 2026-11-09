@@ -9,18 +9,12 @@
  * customer (`simulateMandateFunding` on the sandbox vault).
  */
 import type { Invoice, Subscription } from "@nearpay/spec";
+import { type Mandate, prepareMandate, simulateMandateFunding } from "@nearpay/spec";
 import { Callout, CopyField, KeyValueList, Select, useToast } from "@nearpay-internal/ui";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatDate, formatWhen } from "../../lib/format";
 import { roleAllows } from "../../lib/permissions";
-import {
-  type Mandate,
-  type MandateFundingInstructions,
-  type MandateSimulation,
-  prepareMandate,
-  simulateMandateFunding,
-} from "../../lib/spec-next";
 import { Section } from "../../ui/page";
 import { Button, ErrorNote, Field, Modal } from "../../ui/ui";
 import { useSubscriptionMandates } from "./api";
@@ -37,6 +31,7 @@ import {
   yoctoText,
 } from "./logic";
 import { MandateStatus, NearAccount, NearTx, useToken } from "./parts";
+import type { MandateFundingInstructions, MandateSimulation } from "./types";
 import "./mandates.css";
 
 export function SubscriptionMandate({

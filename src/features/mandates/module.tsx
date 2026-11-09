@@ -3,9 +3,10 @@
  * `mandates`): Billing → Auto-debit tab (mandate list with filters) and the mandate page. The
  * subscription page embeds the mandate panel (`./SubscriptionMandate.tsx`).
  */
+
+import { getMandate, listMandates } from "@nearpay/spec";
 import { lazyPage } from "../../app/lazy";
 import { defineFeature } from "../../app/registry";
-import { getMandate, listMandates } from "../../lib/spec-next";
 
 const MandatesTab = lazyPage(() => import("./MandateList"), "MandatesTab", "Loading mandates");
 const MandateDetail = lazyPage(() => import("./MandateDetail"), "MandateDetail", "Loading mandate");

@@ -1,8 +1,10 @@
 /**
  * Stage 4 (step 4.3) unit tests: Solana/Bitcoin address and signature checks against the spec 0.4.0
- * vectors (copied fixtures until Phase B), explorer links, Solana / Bitcoin / NEAR transaction wallets.
+ * vectors (`@nearpay/spec/test-vectors`), explorer links, Solana / Bitcoin / NEAR transaction wallets.
  */
 import { generateKeyPairSync, sign } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
 import {
   base58Decode,
@@ -22,8 +24,12 @@ import { explorerAddressUrl, explorerTxUrl } from "../../src/lib/explorer";
 import { detectBitcoinWallets, signBip322 } from "../../src/wallets/bitcoin";
 import { type NearConnectorLike, outcomeTxHash, signAndSendNear } from "../../src/wallets/near";
 import { discoverSolanaWallets, signSolanaMessage } from "../../src/wallets/solana";
-import ADDR from "./fixtures/chains-addresses.v0.4.0.json";
-import ATT from "./fixtures/destination-attestation.v0.4.0.json";
+
+const require = createRequire(import.meta.url);
+const vectors = (name: string) =>
+  JSON.parse(readFileSync(require.resolve(`@nearpay/spec/test-vectors/${name}`), "utf8"));
+const ADDR = vectors("chains-solana-bitcoin.json");
+const ATT = vectors("destination-attestation.json");
 
 const SOL = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
 const BTC = "bip122:000000000019d6689c085ae165831e93";

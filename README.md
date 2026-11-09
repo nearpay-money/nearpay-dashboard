@@ -84,8 +84,8 @@ only and sent as `X-CSRF-Token` on unsafe methods. A reload or a new tab recover
   `prepareMandate` funding details, simulated funding in test mode). `mandate.*` in Developers.
 - Solana and Bitcoin destinations (`lld/identity.md` §20): address checks (P2WPKH / P2TR only), Wallet Standard
   `solana:signMessage` or pasted base58 signature, BIP-322 simple via UniSat / OKX or pasted base64.
-- Phase A builds on spec 0.3.1 with the 0.4.0 contracts in one placeholder, `src/lib/spec-next.ts` (and the
-  vector copies in `test/unit/fixtures/*.v0.4.0.json`); Phase B bumps the spec and deletes them.
+- Contracts: `@nearpay/spec` 0.4.0 (mandates, `Subscription.mandate`, `Invoice.mandate_collection`, `mandate.*`
+  events, `standard: solana | bip322`); Solana/Bitcoin checks are tested against its `test-vectors`.
 - Stage 4 pages show by default (`VITE_NP_STAGE` defaults to 4).
 
 ## Build and deploy

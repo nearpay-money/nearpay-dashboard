@@ -4,13 +4,13 @@ import {
   getInvoice,
   type Invoice,
   type InvoiceStatus,
+  listEvents,
   listInvoices,
   listPaymentIntents,
   type z,
 } from "@nearpay/spec";
 import { useApp } from "../../app/context";
 import { useAsync, useCursorList } from "../../lib/hooks";
-import { listEventsV4 as listEvents } from "../../lib/spec-next";
 
 export const PAGE_SIZE = 20;
 

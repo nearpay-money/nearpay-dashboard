@@ -1,19 +1,13 @@
 /**
  * Events (last 30 days) with a type filter, and the event page with its JSON and "Resend" (spec 0.2.0).
- * Stage 4: the 0.4.0 event union (`mandate.*` included) from the placeholder `lib/spec-next`.
+ * Stage 4: the 0.4.0 event union (`mandate.*` included).
  */
-import { resendEvent } from "@nearpay/spec";
+import { type Event, getEvent, listEvents, resendEvent, WEBHOOK_TYPE_NAMES } from "@nearpay/spec";
 import { Callout, Select, Table } from "@nearpay-internal/ui";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatTime, formatWhen, shortId } from "../../lib/format";
 import { useAsync, useCursorList, useMutation } from "../../lib/hooks";
-import {
-  type AnyEvent as Event,
-  getEventV4 as getEvent,
-  listEventsV4 as listEvents,
-  WEBHOOK_TYPE_NAMES_V4 as WEBHOOK_TYPE_NAMES,
-} from "../../lib/spec-next";
 import { ErrorState, LoadingState, Section } from "../../ui/page";
 import { Button, ErrorNote, Field, KeyValue, Mono, Pager } from "../../ui/ui";
 

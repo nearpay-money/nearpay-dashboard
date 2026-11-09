@@ -1,7 +1,7 @@
 /** Auto-debit logic (billing §6, §7.1, §14): eligibility, copy, periods, collections, transaction guards. */
 import type { Invoice } from "@nearpay/spec";
+import { type Mandate, Mandate as MandateSchema } from "@nearpay/spec";
 import { describe, expect, it } from "vitest";
-import { type Mandate, type MandateFundingInstructions, Mandate as MandateSchema } from "../../lib/spec-next";
 import {
   autoDebitEligibility,
   bpsText,
@@ -22,6 +22,7 @@ import {
   unlinkedReasonText,
   yoctoText,
 } from "./logic";
+import type { MandateFundingInstructions } from "./types";
 
 const md = (over: Partial<Mandate> = {}): Mandate =>
   MandateSchema.parse({

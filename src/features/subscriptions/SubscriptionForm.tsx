@@ -7,6 +7,7 @@
  * prices explained (USD at par in USDC/USDT or an allowed NEP-141 token; an active NEAR Intents account).
  */
 import type { Price, TaxRate } from "@nearpay/spec";
+import { createSubscription } from "@nearpay/spec";
 import {
   Button,
   Callout,
@@ -28,7 +29,6 @@ import { useMemo, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { FEATURE_STAGE } from "../../app/registry";
 import { amountText, intervalText, percentText, priceSummary } from "../../lib/billing";
-import { createSubscriptionV4 as createSubscription } from "../../lib/spec-next";
 import { ErrorState, LoadingState, Page } from "../../ui/page";
 import { ErrorNote } from "../../ui/ui";
 import "../billing/billing.css";

@@ -1,10 +1,11 @@
 /** Small shared pieces of the auto-debit pages: status badge, token amounts, NEAR explorer links. */
+
+import type { Mandate } from "@nearpay/spec";
 import { CopyText, StatusBadge } from "@nearpay-internal/ui";
 import { useCallback } from "react";
 import { useApp } from "../../app/context";
 import { explorerAddressUrl, explorerTxUrl } from "../../lib/explorer";
 import { shorten } from "../../lib/format";
-import type { Mandate } from "../../lib/spec-next";
 import { statusOf } from "../../lib/status";
 import { mandateStatusValue, tokenAmount } from "./logic";
 

@@ -6,19 +6,15 @@
  * customer's actions (`simulateMandatePayerAction` on the sandbox vault).
  */
 import type { Invoice } from "@nearpay/spec";
+import { type Mandate, prepareMandateCancel, simulateMandatePayerAction } from "@nearpay/spec";
 import { Callout, KeyValueList, LiveRegion, Table, useToast } from "@nearpay-internal/ui";
 import { useCallback, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatDate, formatWhen } from "../../lib/format";
 import { roleAllows } from "../../lib/permissions";
-import {
-  type Mandate,
-  type MandateSimulation,
-  prepareMandateCancel,
-  simulateMandatePayerAction,
-} from "../../lib/spec-next";
 import { ErrorState, LoadingState, Page, Section, StatRow } from "../../ui/page";
 import { Button, ErrorNote } from "../../ui/ui";
+import type { MandateSimulation } from "./types";
 import "../billing/billing.css";
 import { invoiceTitle, useCustomerNames } from "../billing/shared";
 import { useCollectionInvoices, useMandate } from "./api";

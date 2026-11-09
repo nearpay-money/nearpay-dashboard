@@ -5,16 +5,9 @@
  * prepared cancel transaction is exactly `cancel({mandate_id})` on the mandate's vault before any wallet
  * prompt (lld/dashboard §1 "wallet signing builds exactly the API payload").
  */
-import type { Invoice } from "@nearpay/spec";
+import type { Invoice, Mandate, NearTransactionRequest } from "@nearpay/spec";
 import { formatUnits } from "../../lib/money";
-import {
-  invoiceMandateCollection,
-  linkedMandateId,
-  type Mandate,
-  type MandateCollection,
-  type MandateFundingInstructions,
-  type NearTransactionRequest,
-} from "../../lib/spec-next";
+import type { MandateCollection, MandateFundingInstructions } from "./types";
 
 // ------------------------------------------------------------------ eligibility (billing §14 d2)
 
@@ -142,8 +135,18 @@ export const isOnchainActive = (m: Pick<Mandate, "status">) => m.status === "act
 /** 64-hex implicit accounts are NEAR keys; `0x…` Intents accounts are EVM-keyed and can't sign NEAR transactions. */
 export const isEvmKeyedAccount = (account: string) => /^0x[0-9a-fA-F]{40}$/.test(account);
 
+/** `Invoice.mandate_collection` (spec 0.4.0): the vault collection that paid the invoice, or null. */
+export function invoiceMandateCollection(inv: Pick<Invoice, "mandate_collection">) {
+  return inv.mandate_collection ?? null;
+}
+
+/** `Subscription.mandate` / `Invoice.mandate`: the linked mandate id, or null. */
+export function linkedMandateId(o: { mandate?: string | null }): string | null {
+  return o.mandate ?? null;
+}
+
 /** The mandate renewals are collected from: `Subscription.mandate`, else a linked, on-chain active one. */
-export function pickLinked(sub: object, mandates: readonly Mandate[]): Mandate | undefined {
+export function pickLinked(sub: { mandate?: string | null }, mandates: readonly Mandate[]): Mandate | undefined {
   const id = linkedMandateId(sub);
   return (
     (id ? mandates.find((m) => m.id === id) : undefined) ??
