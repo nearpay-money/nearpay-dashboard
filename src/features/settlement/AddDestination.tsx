@@ -236,7 +236,11 @@ export function AddDestination() {
             <Input
               id={id}
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(e) => {
+                setAddress(e.target.value);
+                // clear a stale address error while typing (not on blur: the layout must not shift under a click)
+                if (fieldError?.field === "address") setFieldError(undefined);
+              }}
               required
               autoComplete="off"
               spellCheck={false}
@@ -252,7 +256,6 @@ export function AddDestination() {
               onBlur={() => {
                 if (addrCheck && !addrCheck.ok && address)
                   setFieldError({ field: "address", message: addrCheck.error });
-                else if (fieldError?.field === "address") setFieldError(undefined);
               }}
               data-testid="destination-address"
             />
