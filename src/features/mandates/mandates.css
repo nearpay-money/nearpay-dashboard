@@ -1,0 +1,78 @@
+/* Auto-debit pages (stage 4): mandate list, detail, subscription panel. Tokens only; no inline styles (CSP). */
+.npf-mandates__account {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.npf-mandates__inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--np-space-2);
+  min-width: 0;
+}
+.npf-mandates__pair {
+  display: grid;
+  gap: var(--np-space-1);
+  min-width: 0;
+}
+.npf-mandates__sub {
+  display: block;
+}
+.npf-mandates__warn {
+  color: var(--np-color-warning-fg);
+}
+.npf-mandates__helpers {
+  flex-wrap: wrap;
+  gap: var(--np-space-2);
+}
+.npf-mandates__search {
+  display: flex;
+  gap: var(--np-space-2);
+  align-items: center;
+  min-width: 0;
+}
+.npf-mandates__search > :first-child {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.npf-mandates__tx {
+  display: grid;
+  gap: var(--np-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.npf-mandates__tx > li {
+  border: 1px solid var(--np-color-border);
+  border-radius: var(--np-radius-control);
+  padding: var(--np-space-3) var(--np-space-4);
+  display: grid;
+  gap: var(--np-space-1);
+  min-width: 0;
+}
+.npf-mandates__args {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  color: var(--np-color-text-secondary);
+}
+.npf-mandates__setup {
+  display: grid;
+  gap: var(--np-space-4);
+}
+.npf-mandates__form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--np-space-4);
+  align-items: end;
+}
+@media (max-width: 600px) {
+  .npf-mandates__search {
+    width: 100%;
+  }
+  .npf-mandates__form {
+    grid-template-columns: 1fr;
+  }
+}

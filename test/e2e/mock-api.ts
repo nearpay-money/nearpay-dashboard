@@ -7,7 +7,7 @@
  * (open enums tolerant, as a newer server may add values), so fixtures cannot drift from the contract.
  * Calls are recorded for assertions.
  */
-import { randomBytes } from "node:crypto";
+import { createPublicKey, randomBytes, verify } from "node:crypto";
 import { type AnyRoute, PUBLIC_ROUTES, pathMatcher, type Role, safeParseTolerant } from "@nearpay/spec";
 import type { Page, Route } from "@playwright/test";
 import {
@@ -73,6 +73,32 @@ const err = (status: number, type: string, code: string, message = code): Reply 
   },
 });
 const list = <T>(url: string, data: T[]) => ({ object: "list", data, has_more: false, url });
+
+const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+function b58(s: string): Buffer {
+  let n = 0n;
+  for (const ch of s) {
+    const v = B58.indexOf(ch);
+    if (v < 0) return Buffer.alloc(0);
+    n = n * 58n + BigInt(v);
+  }
+  const hex = n.toString(16);
+  const body = n === 0n ? Buffer.alloc(0) : Buffer.from(hex.length % 2 ? `0${hex}` : hex, "hex");
+  const zeros = s.length - s.replace(/^1+/, "").length;
+  return Buffer.concat([Buffer.alloc(zeros), body]);
+}
+/** identity §20 `standard: solana`: base58 64-byte ed25519 signature over the message bytes. */
+function solanaVerify(address: string, message: string, signature: string): boolean {
+  const key = b58(address);
+  const sig = b58(signature);
+  if (key.length !== 32 || sig.length !== 64) return false;
+  const spki = Buffer.concat([Buffer.from("302a300506032b6570032100", "hex"), key]);
+  try {
+    return verify(null, Buffer.from(message, "utf8"), createPublicKey({ key: spki, format: "der", type: "spki" }), sig);
+  } catch {
+    return false;
+  }
+}
 const b64u = (n: number) => randomBytes(n).toString("base64url");
 
 export class MockApi {
@@ -111,7 +137,10 @@ export class MockApi {
   };
   events = { test: [] as ReturnType<typeof pingEvent>[], live: [] as ReturnType<typeof pingEvent>[] };
   /** Pending attestation challenge per destination id (only the latest one is accepted). */
-  challenges = new Map<string, { id: string; standard: "nep413" | "eip191"; message: string; nonce: string | null }>();
+  challenges = new Map<
+    string,
+    { id: string; standard: "nep413" | "eip191" | "solana" | "bip322"; message: string; nonce: string | null }
+  >();
   /** Lifetime of issued attestation challenges (negative: already expired, to test re-issue). */
   challengeTtlS = 600;
   /** Delivery log per webhook endpoint id, newest first. */
@@ -253,7 +282,13 @@ export class MockApi {
 
   /** A fresh challenge for a pending destination; replaces (invalidates) any earlier one. */
   private issueChallenge(d: DestinationT) {
-    const standard = d.address.startsWith("0x") ? "eip191" : "nep413";
+    const standard = d.chain.startsWith("solana:")
+      ? "solana"
+      : d.chain.startsWith("bip122:")
+        ? "bip322"
+        : d.address.startsWith("0x")
+          ? "eip191"
+          : "nep413";
     const nonceBuf = randomBytes(32);
     const expiresAt = Math.floor(Date.now() / 1000) + this.challengeTtlS;
     const chl = {
@@ -372,6 +407,9 @@ export class MockApi {
         return d ? ok(d) : err(404, "invalid_request_error", "resource_missing");
       }
       case "createSettlementDestination": {
+        // identity §20: Bitcoin destinations are P2WPKH / P2TR only (both modes)
+        if (String(body.chain).startsWith("bip122:") && !/^bc1[qp]/.test(String(body.address)))
+          return err(400, "invalid_request_error", "address_invalid", "Use a native SegWit or Taproot address");
         if (!live) {
           const d = destination({
             ...body,
@@ -409,6 +447,11 @@ export class MockApi {
         if (body.challenge_id !== chl.id || body.standard !== chl.standard)
           return err(400, "invalid_request_error", "attestation_invalid");
         if (chl.standard === "nep413" && !body.public_key)
+          return err(400, "invalid_request_error", "attestation_invalid");
+        if (chl.standard === "solana" && !solanaVerify(list_[i]?.address ?? "", chl.message, body.signature))
+          return err(400, "invalid_request_error", "attestation_invalid");
+        // BIP-322: the mock checks the witness shape only (the vectors are verified by identity)
+        if (chl.standard === "bip322" && !/^[A-Za-z0-9+/]{80,}={0,2}$/.test(String(body.signature)))
           return err(400, "invalid_request_error", "attestation_invalid");
         const d = {
           ...(list_[i] as DestinationT),

@@ -3,11 +3,14 @@
  * invoice (estimate), dunning status of the latest invoice, the subscription's invoices, and cancel
  * now / at period end (or undo a scheduled cancellation). Canceling never refunds or credits (no
  * proration in v1) and leaves open invoices as they are.
+ * Stage 4 (billing §14): the collection method (switch between emailed invoices and auto-debit —
+ * leaving auto-debit releases a linked mandate) and the auto-debit panel (`SubscriptionMandate`).
  */
 import { cancelSubscription, type Subscription, updateSubscription } from "@nearpay/spec";
 import { Button, Callout, KeyValueList, LiveRegion, MenuButton, Table, useToast } from "@nearpay-internal/ui";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
+import { FEATURE_STAGE } from "../../app/registry";
 import { amountText, dunningState, isPastDue, percentText, priceSummary } from "../../lib/billing";
 import { formatDate, formatWhen } from "../../lib/format";
 import { roleAllows } from "../../lib/permissions";
@@ -23,6 +26,7 @@ import {
   useTaxRateIndex,
 } from "../billing/shared";
 import { InvoiceTable } from "../invoices/InvoiceList";
+import { SubscriptionMandate } from "../mandates/SubscriptionMandate";
 import { useLatestInvoice, useSubscription } from "./api";
 import { dunningText, nextInvoiceText, subscriptionActions, upcomingRenewal } from "./logic";
 
@@ -33,7 +37,7 @@ export function SubscriptionDetail({ id }: { id: string }) {
   return <SubscriptionView key={s.data.id} initial={s.data} />;
 }
 
-type Pending = "now" | "period_end" | "undo" | undefined;
+type Pending = "now" | "period_end" | "undo" | "auto_debit" | "send_invoice" | undefined;
 
 const REASON: Readonly<Record<string, string>> = {
   requested: "Canceled by you",
@@ -71,18 +75,24 @@ function SubscriptionView({ initial }: { initial: Subscription }) {
       const next =
         p === "undo"
           ? await app.api.call(updateSubscription, { params: { id: sub.id }, body: { cancel_at_period_end: false } })
-          : await app.api.call(cancelSubscription, {
-              params: { id: sub.id },
-              body: { at_period_end: p === "period_end" },
-            });
+          : p === "auto_debit" || p === "send_invoice"
+            ? await app.api.call(updateSubscription, { params: { id: sub.id }, body: { collection_method: p } })
+            : await app.api.call(cancelSubscription, {
+                params: { id: sub.id },
+                body: { at_period_end: p === "period_end" },
+              });
       setSub(next as Subscription);
       setPending(undefined);
       const msg =
-        p === "undo"
-          ? "Cancellation undone. The subscription renews as usual."
-          : p === "period_end"
-            ? `The subscription ends on ${formatDate(sub.current_period_end)}.`
-            : "Subscription canceled.";
+        p === "auto_debit"
+          ? "Auto-debit is on. Share the setup link with the customer."
+          : p === "send_invoice"
+            ? "Renewals are emailed as invoices from now on."
+            : p === "undo"
+              ? "Cancellation undone. The subscription renews as usual."
+              : p === "period_end"
+                ? `The subscription ends on ${formatDate(sub.current_period_end)}.`
+                : "Subscription canceled.";
       setAnnounce(msg);
       toast.show({ tone: "success", title: msg });
     } catch (e) {
@@ -120,6 +130,8 @@ function SubscriptionView({ initial }: { initial: Subscription }) {
 
   const li = latest.data;
   const dun = li ? dunningState(li) : undefined;
+  const autoDebit = (sub.collection_method as string) === "auto_debit";
+  const canSwitch = FEATURE_STAGE >= 4 && canChange && sub.status !== "canceled";
   return (
     <Page
       title={customer}
@@ -148,7 +160,9 @@ function SubscriptionView({ initial }: { initial: Subscription }) {
           {
             label: "Next invoice",
             value: nextInvoiceText(sub, formatDate),
-            sub: "Emailed; the customer pays from their wallet",
+            sub: autoDebit
+              ? "Collected from the customer's mandate when funded"
+              : "Emailed; the customer pays from their wallet",
           },
         ]}
       />
@@ -203,6 +217,10 @@ function SubscriptionView({ initial }: { initial: Subscription }) {
         />
       </Section>
 
+      {FEATURE_STAGE >= 4 ? (
+        <SubscriptionMandate sub={sub} latest={li} merchant={app.session?.account.display_name ?? "NearPay merchant"} />
+      ) : null}
+
       <div className="npf-billing__columns">
         <Section title="Upcoming renewal invoice" data-testid="upcoming-renewal">
           {renewal?.preview.ok ? (
@@ -235,10 +253,30 @@ function SubscriptionView({ initial }: { initial: Subscription }) {
             </p>
           )}
         </Section>
-        <Section title="Collection" data-testid="dunning">
+        <Section
+          title="Collection"
+          data-testid="dunning"
+          actions={
+            canSwitch ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setPending(autoDebit ? "send_invoice" : "auto_debit")}
+                data-testid="switch-collection"
+              >
+                {autoDebit ? "Use emailed invoices" : "Use auto-debit"}
+              </Button>
+            ) : undefined
+          }
+        >
           <KeyValueList
             items={[
-              { label: "Method", value: "Email invoice · customer pays from their wallet" },
+              {
+                label: "Method",
+                value: autoDebit
+                  ? "Auto-debit · collected from the customer's mandate, else emailed"
+                  : "Email invoice · customer pays from their wallet",
+              },
               {
                 label: "Latest invoice",
                 value: li ? (
@@ -317,6 +355,27 @@ function SubscriptionView({ initial }: { initial: Subscription }) {
         error={error}
         onClose={() => setPending(undefined)}
         onConfirm={() => void act("now")}
+      />
+      <ConfirmDialog
+        open={pending === "auto_debit"}
+        title="Collect renewals with auto-debit?"
+        description="Renewals are collected from a mandate the customer funds from their own NEAR wallet. Until they fund one, renewals are still emailed as invoices. You'll get a setup link to share."
+        confirmLabel="Use auto-debit"
+        tone="primary"
+        busy={busy}
+        error={error}
+        onClose={() => setPending(undefined)}
+        onConfirm={() => void act("auto_debit")}
+      />
+      <ConfirmDialog
+        open={pending === "send_invoice"}
+        title="Switch to emailed invoices?"
+        description="Renewals are emailed and the customer approves each payment. If a mandate is linked, NearPay releases it and emails the customer how to cancel it and get their balance back."
+        confirmLabel="Use emailed invoices"
+        busy={busy}
+        error={error}
+        onClose={() => setPending(undefined)}
+        onConfirm={() => void act("send_invoice")}
       />
       <ConfirmDialog
         open={pending === "undo"}

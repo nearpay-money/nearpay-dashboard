@@ -2,11 +2,15 @@
  * New subscription (lld/billing.md §5, §11 d9): customer, recurring prices (same currency and period),
  * quantities and tax, optional trial, invoice due days, dunning (reminder days + what happens when
  * they run out), invoice text. The summary previews the per-period total with the spec arithmetic and
- * says plainly that each renewal is an emailed invoice the customer pays — nothing is auto-charged.
+ * says plainly how renewals are collected: an emailed invoice the customer pays, or (Stage 4, billing §14)
+ * auto-debit from a vault mandate the customer funds and can cancel — with the eligibility of the chosen
+ * prices explained (USD at par in USDC/USDT or an allowed NEP-141 token; an active NEAR Intents account).
  */
-import { createSubscription, type Price, type TaxRate } from "@nearpay/spec";
+import type { Price, TaxRate } from "@nearpay/spec";
+import { createSubscription } from "@nearpay/spec";
 import {
   Button,
+  Callout,
   Card,
   CardTitle,
   Checkbox,
@@ -23,11 +27,14 @@ import {
 } from "@nearpay-internal/ui";
 import { useMemo, useState } from "react";
 import { Link, useApp } from "../../app/context";
+import { FEATURE_STAGE } from "../../app/registry";
 import { amountText, intervalText, percentText, priceSummary } from "../../lib/billing";
 import { ErrorState, LoadingState, Page } from "../../ui/page";
 import { ErrorNote } from "../../ui/ui";
 import "../billing/billing.css";
 import { useActivePrices, useActiveTaxRates, useCustomerOptions, useProductNames } from "../billing/shared";
+import { useActiveDestinations } from "../mandates/api";
+import { autoDebitEligibility, type Eligibility } from "../mandates/logic";
 import { checkSubscription, emptySubscription, type ItemRow, newItem, type SubscriptionForm } from "./logic";
 
 export function NewSubscription() {
@@ -84,6 +91,7 @@ function FormView({
     first ? amountText({ amount: u, currency: first.currency, asset_id: first.asset_id }, app.assets) : "—";
   const blocked = app.gate(createSubscription);
   const trial = form.trialDays.trim() !== "" && !shown.trialDays;
+  const autoDebit = form.collectionMethod === "auto_debit";
 
   const submit = async () => {
     setTouched(true);
@@ -248,6 +256,14 @@ function FormView({
               ))}
             </fieldset>
           ) : null}
+          {FEATURE_STAGE >= 4 ? (
+            <CollectionMethodField
+              value={form.collectionMethod}
+              onChange={(v) => set({ collectionMethod: v })}
+              price={first}
+              error={shown.collectionMethod}
+            />
+          ) : null}
           <div className="npf-billing__row-2">
             <Field
               label="Free trial (days)"
@@ -318,6 +334,9 @@ function FormView({
                     label: "Billing period",
                     value: checked.schedule ? `Every ${intervalText(checked.schedule)}` : "—",
                   },
+                  ...(FEATURE_STAGE >= 4
+                    ? [{ label: "Collection", value: autoDebit ? "Auto-debit" : "Emailed invoices" }]
+                    : []),
                   ...(checked.preview.ok
                     ? [
                         { label: "Subtotal", value: money(checked.preview.totals.subtotal) },
@@ -331,7 +350,9 @@ function FormView({
                 {trial
                   ? `Trial for ${form.trialDays.trim()} days, then the first invoice is emailed.`
                   : "The first invoice is created and emailed now; the subscription becomes active when it's paid."}{" "}
-                Each renewal is an invoice the customer approves from their wallet — nothing is charged automatically.
+                {autoDebit
+                  ? "Renewals are collected from the mandate the customer funds (one period at a time, only when due); without a funded mandate they're emailed as invoices."
+                  : "Each renewal is an invoice the customer approves from their wallet — nothing is charged automatically."}
               </p>
               <ErrorNote error={error} />
               {touched && !checked.body ? (
@@ -356,5 +377,70 @@ function FormView({
         </aside>
       </form>
     </Page>
+  );
+}
+
+/** Stage 4: emailed invoices or auto-debit, with why the chosen prices can (or can't) be auto-debited. */
+function CollectionMethodField({
+  value,
+  onChange,
+  price,
+  error,
+}: {
+  value: "send_invoice" | "auto_debit";
+  onChange(v: "send_invoice" | "auto_debit"): void;
+  price: Price | undefined;
+  error: string | undefined;
+}) {
+  const app = useApp();
+  const dests = useActiveDestinations();
+  const elig: Eligibility = autoDebitEligibility(price, dests.data, (id) => app.assets.get(id)?.symbol);
+  return (
+    <div className="np-stack" data-testid="collection-method">
+      <RadioCardGroup
+        label="How renewals are collected"
+        name="collection-method"
+        value={value}
+        onChange={(v) => onChange(v as "send_invoice" | "auto_debit")}
+      >
+        <OptionCard
+          value="send_invoice"
+          title="Email each invoice"
+          description="The customer approves every payment from their wallet."
+        />
+        <OptionCard
+          value="auto_debit"
+          title="Auto-debit"
+          description="The customer funds a mandate from their own NEAR account; NearPay collects one period when it's due. They can cancel at any time."
+        />
+      </RadioCardGroup>
+      {value === "auto_debit" ? <EligibilityNote elig={elig} error={error} /> : null}
+    </div>
+  );
+}
+
+export function EligibilityNote({ elig, error }: { elig: Eligibility; error?: string | undefined }) {
+  if (error || elig.kind === "ineligible")
+    return (
+      <Callout tone="danger" title="Auto-debit isn't available for these prices" data-testid="auto-debit-eligibility">
+        {error ?? (elig.kind === "ineligible" ? elig.reason : "")}
+        {elig.kind === "ineligible" && elig.fix ? (
+          <>
+            {" "}
+            <Link to={elig.fix.to}>{elig.fix.label}</Link>.
+          </>
+        ) : null}
+      </Callout>
+    );
+  return (
+    <Callout
+      tone={elig.kind === "eligible" ? "success" : "info"}
+      title={`Customers fund it with ${elig.tokens}`}
+      data-testid="auto-debit-eligibility"
+    >
+      {elig.kind === "check" ? `${elig.note} ` : ""}
+      After you create the subscription, share its setup link: the customer signs the funding from their own NEAR wallet
+      (no relayer or smart wallets). While a mandate is active, the per-period amount is locked.
+    </Callout>
   );
 }

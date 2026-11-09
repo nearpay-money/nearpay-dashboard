@@ -98,7 +98,10 @@ async function injectWallets(page: Page) {
             signature: btoa("x".repeat(64)),
           };
         },
-        signAndSendTransaction: async () => ({}),
+        signAndSendTransaction: async (p: unknown) => {
+          w.__nearTxs = [...((w.__nearTxs as unknown[] | undefined) ?? []), p];
+          return { transaction: { hash: "8hQ3XpDzWkYB6zEXfDzX9v2u8v5nJxQ3r7tKXk1n2bcd" } };
+        },
         signAndSendTransactions: async () => [],
         signDelegateActions: async () => ({}),
       };

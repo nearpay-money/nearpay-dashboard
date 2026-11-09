@@ -30,6 +30,9 @@ export function newId<P extends string>(prefix: P): `${P}_${string}` {
 export const USDC_NEAR = "nep141:17208628f84f5d6ad33f0da3bbbeb27ffcb398eac501a31bd6ad2011e36133a1";
 export const USDC_BASE = "nep141:base-0x833589fcd6edb6e08f4c7c32d4f71b54bda02913.omft.near";
 export const NOW = Math.floor(Date.now() / 1000);
+export const USDT_NEAR = "nep141:usdt.tether-token.near";
+export const SOL_SOLANA = "nep141:sol.omft.near";
+export const BTC_BITCOIN = "nep141:btc.omft.near";
 
 export const ASSETS = {
   object: "list" as const,
@@ -53,6 +56,34 @@ export const ASSETS = {
       decimals: 6,
       family: "USDC",
       is_usd_stable: true,
+    },
+    // stage 4: auto-debit (USDT on NEAR) and Solana / Bitcoin settlement
+    {
+      asset_id: USDT_NEAR,
+      object: "asset" as const,
+      chain: "near:mainnet",
+      symbol: "USDT",
+      decimals: 6,
+      family: "USDT",
+      is_usd_stable: true,
+    },
+    {
+      asset_id: SOL_SOLANA,
+      object: "asset" as const,
+      chain: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+      symbol: "SOL",
+      decimals: 9,
+      family: "SOL",
+      is_usd_stable: false,
+    },
+    {
+      asset_id: BTC_BITCOIN,
+      object: "asset" as const,
+      chain: "bip122:000000000019d6689c085ae165831e93",
+      symbol: "BTC",
+      decimals: 8,
+      family: "BTC",
+      is_usd_stable: false,
     },
   ],
 };

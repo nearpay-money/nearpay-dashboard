@@ -62,6 +62,9 @@ interface InvState {
   secret: string;
   metadata: Obj;
   sequence: number;
+  /** Stage 4 (spec 0.4.0): `auto_debit` invoices, `mandate`, `mandate_collection`. */
+  collection_method?: string;
+  extra?: Obj;
 }
 
 export interface CliLoginState {
@@ -89,6 +92,8 @@ export class BillingMock {
   private seqNo = 0;
   /** First no-cursor stream connect per mode: later no-cursor connects deliver events after it (live tail). */
   tailWatermark: Partial<Record<Mode, string>> = {};
+  /** Stage 4 hook: the mandates mock releases a mandate when its subscription leaves auto-debit. */
+  onRelease?: (mode: Mode, mandate: string) => void;
   /** `retry:` the mock stream announces (short, to keep tests fast). */
   streamRetryMs = 300;
 
@@ -276,7 +281,7 @@ export class BillingMock {
       customer: inv.customer,
       subscription: inv.subscription,
       billing_reason: inv.billing_reason,
-      collection_method: "send_invoice",
+      collection_method: inv.collection_method ?? "send_invoice",
       currency: c,
       asset_id: inv.asset_id,
       description: inv.description,
@@ -333,6 +338,7 @@ export class BillingMock {
       uncollectible_reason: inv.uncollectible_reason,
       metadata: inv.metadata,
       sequence: inv.sequence,
+      ...(inv.extra ?? {}),
     };
   }
 
@@ -638,6 +644,7 @@ export class BillingMock {
           trial_start: trialEnd ? now() : null,
           trial_end: trialEnd,
           description: b.description ?? null,
+          collection_method: b.collection_method ?? "send_invoice",
         });
         if (!trialEnd) {
           const inv = this.invoice(m, {
@@ -684,6 +691,14 @@ export class BillingMock {
           s.cancel_at_period_end = false;
           s.canceled_at = null;
           s.cancellation_reason = null;
+        }
+        // stage 4 (billing §14 d6): leaving auto_debit releases the linked mandate
+        if (b.collection_method) {
+          s.collection_method = b.collection_method;
+          if (b.collection_method === "send_invoice" && s.mandate) {
+            this.onRelease?.(m, s.mandate as string);
+            s.mandate = null;
+          }
         }
         (s.sequence as number)++;
         return ok(s);

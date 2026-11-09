@@ -1,6 +1,6 @@
 /**
  * Billing hub (Figma b02 "Billing"): title, the three stats (collected this month, outstanding,
- * active subscriptions), the tab row (Invoices · Subscriptions · Products · Tax rates) and the
+ * active subscriptions), the tab row (Invoices · Subscriptions · Auto-debit [Stage 4] · Products · Tax rates) and the
  * "Invoice-based renewals" note. Every tab is its own route, so tabs are links (`aria-current`).
  * Stats come from list routes (no analytics endpoint in v1): the first 100 paid / open invoices and
  * active subscriptions, summed per currency with bigint arithmetic; other currencies are counted, not
@@ -10,16 +10,19 @@ import { listInvoices, listSubscriptions } from "@nearpay/spec";
 import { Callout } from "@nearpay-internal/ui";
 import type { ReactNode } from "react";
 import { Link, useApp } from "../../app/context";
+import { FEATURE_STAGE } from "../../app/registry";
 import { summarizeAmounts } from "../../lib/billing";
 import { useAsync } from "../../lib/hooks";
 import { Page, StatRow } from "../../ui/page";
 import "./billing.css";
 
-export type BillingTab = "invoices" | "subscriptions" | "products" | "tax-rates";
+export type BillingTab = "invoices" | "subscriptions" | "mandates" | "products" | "tax-rates";
 
 const TABS: readonly [BillingTab, string, string][] = [
   ["invoices", "Invoices", "/billing"],
   ["subscriptions", "Subscriptions", "/billing/subscriptions"],
+  // stage 4 — auto-debit mandates (lld/billing.md §14)
+  ...(FEATURE_STAGE >= 4 ? [["mandates", "Auto-debit", "/billing/mandates"] as [BillingTab, string, string]] : []),
   ["products", "Products", "/billing/products"],
   ["tax-rates", "Tax rates", "/billing/tax-rates"],
 ];
@@ -88,7 +91,7 @@ export function BillingHub({
                 ? `${s.openCount} open invoice${s.openCount === "1" ? "" : "s"}${others(s.outstanding.others)}`
                 : "",
             },
-            { label: "Active subscriptions", value: s?.active ?? "—", sub: "Invoice-based renewals" },
+            { label: "Active subscriptions", value: s?.active ?? "—", sub: "Emailed invoices or auto-debit" },
           ]}
         />
       )}
@@ -108,7 +111,8 @@ export function BillingHub({
       {children}
       {note ?? (
         <Callout title="Invoice-based renewals">
-          Customers approve each invoice payment from their wallet. Automatic debit is a separate opt-in product.
+          Customers approve each invoice payment from their wallet. Auto-debit is a separate opt-in: the customer funds
+          a mandate they can cancel at any time.
         </Callout>
       )}
     </Page>

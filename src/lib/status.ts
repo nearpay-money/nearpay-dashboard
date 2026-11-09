@@ -19,6 +19,7 @@ export type StatusKind =
   | "invoice"
   | "subscription"
   | "cli_login"
+  | "mandate"
   | "generic";
 
 type Entry = readonly [label: string, tone: Tone];
@@ -109,6 +110,14 @@ const TABLES: Readonly<Record<StatusKind, Readonly<Record<string, Entry>>>> = {
     redeemed: ["Approved", "success"],
     denied: ["Denied", "neutral"],
     expired: ["Expired", "danger"],
+  },
+  // stage 4 — auto-debit (spec 0.4.0 MandateStatus; "unlinked" = mandateStatusValue)
+  mandate: {
+    active: ["Active", "success"],
+    insufficient: ["Low balance", "warning"],
+    exhausted: ["Ended", "neutral"],
+    canceled: ["Canceled", "neutral"],
+    unlinked: ["Unlinked", "danger"],
   },
   generic: {},
 };
