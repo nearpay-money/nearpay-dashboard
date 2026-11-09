@@ -6,9 +6,9 @@
  * customer's actions (`simulateMandatePayerAction` on the sandbox vault).
  */
 import type { Invoice } from "@nearpay/spec";
-import { type Mandate, prepareMandateCancel, simulateMandatePayerAction } from "@nearpay/spec";
+import { getMandate, type Mandate, prepareMandateCancel, simulateMandatePayerAction } from "@nearpay/spec";
 import { Callout, KeyValueList, LiveRegion, Table, useToast } from "@nearpay-internal/ui";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatDate, formatWhen } from "../../lib/format";
 import { roleAllows } from "../../lib/permissions";
@@ -54,9 +54,31 @@ function MandateView({ initial }: { initial: Mandate }) {
   const active = isOnchainActive(m);
   const canCancel = active && roleAllows(prepareMandateCancel, app.session?.role);
   const customer = customers.get(m.customer) ?? "…";
+  const [follow, setFollow] = useState(false);
   const onChanged = useCallback((next: Mandate) => {
     setM((cur) => (next.sequence >= cur.sequence ? next : cur));
   }, []);
+  // after a merchant cancel was sent, follow the mirror until the vault's `canceled` event arrives
+  // (every 5 s, at most 2 min); the page shows "canceled" only from the API (INV-2)
+  useEffect(() => {
+    if (!follow) return;
+    let n = 0;
+    const t = setInterval(async () => {
+      n++;
+      try {
+        const next = (await app.api.call(getMandate, { params: { id: initial.id } })) as Mandate;
+        onChanged(next);
+        if (next.status === "canceled") {
+          setAnnounce("Mandate canceled. The remaining balance went back to the customer.");
+          setFollow(false);
+        }
+      } catch {
+        // keep the last known state; try again on the next tick
+      }
+      if (n >= 24) setFollow(false);
+    }, 5000);
+    return () => clearInterval(t);
+  }, [follow, app.api, initial.id, onChanged]);
 
   const fee = BigInt(m.amount_per_period) - expectedShare(m.amount_per_period, m.fee_bps);
   return (
@@ -244,7 +266,7 @@ function MandateView({ initial }: { initial: Mandate }) {
       ) : null}
 
       {cancelOpen ? (
-        <CancelMandateDialog mandate={m} onClose={() => setCancelOpen(false)} onChanged={onChanged} />
+        <CancelMandateDialog mandate={m} onClose={() => setCancelOpen(false)} onSent={() => setFollow(true)} />
       ) : null}
     </Page>
   );

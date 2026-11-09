@@ -157,7 +157,9 @@ test("merchant cancel (live): prepared cancel checked, signed verbatim with the 
   await page.locator('.connect-item[data-type="test-near-wallet"]').click();
   await expect(dlg).toContainText("Cancel sent");
   const txs = await page.evaluate(() => (window as unknown as { __nearTxs: unknown[] }).__nearTxs);
-  expect(txs).toEqual([
+  // NEAR Connect adds its `network`; every transaction field is the prepared one, unchanged
+  expect(txs).toHaveLength(1);
+  expect(txs).toMatchObject([
     {
       signerId: NEAR_ACCOUNT,
       receiverId: "v1.vault.nearpay.near",

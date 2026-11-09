@@ -5,13 +5,13 @@
  * the mandate's vault (`checkCancelTx`) and shows a human-readable summary, then either opens the NEAR
  * wallet of the receiving account (live mode, NEAR Connect — the same pinned wallets as refunds) or shows
  * the exact transaction and a near-cli command (manual path). Test mode never opens a wallet: the
- * sandbox vault is not on NEAR, so it points at the payer simulation instead. After sending, the mandate
- * is polled until the vault's `canceled` event reaches billing (INV-2: the page never assumes success).
+ * sandbox vault is not on NEAR, so it points at the payer simulation instead. After sending, the page
+ * polls the mandate until the vault's `canceled` event reaches billing (INV-2: it never assumes success).
  */
 
-import { getMandate, type Mandate, prepareMandateCancel } from "@nearpay/spec";
+import { type Mandate, prepareMandateCancel } from "@nearpay/spec";
 import { CopyField, KeyValueList, LiveRegion } from "@nearpay-internal/ui";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";
 import { Button, ErrorNote, Modal, Note } from "../../ui/ui";
@@ -25,11 +25,12 @@ type Step = { kind: "intro" } | { kind: "review"; ix: MandateCancelInstructions 
 export function CancelMandateDialog({
   mandate,
   onClose,
-  onChanged,
+  onSent,
 }: {
   mandate: Mandate;
   onClose(): void;
-  onChanged(m: Mandate): void;
+  /** The cancel was sent: the page follows the mirror until the vault's `canceled` event arrives. */
+  onSent(): void;
 }) {
   const app = useApp();
   const token = useToken();
@@ -40,29 +41,6 @@ export function CancelMandateDialog({
   const live = mandate.livemode;
   const evmKeyed = isEvmKeyedAccount(mandate.merchant_receiver);
   const allowed = roleAllows(prepareMandateCancel, app.session?.role);
-
-  // after sending, follow the mirror until the vault's `canceled` event arrives (≤ 2 min, every 5 s)
-  useEffect(() => {
-    if (step.kind !== "sent") return;
-    let n = 0;
-    const t = setInterval(async () => {
-      n++;
-      try {
-        const m = (await app.api.call(getMandate, { params: { id: mandate.id } })) as Mandate;
-        if (m.status === "canceled" || m.sequence > mandate.sequence) {
-          onChanged(m);
-          if (m.status === "canceled") {
-            setAnnounce("Mandate canceled. The remaining balance went back to the customer.");
-            clearInterval(t);
-          }
-        }
-      } catch {
-        // keep polling; the page shows the last known state
-      }
-      if (n >= 24) clearInterval(t);
-    }, 5000);
-    return () => clearInterval(t);
-  }, [step.kind, app.api, mandate.id, mandate.sequence, onChanged]);
 
   const prepare = async () => {
     setBusy(true);
@@ -88,6 +66,7 @@ export function CancelMandateDialog({
       const r = await signAndSendNear(nearConnector, ix.transaction, mandate.merchant_receiver);
       setStep({ kind: "sent", tx: r.txHash });
       setAnnounce("Cancel sent. Waiting for the vault to confirm.");
+      onSent();
     } catch (e) {
       setError(e);
     } finally {

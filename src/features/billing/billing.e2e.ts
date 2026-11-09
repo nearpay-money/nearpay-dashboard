@@ -3,6 +3,7 @@ import { mkdirSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { NOW } from "../../../test/e2e/fixtures";
 import { expect, signIn, test } from "../../../test/e2e/harness";
+import { MandatesMock } from "../mandates/mandates.mock";
 import { BillingMock } from "./billing.mock";
 
 const SHOTS = process.env.NP_SHOTS ?? "/home/claude/shots/dashboard";
@@ -20,6 +21,8 @@ async function shots(page: Page, name: string) {
 
 function seed(api: object) {
   const b = new BillingMock(api);
+  new MandatesMock(api, b); // Stage 4: subscription pages look up mandates
+
   const northstar = b.customers.seed("test");
   const atlas = b.customers.seed("test", { name: "Atlas Studio", email: "ap@atlas.example", wallets: [] });
   const orbit = b.customers.seed("test", { name: "Orbit Tools", email: null, wallets: [] });
