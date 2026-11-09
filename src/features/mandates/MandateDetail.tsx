@@ -5,6 +5,7 @@
  * next, cancel/refund details, merchant cancel (`CancelMandateDialog`) and, in test mode, the simulated
  * customer's actions (`simulateMandatePayerAction` on the sandbox vault).
  */
+import type { Invoice } from "@nearpay/spec";
 import { Callout, KeyValueList, LiveRegion, Table, useToast } from "@nearpay-internal/ui";
 import { useCallback, useState } from "react";
 import { Link, useApp } from "../../app/context";
@@ -124,7 +125,11 @@ function MandateView({ initial }: { initial: Mandate }) {
               key: "i",
               header: "Invoice",
               cell: (r) =>
-                r.invoice ? <Link to={`/billing/invoices/${r.invoice}`}>{invoiceLabel(r.invoice, inv.data?.invoices)}</Link> : "—",
+                r.invoice ? (
+                  <Link to={`/billing/invoices/${r.invoice}`}>{invoiceLabel(r.invoice, inv.data?.invoices)}</Link>
+                ) : (
+                  "—"
+                ),
             },
             {
               key: "s",
@@ -134,7 +139,9 @@ function MandateView({ initial }: { initial: Mandate }) {
                 <span>
                   {amt(r.merchant_share)}
                   {r.short ? (
-                    <span className="np-text-caption npf-mandates__warn npf-mandates__sub">Short — balance invoiced</span>
+                    <span className="np-text-caption npf-mandates__warn npf-mandates__sub">
+                      Short — balance invoiced
+                    </span>
                   ) : null}
                 </span>
               ),
@@ -247,9 +254,9 @@ function MandateView({ initial }: { initial: Mandate }) {
   );
 }
 
-function invoiceLabel(id: string, invoices: readonly { id: string; number: string | null }[] | undefined): string {
+function invoiceLabel(id: string, invoices: readonly Invoice[] | undefined): string {
   const i = invoices?.find((x) => x.id === id);
-  return i ? invoiceTitle(i) : invoiceTitle({ id, number: null });
+  return invoiceTitle(i ?? { id: id as Invoice["id"], number: null });
 }
 
 function MandateNotices({ m, amt }: { m: Mandate; amt(v: string): string }) {
@@ -264,8 +271,8 @@ function MandateNotices({ m, amt }: { m: Mandate; amt(v: string): string }) {
   if (m.link_status === "linked" && !m.collecting && isOnchainActive(m))
     notices.push(
       <Callout key="released" tone="warning" title="No longer collected">
-        The subscription ended or stopped using auto-debit, so NearPay released this mandate and emailed the customer how
-        to cancel it and get the {amt(m.balance)} balance back.
+        The subscription ended or stopped using auto-debit, so NearPay released this mandate and emailed the customer
+        how to cancel it and get the {amt(m.balance)} balance back.
       </Callout>,
     );
   if (m.status === "insufficient" && m.collecting)
@@ -279,9 +286,9 @@ function MandateNotices({ m, amt }: { m: Mandate; amt(v: string): string }) {
     notices.push(
       <Callout key="keeper" tone="warning" title="Collections are failing" data-testid="keeper-notice">
         The last {m.collect_failures === 1 ? "collection" : `${m.collect_failures} collections`} delivered nothing to
-        your receiving account (the customer was not charged). NearPay retries each minute; after{" "}
-        {MAX_COLLECT_FAILURES} failures in a row (or 24 hours) the invoice is emailed instead and NearPay opens a case to
-        check your destination ({m.collect_failures} of {MAX_COLLECT_FAILURES} so far).
+        your receiving account (the customer was not charged). NearPay retries each minute; after {MAX_COLLECT_FAILURES}{" "}
+        failures in a row (or 24 hours) the invoice is emailed instead and NearPay opens a case to check your
+        destination ({m.collect_failures} of {MAX_COLLECT_FAILURES} so far).
       </Callout>,
     );
   if (m.last_collection?.short)
@@ -310,7 +317,8 @@ function MandateNotices({ m, amt }: { m: Mandate; amt(v: string): string }) {
   if (m.status === "exhausted")
     notices.push(
       <Callout key="exhausted" tone="neutral" title="All periods collected">
-        This mandate reached its maximum of {m.max_periods} periods. Any remaining balance is the customer's to withdraw.
+        This mandate reached its maximum of {m.max_periods} periods. Any remaining balance is the customer's to
+        withdraw.
       </Callout>,
     );
   return notices.length ? <div className="np-stack">{notices}</div> : null;
@@ -346,12 +354,28 @@ function TestHelpers({ m, onDone }: { m: Mandate; onDone(msg: string): void }) {
   };
   const active = isOnchainActive(m);
   return (
-    <Section title="Test helpers" aside="Test mode · acts as the customer on the sandbox vault" data-testid="mandate-test-helpers">
+    <Section
+      title="Test helpers"
+      aside="Test mode · acts as the customer on the sandbox vault"
+      data-testid="mandate-test-helpers"
+    >
       <div className="np-row npf-mandates__helpers">
-        <Button variant="secondary" size="sm" busy={busy === "top_up"} disabled={!allowed || !active || !!busy} onClick={() => void run("top_up")}>
+        <Button
+          variant="secondary"
+          size="sm"
+          busy={busy === "top_up"}
+          disabled={!allowed || !active || !!busy}
+          onClick={() => void run("top_up")}
+        >
           Top up one period
         </Button>
-        <Button variant="secondary" size="sm" busy={busy === "cancel"} disabled={!allowed || !active || !!busy} onClick={() => void run("cancel")}>
+        <Button
+          variant="secondary"
+          size="sm"
+          busy={busy === "cancel"}
+          disabled={!allowed || !active || !!busy}
+          onClick={() => void run("cancel")}
+        >
           Cancel as customer
         </Button>
         <Button
@@ -370,7 +394,9 @@ function TestHelpers({ m, onDone }: { m: Mandate; onDone(msg: string): void }) {
           <NearTx hash={result.tx_hash} livemode={false} />
         </p>
       ) : null}
-      {!allowed ? <p className="np-text-caption np-text-secondary">Owners, admins and developers can use test helpers.</p> : null}
+      {!allowed ? (
+        <p className="np-text-caption np-text-secondary">Owners, admins and developers can use test helpers.</p>
+      ) : null}
       <ErrorNote error={error} />
     </Section>
   );

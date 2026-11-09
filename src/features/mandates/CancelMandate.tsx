@@ -66,7 +66,9 @@ export function CancelMandateDialog({
     setBusy(true);
     setError(undefined);
     try {
-      const ix = (await app.api.call(prepareMandateCancel, { params: { id: mandate.id }, body: {} })) as MandateCancelInstructions;
+      const ix = (await app.api.call(prepareMandateCancel, {
+        params: { id: mandate.id },
+      })) as MandateCancelInstructions;
       const problem = checkCancelTx(mandate, ix.transaction);
       if (problem) throw new Error(`${problem} Nothing was signed. Refresh and try again, or contact support.`);
       setStep({ kind: "review", ix });
@@ -146,8 +148,8 @@ export function CancelMandateDialog({
             </p>
             {evmKeyed ? (
               <Note tone="warn" title="Your receiving account can't sign NEAR transactions">
-                It's an EVM-keyed NEAR Intents account (0x…). Ask the customer to cancel from their wallet, or cancel the
-                subscription so NearPay stops collecting and emails them how to cancel.
+                It's an EVM-keyed NEAR Intents account (0x…). Ask the customer to cancel from their wallet, or cancel
+                the subscription so NearPay stops collecting and emails them how to cancel.
               </Note>
             ) : null}
             {!allowed ? <Note tone="info">Only owners, admins and finance members can cancel mandates.</Note> : null}
@@ -158,7 +160,10 @@ export function CancelMandateDialog({
             <KeyValueList
               items={[
                 { label: "Sign as", value: <span className="npf-mandates__account">{mandate.merchant_receiver}</span> },
-                { label: "Contract", value: <span className="npf-mandates__account">{step.ix.transaction.receiver_id}</span> },
+                {
+                  label: "Contract",
+                  value: <span className="npf-mandates__account">{step.ix.transaction.receiver_id}</span>,
+                },
                 ...step.ix.transaction.actions.map((a, i) => ({
                   label: step.ix.transaction.actions.length > 1 ? `Call ${i + 1}` : "Call",
                   value: `${a.method_name}(mandate ${String(a.args.mandate_id)})`,

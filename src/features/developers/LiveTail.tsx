@@ -6,16 +6,7 @@
  * rows are deduplicated by event id. Pause closes the stream (the server keeps the events); Clear
  * empties the list only. Streamed events are not webhook deliveries (not signed, not retried).
  */
-import {
-  buildPath,
-  type Event,
-  Event as EventSchema,
-  EventStreamReady,
-  EventStreamReset,
-  safeParseTolerant,
-  streamEvents,
-  WEBHOOK_TYPE_NAMES,
-} from "@nearpay/spec";
+import { buildPath, EventStreamReady, EventStreamReset, safeParseTolerant, streamEvents } from "@nearpay/spec";
 import { Button, Callout, LiveRegion, Select, StatusBadge } from "@nearpay-internal/ui";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useApp } from "../../app/context";
@@ -23,6 +14,11 @@ import { encodeQuery } from "../../lib/api";
 import { API_BASE } from "../../lib/config";
 import { ApiError } from "../../lib/errors";
 import { formatClock } from "../../lib/format";
+import {
+  type AnyEvent as Event,
+  AnyEvent as EventSchema,
+  WEBHOOK_TYPE_NAMES_V4 as WEBHOOK_TYPE_NAMES,
+} from "../../lib/spec-next";
 import { EventStream, type StreamState } from "../../lib/sse";
 import { Section } from "../../ui/page";
 import { ErrorNote, Field } from "../../ui/ui";

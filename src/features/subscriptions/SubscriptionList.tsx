@@ -120,7 +120,7 @@ export function SubscriptionTable({
             key: "m",
             header: "Collection",
             hideOnNarrow: true,
-            cell: (s) => (s.collection_method === "auto_debit" ? "Auto-debit" : "Pay each invoice"),
+            cell: (s) => ((s.collection_method as string) === "auto_debit" ? "Auto-debit" : "Pay each invoice"),
           },
           { key: "s", header: "Status", cell: (s) => <SubscriptionStatus subscription={s} /> },
         ]}

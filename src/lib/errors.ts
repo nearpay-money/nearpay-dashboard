@@ -91,6 +91,17 @@ const FRIENDLY: Readonly<Record<string, string>> = {
     "Your settlement destination isn't active yet. Activate a destination in Settlement, then try again.",
   amount_below_destination_minimum: "The total is below the minimum your settlement destination accepts.",
   invoice_not_payable: "This invoice can't be paid right now.",
+  // stage 4 (spec 0.4.0): auto-debit and Solana/Bitcoin destinations
+  auto_debit_unavailable:
+    "Auto-debit isn't available for this subscription's prices. It needs USD (paid in USDC or USDT) or an allowed NEAR token, within the vault's per-period cap.",
+  vault_cap_exceeded:
+    "That funding is above what the auto-debit vault accepts right now. Choose fewer periods and try again.",
+  destination_not_intents_account:
+    "Auto-debit pays collections to a NEAR Intents account. Add or activate one in Settlement, then try again.",
+  rail_unavailable: "NEAR can't be reached right now. Try again in a minute.",
+  address_invalid: "This address isn't valid for the selected network. Check it for typos.",
+  asset_unsupported: "NearPay can't settle this token on that network yet. Choose another token.",
+  challenge_expired: "The signing request expired. Start the verification again.",
 };
 
 export interface FriendlyError {

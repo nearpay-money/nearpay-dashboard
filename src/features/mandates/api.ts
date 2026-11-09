@@ -45,8 +45,7 @@ export function useMandate(id: string) {
 export function useSubscriptionMandates(subscription: string, sequence: number) {
   const app = useApp();
   return useAsync(
-    async () =>
-      (await app.api.call(listMandates, { query: { subscription, limit: 10 } })).data as unknown as Mandate[],
+    async () => (await app.api.call(listMandates, { query: { subscription, limit: 10 } })).data as unknown as Mandate[],
     [app.api, app.mode, subscription, sequence],
   );
 }
@@ -54,13 +53,10 @@ export function useSubscriptionMandates(subscription: string, sequence: number) 
 /** Paid invoices of the mandate's subscription (collections carry `mandate_collection`); first 100. */
 export function useCollectionInvoices(subscription: string, sequence: number) {
   const app = useApp();
-  return useAsync(
-    async () => {
-      const r = await app.api.call(listInvoices, { query: { subscription, status: "paid", limit: 100 } });
-      return { invoices: r.data as Invoice[], capped: r.has_more };
-    },
-    [app.api, app.mode, subscription, sequence],
-  );
+  return useAsync(async () => {
+    const r = await app.api.call(listInvoices, { query: { subscription, status: "paid", limit: 100 } });
+    return { invoices: r.data as Invoice[], capped: r.has_more };
+  }, [app.api, app.mode, subscription, sequence]);
 }
 
 /** Active settlement destinations of this mode (auto-debit needs an active NEAR Intents account). */

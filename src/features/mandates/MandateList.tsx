@@ -5,7 +5,16 @@
  * the customer's funding transaction landed.
  */
 import { NearAccountId } from "@nearpay/spec";
-import { Button, buttonClassName, Callout, FilterBar, FilterPill, Pager, SearchInput, Table } from "@nearpay-internal/ui";
+import {
+  Button,
+  buttonClassName,
+  Callout,
+  FilterBar,
+  FilterPill,
+  Pager,
+  SearchInput,
+  Table,
+} from "@nearpay-internal/ui";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatDate } from "../../lib/format";
@@ -47,12 +56,19 @@ export function MandatesTab() {
     status: pick(STATUS, sp.get("status")),
     link_status: pick(LINK, sp.get("link")),
     payer: NearAccountId.safeParse(sp.get("payer") ?? "").success ? (sp.get("payer") ?? "") : "",
+    subscription: /^sub_[0-9a-z]{26}$/.test(sp.get("subscription") ?? "") ? (sp.get("subscription") ?? "") : "",
   };
   const [payer, setPayer] = useState(filter.payer ?? "");
   const payerValid = payer === "" || NearAccountId.safeParse(payer.trim()).success;
-  const go = (next: Partial<{ status: string; link: string; payer: string }>) => {
+  const go = (next: Partial<{ status: string; link: string; payer: string; subscription: string }>) => {
     const q = new URLSearchParams();
-    const merged = { status: filter.status, link: filter.link_status, payer: filter.payer, ...next };
+    const merged = {
+      status: filter.status,
+      link: filter.link_status,
+      payer: filter.payer,
+      subscription: filter.subscription,
+      ...next,
+    };
     for (const [k, v] of Object.entries(merged)) if (v) q.set(k, v);
     const s = q.toString();
     app.navigate(`/billing/mandates${s ? `?${s}` : ""}`, { replace: true });
@@ -64,7 +80,7 @@ export function MandatesTab() {
         actions={
           <form
             className="npf-mandates__search"
-            role="search"
+            aria-label="Find mandates by payer"
             onSubmit={(e) => {
               e.preventDefault();
               if (payerValid) go({ payer: payer.trim() });
@@ -102,6 +118,14 @@ export function MandatesTab() {
           data-testid="mandate-link-filter"
         />
       </FilterBar>
+      {filter.subscription ? (
+        <p className="np-text-small np-text-secondary" data-testid="mandate-subscription-filter">
+          Mandates of <Link to={`/billing/subscriptions/${filter.subscription}`}>{filter.subscription}</Link> ·{" "}
+          <Button variant="ghost" size="sm" onClick={() => go({ subscription: "" })}>
+            Show all
+          </Button>
+        </p>
+      ) : null}
       <MandateTable filter={filter} />
     </BillingHub>
   );
@@ -123,7 +147,7 @@ export function MandateTable({
   const rows = list.data?.data ?? [];
   const customers = useCustomerNames(showCustomer ? rows.map((m) => m.customer) : []);
   const token = useToken();
-  const filtered = Boolean(filter.status || filter.link_status || filter.payer);
+  const filtered = Boolean(filter.status || filter.link_status || filter.payer || filter.subscription);
   if (list.error) return <ErrorNote error={list.error} onRetry={list.reload} />;
   if (!list.loading && rows.length === 0 && !list.hasPrevious && !filtered && !filter.subscription)
     return (

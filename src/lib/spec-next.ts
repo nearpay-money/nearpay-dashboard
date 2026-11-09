@@ -18,8 +18,8 @@ import {
   Event,
   EventEnvelopeLoose,
   getEvent as getEventV3,
-  id,
   InvoiceSecretHeaders,
+  id,
   inp,
   Livemode,
   listEvents as listEventsV3,
@@ -33,6 +33,7 @@ import {
   TxHash,
   UnixTime,
   updateSubscription as updateSubscriptionV3,
+  WEBHOOK_TYPE_NAMES,
   z,
 } from "@nearpay/spec";
 
@@ -390,14 +391,18 @@ export function linkedMandateId(o: object): string | null {
 
 export const createSubscriptionV4 = route({
   ...createSubscriptionV3,
-  body: (createSubscriptionV3.body as NonNullable<typeof createSubscriptionV3.body>).extend({ collection_method: CollectionMethodInput.optional() }),
+  body: (createSubscriptionV3.body as NonNullable<typeof createSubscriptionV3.body>).extend({
+    collection_method: CollectionMethodInput.optional(),
+  }),
   errors: [...createSubscriptionV3.errors, ...e4("auto_debit_unavailable")],
   stage: 3,
 });
 
 export const updateSubscriptionV4 = route({
   ...updateSubscriptionV3,
-  body: (updateSubscriptionV3.body as NonNullable<typeof updateSubscriptionV3.body>).extend({ collection_method: CollectionMethodInput.optional() }),
+  body: (updateSubscriptionV3.body as NonNullable<typeof updateSubscriptionV3.body>).extend({
+    collection_method: CollectionMethodInput.optional(),
+  }),
   errors: [...updateSubscriptionV3.errors, ...e4("auto_debit_unavailable")],
   stage: 3,
 });
@@ -432,8 +437,11 @@ const MandateEvent = EventEnvelopeLoose.extend({
   type: z.enum(MANDATE_WEBHOOK_TYPES),
   data: out({ object: Mandate, previous_attributes: z.record(z.string(), z.unknown()).optional() }),
 });
-const AnyEvent = z.union([Event, MandateEvent]);
+/** `Event` of 0.4.0: the 0.3.1 union plus the eight `mandate.*` variants. */
+export const AnyEvent = z.union([Event, MandateEvent]);
 export type AnyEvent = z.infer<typeof AnyEvent>;
+/** 0.4.0 `WEBHOOK_TYPE_NAMES` (webhook endpoint picker, event and live-tail filters). */
+export const WEBHOOK_TYPE_NAMES_V4: readonly string[] = [...WEBHOOK_TYPE_NAMES, ...MANDATE_WEBHOOK_TYPES];
 
 export const listEventsV4 = route({
   ...listEventsV3,

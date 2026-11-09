@@ -74,6 +74,20 @@ only and sent as `X-CSRF-Token` on unsafe methods. A reload or a new tab recover
   address, member security, destination `created_by` and expiry, approver tenure.
 - Stage 3 pages show by default (`VITE_NP_STAGE` defaults to 3).
 
+## Step 4.3 (Stage 4 clients)
+
+- Auto-debit (`lld/billing.md` §14): Billing → Auto-debit tab (mandates with status / link / payer filters),
+  mandate page (balance, periods left, next collection, collections with NEAR evidence, keeper failures, unlinked
+  reasons, test-mode payer helpers), merchant cancel via `prepareMandateCancel` signed with the receiving account's
+  NEAR wallet (transaction checked and summarised first). Subscriptions: collection method with eligibility on
+  create and on the page, auto-debit panel (linked mandate, amount-locked notice, hosted-invoice setup link,
+  `prepareMandate` funding details, simulated funding in test mode). `mandate.*` in Developers.
+- Solana and Bitcoin destinations (`lld/identity.md` §20): address checks (P2WPKH / P2TR only), Wallet Standard
+  `solana:signMessage` or pasted base58 signature, BIP-322 simple via UniSat / OKX or pasted base64.
+- Phase A builds on spec 0.3.1 with the 0.4.0 contracts in one placeholder, `src/lib/spec-next.ts` (and the
+  vector copies in `test/unit/fixtures/*.v0.4.0.json`); Phase B bumps the spec and deletes them.
+- Stage 4 pages show by default (`VITE_NP_STAGE` defaults to 4).
+
 ## Build and deploy
 
 ```

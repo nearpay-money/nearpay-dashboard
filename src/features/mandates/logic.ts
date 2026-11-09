@@ -9,6 +9,7 @@ import type { Invoice } from "@nearpay/spec";
 import { formatUnits } from "../../lib/money";
 import {
   invoiceMandateCollection,
+  linkedMandateId,
   type Mandate,
   type MandateCollection,
   type MandateFundingInstructions,
@@ -46,8 +47,7 @@ export function autoDebitEligibility(
   const intents = destinations?.filter((d) => d.type === "intents_account" && d.status === "active");
   const noIntents: Eligibility = {
     kind: "ineligible",
-    reason:
-      "Auto-debit pays collections to a NEAR Intents account, and you don't have an active one in this mode yet.",
+    reason: "Auto-debit pays collections to a NEAR Intents account, and you don't have an active one in this mode yet.",
     fix: { label: "Add a NEAR Intents account", to: "/settlement/new" },
   };
   if (p.currency === "usd") {
@@ -141,6 +141,15 @@ export const isOnchainActive = (m: Pick<Mandate, "status">) => m.status === "act
 
 /** 64-hex implicit accounts are NEAR keys; `0x…` Intents accounts are EVM-keyed and can't sign NEAR transactions. */
 export const isEvmKeyedAccount = (account: string) => /^0x[0-9a-fA-F]{40}$/.test(account);
+
+/** The mandate renewals are collected from: `Subscription.mandate`, else a linked, on-chain active one. */
+export function pickLinked(sub: object, mandates: readonly Mandate[]): Mandate | undefined {
+  const id = linkedMandateId(sub);
+  return (
+    (id ? mandates.find((m) => m.id === id) : undefined) ??
+    mandates.find((m) => m.link_status === "linked" && isOnchainActive(m) && m.collecting)
+  );
+}
 
 // ------------------------------------------------------------------ collections
 

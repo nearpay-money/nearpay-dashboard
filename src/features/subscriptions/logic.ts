@@ -31,6 +31,8 @@ export interface SubscriptionForm {
   readonly reminders: string;
   readonly onExhausted: "cancel" | "unpaid";
   readonly description: string;
+  /** Stage 4: `auto_debit` = renewals collected from a customer-funded vault mandate (billing §14). */
+  readonly collectionMethod: "send_invoice" | "auto_debit";
 }
 
 let seq = 0;
@@ -51,10 +53,11 @@ export const emptySubscription = (): SubscriptionForm => ({
   reminders: "-3, 0, 1, 3, 7",
   onExhausted: "cancel",
   description: "",
+  collectionMethod: "send_invoice",
 });
 
 export type SubErrors = Partial<
-  Record<"customer" | "items" | "trialDays" | "daysUntilDue" | "reminders" | "description", string>
+  Record<"customer" | "items" | "trialDays" | "daysUntilDue" | "reminders" | "description" | "collectionMethod", string>
 > & { readonly item?: Readonly<Record<string, Partial<Record<"price" | "quantity" | "tax", string>>>> };
 
 export interface SubBody {
@@ -65,6 +68,7 @@ export interface SubBody {
   default_tax_rates: string[];
   dunning: { reminder_days: number[]; on_exhausted: "cancel" | "unpaid" };
   description?: string;
+  collection_method?: "auto_debit";
 }
 
 const toInput = (t: TaxRate): TaxRateInput => ({ id: t.id, rate_ppm: t.rate_ppm, inclusive: t.inclusive });
@@ -128,6 +132,11 @@ export function checkSubscription(
     if (Object.keys(e).length) itemErrors[it.key] = e;
   }
   if (Object.keys(itemErrors).length) errors.item = itemErrors;
+  // billing §14 d2: USD at par in USDC/USDT, or an allowed NEP-141 vault token; other fiat has no vault token
+  if (f.collectionMethod === "auto_debit" && first && first.currency !== "usd" && first.currency !== "asset")
+    errors.collectionMethod = `${first.currency.toUpperCase()} prices can't be auto-debited. Use a USD price, or emailed invoices.`;
+  else if (f.collectionMethod === "auto_debit" && first?.currency === "asset" && !first.asset_id?.startsWith("nep141:"))
+    errors.collectionMethod = "Auto-debit works with NEAR (NEP-141) tokens only. Use a USD price, or emailed invoices.";
   const ok = Object.keys(errors).length === 0;
   return {
     errors,
@@ -143,6 +152,7 @@ export function checkSubscription(
             default_tax_rates: [...f.defaultTaxRates],
             dunning: { reminder_days: reminders.days, on_exhausted: f.onExhausted },
             ...(f.description.trim() ? { description: f.description.trim() } : {}),
+            ...(f.collectionMethod === "auto_debit" ? { collection_method: "auto_debit" as const } : {}),
           }
         : undefined,
   };

@@ -20,7 +20,7 @@
  *   content — start it with `<Page>` from `src/ui/page.tsx`. Signed-in routes only.
  * - `nav`: an entry fills one of the fixed sidebar slots (order and labels follow the Figma). A slot
  *   without an entry is not shown. `stage` hides an entry until `FEATURE_STAGE` (build-time
- *   `VITE_NP_STAGE`, default 3) reaches it — Billing is a Stage 3 slot.
+ *   `VITE_NP_STAGE`, default 4) reaches it — Billing is a Stage 3 slot, Auto-debit Stage 4.
  * - `settingsCards`: link cards on the Settings index (`/settings`).
  * - `roles` on a route: the spec read route's roles; other roles get a notice instead of the page.
  * - `layout: "focus"`: a signed-in page without the shell (centred card), e.g. `/cli/authorize`.
@@ -107,8 +107,8 @@ export function defineFeature(m: FeatureModule): FeatureModule {
   return m;
 }
 
-/** Highest product stage whose pages are shown (build-time `VITE_NP_STAGE`, default 3 since step 3.3). */
-export const FEATURE_STAGE: number = Number(import.meta.env.VITE_NP_STAGE ?? 3) || 3;
+/** Highest product stage whose pages are shown (build-time `VITE_NP_STAGE`, default 4 since step 4.3). */
+export const FEATURE_STAGE: number = Number(import.meta.env.VITE_NP_STAGE ?? 4) || 4;
 
 export interface Registry {
   readonly routes: readonly RouteDef[];
