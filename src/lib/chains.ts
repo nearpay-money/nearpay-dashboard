@@ -134,9 +134,7 @@ export function isOnCurve(key: Uint8Array): boolean {
   return powp(x2, (P - 1n) / 2n) === 1n;
 }
 
-export type SolanaAddressCheck =
-  | { ok: true; normalized: string; onCurve: boolean }
-  | { ok: false; error: string };
+export type SolanaAddressCheck = { ok: true; normalized: string; onCurve: boolean } | { ok: false; error: string };
 
 /** Solana address: base58 decoding to exactly 32 bytes; `onCurve` false = program-derived (cannot sign). */
 export function checkSolanaAddress(input: string): SolanaAddressCheck {

@@ -7,25 +7,16 @@
  * over the raw message bytes, base58) and Bitcoin (`standard: bip322`, BIP-322 "simple", base64) — from a
  * detected wallet, or by pasting a signature made elsewhere (shape-checked before it is sent).
  */
-import {
-  challengeSettlementDestination,
-  getSettlementDestination,
-  type SettlementDestination,
-} from "@nearpay/spec";
+import { challengeSettlementDestination, getSettlementDestination, type SettlementDestination } from "@nearpay/spec";
 import { CopyText, Textarea } from "@nearpay-internal/ui";
 import { useEffect, useState } from "react";
 import { Link, useApp } from "../../app/context";
-import {
-  checkBip322Signature,
-  checkBitcoinAddress,
-  checkSolanaSignature,
-  networkName,
-} from "../../lib/chains";
+import { checkBip322Signature, checkBitcoinAddress, checkSolanaSignature, networkName } from "../../lib/chains";
 import { formatTime, relative } from "../../lib/format";
 import { useAsync } from "../../lib/hooks";
 import { assetLabel } from "../../lib/money";
-import { Page } from "../../ui/page";
 import { attestSettlementDestinationV4, type SigningStandard } from "../../lib/spec-next";
+import { Page } from "../../ui/page";
 import { Badge, Button, Card, ErrorNote, Field, KeyValue, Loading, Mono, Note } from "../../ui/ui";
 import { type BitcoinWallet, detectBitcoinWallets, signBip322 } from "../../wallets/bitcoin";
 import { discoverEvmWallets, type EvmWallet, signEip191 } from "../../wallets/evm";
@@ -361,7 +352,9 @@ function BitcoinSigner({ destination, message, busy, run, submit }: SignerProps)
           <strong>BIP-322</strong> message signing, then paste the signature.
         </p>
         <ul className="dash-steps np-text-small np-text-secondary">
-          <li>Sparrow: Tools → Sign/Verify Message → choose this address → paste the message → Format BIP322 → Sign.</li>
+          <li>
+            Sparrow: Tools → Sign/Verify Message → choose this address → paste the message → Format BIP322 → Sign.
+          </li>
           <li>Xverse, Leather, UniSat, OKX: use "Sign message" with this address; they sign BIP-322 for bc1q/bc1p.</li>
           <li>Bitcoin Core's signmessage and "Electrum/legacy" formats aren't accepted.</li>
         </ul>
