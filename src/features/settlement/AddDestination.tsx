@@ -271,13 +271,13 @@ export function AddDestination() {
             {family === "solana"
               ? "You'll sign a message with the Solana wallet that holds this address (Phantom, Solflare or Backpack), or paste a signature. "
               : "You'll sign a message with BIP-322 from the wallet that holds this address (Sparrow, Xverse, Leather, UniSat or OKX) and paste the signature. "}
-            Signing moves no funds. After approval and the 24-hour safety window, this destination can receive new
-            payments.
+            Signing moves no funds. After approval, and a short security hold if one applies, this destination can
+            receive new payments.
           </Callout>
         ) : live ? (
           <Callout tone="info" title="Verify, then activate">
-            You'll sign a message with the wallet that controls this address. Signing moves no funds. After approval and
-            the 24-hour safety window, this destination can receive new payments.
+            You'll sign a message with the wallet that controls this address. Signing moves no funds. After approval,
+            and a short security hold if one applies, this destination can receive new payments.
           </Callout>
         ) : (
           <Callout tone="info" title="Test destinations are active immediately">

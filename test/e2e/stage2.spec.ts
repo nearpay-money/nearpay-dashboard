@@ -88,6 +88,27 @@ test.describe("dashboard core (step 2.3)", () => {
     await expect(page.getByRole("button", { name: "Approve" })).toBeDisabled();
   });
 
+  test("cool-off copy follows active_at: countdown when waiting, 'now' with no cool-off", async ({ page, api }) => {
+    const now = Math.floor(Date.now() / 1000);
+    const live = {
+      livemode: true,
+      verification: "signature" as const,
+      is_default: false,
+      status: "cooling_off" as const,
+    };
+    api.destinations.live.push(
+      destination({ ...live, label: "Instant", address: "instant.near", active_at: now }), // NP_COOLOFF_SECONDS=0
+      destination({ ...live, label: "Later", address: "later.near", active_at: now + 3 * 3600 + 60 }),
+    );
+    await signIn(page, api, "/settlement?mode=live");
+    const status = page.getByTestId("cooloff");
+    await expect(status.nth(0)).toHaveText("Activating now");
+    await expect(status.nth(1)).toHaveText("Activates in about 3 hours");
+    await expect(page.getByText(/Later activates .* · about 3 hours remaining/)).toBeVisible();
+    await expect(page.getByText(/Instant activates/)).toHaveCount(0);
+    await expect(page.getByText(/24.hour/)).toHaveCount(0);
+  });
+
   test("restricted key with the scope matrix; edit scopes", async ({ page, api }) => {
     api.stepUpUntil = NOW + 3600;
     await signIn(page, api, "/developers");

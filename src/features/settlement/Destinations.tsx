@@ -16,7 +16,7 @@ import { buttonClassName, Callout, StatusBadge, Table, useToast, WalletIcon } fr
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { networkName } from "../../lib/chains";
-import { formatDate, relative, shorten } from "../../lib/format";
+import { formatDate, shorten } from "../../lib/format";
 import { useAsync, useMutation, useNow } from "../../lib/hooks";
 import { assetLabel, formatFiat } from "../../lib/money";
 import { roleAllows } from "../../lib/permissions";
@@ -24,13 +24,9 @@ import { statusOf } from "../../lib/status";
 import { ConfirmDialog, Empty, ErrorState, LoadingState, Page, useConfirm } from "../../ui/page";
 import { Button, ErrorNote, Mono } from "../../ui/ui";
 import { TENURE_COPY } from "../team/approval-copy";
+import { aboutDuration, activationClock, activationStatus, SECURITY_HOLD_COPY, secondsUntilActive } from "./cooloff";
 
 type Dest = SettlementDestination;
-
-function clock(unix: number): string {
-  const d = new Date(unix * 1000);
-  return `${formatDate(unix).replace(/ \d{4}$/, "")} at ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
 
 /** "1 of 2 approvals" for a destination awaiting approval (spec 0.2.0; absent on Stage 1 servers). */
 export function approvalText(d: Pick<Dest, "approval">): string | null {
@@ -53,7 +49,7 @@ function DestinationStatus({ d, now }: { d: Dest; now: number }) {
       ) : null}
       {d.status === "cooling_off" && d.active_at ? (
         <span className="np-text-caption np-text-secondary" data-testid="cooloff">
-          Activates {relative(d.active_at, now)}
+          {activationStatus(d.active_at, now)}
         </span>
       ) : null}
       {d.status === "pending_approval" && approvalText(d) ? (
@@ -122,7 +118,8 @@ export function Destinations() {
   if (list.loading && !list.data) return <LoadingState what="Loading settlement destinations" />;
   if (!list.data) return <ErrorState title="Settlement" error={list.error} onRetry={list.reload} />;
   const rows = list.data.data;
-  const coolingOff = rows.filter((d) => d.status === "cooling_off" && d.active_at);
+  // only destinations still waiting; with no cool-off (active_at ≤ now) there is nothing to count down
+  const coolingOff = rows.filter((d) => d.status === "cooling_off" && secondsUntilActive(d.active_at, now) > 0);
 
   return (
     <Page
@@ -152,7 +149,7 @@ export function Destinations() {
         >
           {app.mode === "test"
             ? "Test destinations are active immediately and receive sandbox settlements only."
-            : "Live destinations are verified with a wallet signature and become active after a 24-hour safety window."}
+            : `Live destinations are verified with a wallet signature and may take effect after ${SECURITY_HOLD_COPY}.`}
         </Empty>
       ) : (
         <div data-testid="destinations-table">
@@ -301,8 +298,8 @@ export function Destinations() {
       ) : null}
       {coolingOff.map((d) => (
         <p key={d.id} className="np-text-caption np-text-secondary">
-          {d.label} activates {clock(d.active_at as number)} ·{" "}
-          {relative(d.active_at as number, now).replace(/^in /, "")} remaining. All owners were notified.
+          {d.label} activates {activationClock(d.active_at as number)} ·{" "}
+          {aboutDuration(secondsUntilActive(d.active_at, now))} remaining. All owners were notified.
         </p>
       ))}
       <ConfirmDialog
