@@ -30,6 +30,7 @@ import { useState } from "react";
 import { useApp } from "../../app/context";
 import { ApiError } from "../../lib/errors";
 import { roleAllows } from "../../lib/permissions";
+import { activationNotice } from "../settlement/cooloff";
 import { usePendingApprovals, useTeam, useTeamCalls } from "./api";
 import { TENURE_COPY } from "./approval-copy";
 import {
@@ -133,7 +134,7 @@ export function Team() {
       )}
       <Approvals onAnnounce={setAnnounce} members={members} />
       <Callout title="Two-person approval">
-        When an account has two or more owners or admins, destination changes need two approvers and the safety window
+        When an account has two or more owners or admins, destination changes need two approvers and any security hold
         still applies.
       </Callout>
       <InviteDialog
@@ -500,7 +501,7 @@ function ApproveDialog({
         decision === "reject"
           ? `${d.label} was rejected and disabled.`
           : r.status === "cooling_off"
-            ? `${d.label} approved. It becomes active after the safety window.`
+            ? activationNotice(d.label, r.active_at)
             : `${d.label} approved.`,
       );
     } catch (e) {

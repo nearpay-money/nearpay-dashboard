@@ -30,6 +30,7 @@ import { type BitcoinWallet, detectBitcoinWallets, signBip322 } from "../../wall
 import { discoverEvmWallets, type EvmWallet, signEip191 } from "../../wallets/evm";
 import { nearConnector, signNep413 } from "../../wallets/near";
 import { discoverSolanaWallets, type SolanaWallet, signSolanaMessage } from "../../wallets/solana";
+import { aboutDuration, activationClock, secondsUntilActive } from "./cooloff";
 import { approvalText } from "./Destinations";
 
 type Challenge = NonNullable<SettlementDestination["attestation_challenge"]>;
@@ -384,6 +385,8 @@ function BitcoinSigner({ destination, message, busy, run, submit }: SignerProps)
 
 export function DestinationResult({ d }: { d: SettlementDestination }) {
   const approvals = approvalText(d);
+  const now = useNow();
+  const wait = secondsUntilActive(d.active_at, now);
   return (
     <Card title={d.label} actions={<Badge kind="destination" value={d.status} />}>
       <div className="np-stack">
@@ -393,16 +396,21 @@ export function DestinationResult({ d }: { d: SettlementDestination }) {
             ["Address", <Mono key="a">{d.address}</Mono>],
           ]}
         />
-        {d.status === "cooling_off" && d.active_at && (
+        {d.status === "cooling_off" && d.active_at && wait > 0 && (
           <Note tone="info" title="Signature verified.">
-            For your safety the destination receives payments from {formatTime(d.active_at)} ({relative(d.active_at)}).
+            For your safety the destination becomes active in {aboutDuration(wait)}, at {activationClock(d.active_at)}.
             All owners are notified.
+          </Note>
+        )}
+        {d.status === "cooling_off" && d.active_at && wait === 0 && (
+          <Note tone="info" title="Signature verified.">
+            The destination is activating now and can receive payments in a moment. All owners are notified.
           </Note>
         )}
         {d.status === "pending_approval" && (
           <Note tone="info" title="Signature verified.">
-            Another owner or admin must approve this destination{approvals ? ` (${approvals})` : ""}. The 24-hour safety
-            window starts after approval.
+            Another owner or admin must approve this destination{approvals ? ` (${approvals})` : ""}. Any security hold
+            starts after approval.
           </Note>
         )}
         {d.status === "active" && <Note tone="ok">Active — payments can settle here now.</Note>}

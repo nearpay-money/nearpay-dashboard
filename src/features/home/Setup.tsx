@@ -111,8 +111,8 @@ export function LiveStatusCard() {
         <StatusBadge tone="warning">Pending</StatusBadge>
         <CardTitle>Live payments are not active yet</CardTitle>
         <p className="np-text-secondary">
-          Add your business details and activate a settlement destination. A new destination has a 24-hour safety
-          window.
+          Add your business details and activate a settlement destination. A new destination may take effect after a
+          short security hold.
         </p>
         <button
           type="button"
