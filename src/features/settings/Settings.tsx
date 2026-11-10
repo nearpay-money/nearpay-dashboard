@@ -69,7 +69,7 @@ export const CORE_CARDS: readonly SettingsCard[] = [
   {
     id: "core:business",
     title: "Business details",
-    description: "The details NearPay reviews before live payments.",
+    description: "Declare your business to turn on live payments.",
     href: "/settings/business",
     order: 20,
   },
@@ -176,8 +176,8 @@ export function AccountSettings() {
             [
               "Legal name",
               a.verified_legal_name
-                ? `${a.verified_legal_name} · Business details reviewed by NearPay`
-                : "Shown after NearPay reviews your business details",
+                ? `${a.verified_legal_name} · Self-declared business details`
+                : "Shown once you save your business details",
             ],
             ["Business details", <Badge key="k" kind="kyb" value={a.kyb_status} />],
             ["Live mode", a.live_enabled ? "Enabled" : "Not enabled"],

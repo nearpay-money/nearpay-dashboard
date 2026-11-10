@@ -1,7 +1,8 @@
 /**
  * Onboarding checklist (Figma "Let's get you ready to accept payments"): 01 account, 02 settlement
- * destination, 03 business details (self-declared, reviewed by NearPay — ADR-0020; the form is the KYB
- * page at `/settings/business`), 04 test payment; side card with the live-mode requirements.
+ * destination, 03 business details (self-declared, ADR-0020; live as soon as they are saved, no NearPay
+ * review — ADR-0024; the form is the KYB page at `/settings/business`), 04 test payment; side card with
+ * the live-mode requirements.
  */
 import { buttonClassName, Card, CardTitle, StatusBadge, type StepItem, Steps } from "@nearpay-internal/ui";
 import { useState } from "react";
@@ -63,7 +64,7 @@ export function Checklist({ hasTestPayment }: { hasTestPayment: boolean }) {
       title: "Add your business details",
       description: (
         <>
-          Required to accept live payments. Reviewed by NearPay.{" "}
+          Required to accept live payments. Live as soon as you save them.{" "}
           {kyb !== "not_started" && !kybDone ? <StatusBadge tone={kybState.tone}>{kybState.label}</StatusBadge> : null}
         </>
       ),
@@ -98,7 +99,8 @@ export function LiveStatusCard() {
           <StatusBadge tone="success">Live</StatusBadge>
           <CardTitle>Live payments are active</CardTitle>
           <p className="np-text-secondary">
-            Your business details were reviewed by NearPay and a live destination is active.
+            You're live — you can accept real payments. Your business details are saved and a live destination is
+            active.
           </p>
         </div>
       </Card>
@@ -125,7 +127,7 @@ export function LiveStatusCard() {
         {open ? (
           <ul className="dash-requirements" aria-label="Live mode requirements">
             <li>
-              <span>Business details reviewed by NearPay</span>
+              <span>Business details saved</span>
               <StatusBadge tone={missing.has("kyb") ? kyb.tone : "success"}>
                 {missing.has("kyb") ? kyb.label : "Done"}
               </StatusBadge>

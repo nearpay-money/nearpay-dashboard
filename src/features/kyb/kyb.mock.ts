@@ -33,6 +33,9 @@ const EMPTY = {
 };
 
 export class KybMock {
+  /** `NP_KYB_MODE=manual` on the server: submissions wait in `pending`. */
+  constructor(readonly manual = false) {}
+
   kase: Record<string, unknown> = {
     object: "kyb_case",
     status: "not_started",
@@ -54,9 +57,17 @@ export class KybMock {
         return ok(this.kase);
       case "submitKyb": {
         const p = this.kase.profile as Record<string, unknown>;
-        if (Object.entries(p).some(([k, v]) => k !== "website" && v === null))
+        // registration number and website are optional (ADR-0024)
+        if (Object.entries(p).some(([k, v]) => k !== "website" && k !== "registration_number" && v === null))
           return fail(400, "kyb_profile_incomplete");
-        this.kase = { ...this.kase, status: "pending", editable: false, submitted_at: NOW };
+        // open onboarding: compliance decides at once (NP_KYB_MODE=auto); `manual` keeps `pending`
+        this.kase = {
+          ...this.kase,
+          status: this.manual ? "pending" : "approved",
+          editable: false,
+          submitted_at: NOW,
+          decided_at: this.manual ? null : NOW,
+        };
         return ok(this.kase);
       }
       default:

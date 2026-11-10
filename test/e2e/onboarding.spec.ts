@@ -24,9 +24,10 @@ test.describe("home and settlement destinations", () => {
     await expect(page.getByRole("heading", { name: "Let’s get you ready to accept payments." })).toBeVisible();
     await expect(page.getByText("Live payments are not active yet")).toBeVisible();
     await page.getByRole("button", { name: "View requirements" }).click();
-    await expect(page.getByRole("list", { name: "Live mode requirements" })).toContainText(
-      "Business details reviewed by NearPay",
-    );
+    const reqs = page.getByRole("list", { name: "Live mode requirements" });
+    await expect(reqs).toContainText("Business details saved");
+    await expect(reqs).not.toContainText(/review/i);
+    await expect(page.getByTestId("requirements")).toContainText("Live as soon as you save them.");
   });
 
   test("test destination: step-up, then active immediately", async ({ page, api }) => {

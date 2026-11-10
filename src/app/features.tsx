@@ -181,7 +181,7 @@ export const AREA_CARDS = [
   {
     id: "kyb",
     title: "Business details",
-    description: "The details NearPay reviews before live payments.",
+    description: "Declare your business to turn on live payments.",
     href: "/settings/business",
     order: 20,
     roles: getKyb.roles,

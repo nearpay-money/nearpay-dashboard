@@ -74,10 +74,10 @@ const TABLES: Readonly<Record<StatusKind, Readonly<Record<string, Entry>>>> = {
   },
   kyb: {
     not_started: ["Not submitted", "warning"],
-    pending: ["Under review", "warning"],
+    pending: ["Submitted", "info"],
     needs_info: ["Action needed", "warning"],
-    approved: ["Reviewed", "success"],
-    rejected: ["Rejected", "danger"],
+    approved: ["Live", "success"],
+    rejected: ["Not accepted", "danger"],
   },
   session: {
     open: ["Open", "warning"],
