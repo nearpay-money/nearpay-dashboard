@@ -5,7 +5,7 @@
 import { generateKeyPairSync, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   base58Decode,
   base58Encode,
@@ -206,13 +206,19 @@ describe("Solana wallet (wallet standard, raw signMessage)", () => {
     );
     const found = await p;
     expect(found.map((w) => w.name)).toEqual(["Test Sol", "Late"]);
+    const iconWin = solWin([{ ...good, name: "Icon", icon: "data:image/png;base64,iVBORw0KGgo=" }]);
+    expect((await discoverSolanaWallets(iconWin, 5)).map((w) => w.icon)).toEqual([
+      "data:image/png;base64,iVBORw0KGgo=",
+    ]);
   });
   it("signs the exact bytes with the destination key and returns base58", async () => {
     const { privateKey, publicKey } = generateKeyPairSync("ed25519");
     const address = base58Encode(Uint8Array.from(publicKey.export({ format: "der", type: "spki" }).subarray(12)));
     const [w] = await discoverSolanaWallets(solWin([solanaWallet({ address, key: privateKey })]), 5);
-    const sig = await signSolanaMessage(w as never, address, "NearPay settlement destination\nAddress: x");
+    const onSigning = vi.fn();
+    const sig = await signSolanaMessage(w as never, address, "NearPay settlement destination\nAddress: x", onSigning);
     expect(base58Decode(sig)?.length).toBe(64);
+    expect(onSigning).toHaveBeenCalledOnce();
   });
   it("refuses another account, a changed message, odd signatures", async () => {
     const mk = async (o: Parameters<typeof solanaWallet>[0]) =>
@@ -241,8 +247,12 @@ describe("Bitcoin wallets (BIP-322 simple)", () => {
   it("signs with the destination account only", async () => {
     const a = "bc1qpct5sxzppv204tth290uen85nqkhzw9sq5m0ku";
     const w = (p: ReturnType<typeof prov>) => ({ id: "unisat" as const, name: "UniSat", provider: p });
-    expect(await signBip322(w(prov([a.toUpperCase()], " sig= ")), a, "m")).toBe("sig=");
-    await expect(signBip322(w(prov(["bc1qother"])), a, "m")).rejects.toThrow(/switch it to/);
+    const onSigning = vi.fn();
+    expect(await signBip322(w(prov([a.toUpperCase()], " sig= ")), a, "m", onSigning)).toBe("sig=");
+    expect(onSigning).toHaveBeenCalledOnce();
+    const never = vi.fn();
+    await expect(signBip322(w(prov(["bc1qother"])), a, "m", never)).rejects.toThrow(/switch it to/);
+    expect(never).not.toHaveBeenCalled();
     await expect(signBip322(w(prov([a], "")), a, "m")).rejects.toThrow(/no signature/);
   });
 });

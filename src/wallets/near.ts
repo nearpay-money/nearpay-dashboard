@@ -66,14 +66,19 @@ export function nearConnector(): Promise<NearConnectorLike> {
   return connector;
 }
 
-/** Connects a wallet and signs the challenge with the destination account. */
+/**
+ * Connects a wallet and signs the challenge with the destination account. `onSigning` (UI progress only) is
+ * called once the account check passed, right before the signature request.
+ */
 export async function signNep413(
   getConnector: () => Promise<NearConnectorLike>,
   c: { message: string; recipient: string; nonce: string; address: string },
+  onSigning?: () => void,
 ): Promise<NearSignedMessage> {
   const wallet = await (await getConnector()).connect();
   const accounts = (await wallet.getAccounts()).map((a) => a.accountId);
   if (!accounts.includes(c.address)) throw new WalletMismatchError(c.address, accounts);
+  onSigning?.();
   const signed = await wallet.signMessage({
     message: c.message,
     recipient: c.recipient,

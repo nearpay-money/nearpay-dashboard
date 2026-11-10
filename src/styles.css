@@ -799,3 +799,120 @@ fieldset.dash-filters {
   display: grid;
   gap: var(--np-space-1);
 }
+
+/* wallet picker — "Connect … wallet" menu button for message signing (src/ui/WalletPicker.tsx) */
+.dash-wallet-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--np-space-3);
+}
+.dash-wallet-picker__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--np-space-2);
+  max-width: 100%;
+}
+.dash-wallet-picker__anchor {
+  max-width: 100%;
+}
+.dash-wallet-picker > .dash-error {
+  align-self: stretch;
+}
+.dash-wallet-picker__trigger {
+  max-width: 100%;
+}
+.dash-wallet-picker__chevron {
+  margin-left: var(--np-space-1);
+  transition: transform var(--np-duration-fast) var(--np-ease);
+}
+.dash-wallet-picker__trigger[aria-expanded="true"] .dash-wallet-picker__chevron {
+  transform: rotate(180deg);
+}
+.dash-wallet-picker .np-popover.dash-wallet-picker__popover {
+  min-width: max(100%, 300px);
+}
+.dash-wallet-picker__menu:focus {
+  outline: none;
+}
+.dash-wallet-picker__head {
+  display: flex;
+  align-items: center;
+  gap: var(--np-space-2);
+  margin: 0;
+  padding: var(--np-space-2) var(--np-space-3);
+  font-size: var(--np-text-small);
+  line-height: 20px;
+  color: var(--np-color-text-secondary);
+}
+.dash-wallet-picker__head--error {
+  color: var(--np-color-danger-fg);
+}
+.dash-wallet-picker__empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--np-space-1);
+  padding: var(--np-space-3);
+  font-size: var(--np-text-small);
+  line-height: 20px;
+}
+.dash-wallet-picker__empty-title {
+  font-weight: var(--np-weight-medium);
+  color: var(--np-color-text);
+}
+.dash-wallet-picker__empty-hint {
+  color: var(--np-color-text-secondary);
+}
+.dash-wallet-picker__group {
+  display: contents;
+}
+.dash-wallet-picker__item {
+  min-height: 48px;
+}
+.dash-wallet-picker__item--footer {
+  min-height: 40px;
+  color: var(--np-color-accent-text);
+  font-weight: var(--np-weight-medium);
+}
+.dash-wallet-picker__item--last {
+  background: var(--np-color-accent-subtle);
+}
+.dash-wallet-picker__item--last .np-menu__description {
+  color: var(--np-color-accent-subtle-text);
+}
+.dash-wallet-picker__icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  object-fit: contain;
+}
+.dash-wallet-picker__item .np-avatar {
+  width: 28px;
+  height: 28px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dash-wallet-picker__chevron {
+    transition: none;
+  }
+}
+@media (max-width: 480px) {
+  .dash-wallet-picker,
+  .dash-wallet-picker__row,
+  .dash-wallet-picker__anchor,
+  .dash-wallet-picker__trigger,
+  .dash-wallet-picker__cancel {
+    width: 100%;
+  }
+  .dash-wallet-picker {
+    align-items: stretch;
+  }
+  /* the menu spans the card's content width under the trigger */
+  .dash-wallet-picker .np-popover.dash-wallet-picker__popover {
+    left: 0;
+    right: 0;
+    min-width: 0;
+    max-width: none;
+  }
+}

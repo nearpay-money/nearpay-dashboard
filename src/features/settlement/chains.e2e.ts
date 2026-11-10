@@ -100,8 +100,11 @@ test("live Solana destination: raw-message signature from a Wallet Standard wall
   const message = await page.getByTestId("challenge-message").textContent();
   await expect(page.getByTestId("solana-signer")).toBeVisible();
   await shots(page, "destination-solana-attest");
-  await page.getByRole("button", { name: "Sign with Solana wallet" }).click();
-  await page.getByRole("button", { name: "Sign with Test Solana Wallet" }).click();
+  await page.getByRole("button", { name: "Connect Solana wallet" }).click();
+  const wallet = page.getByRole("menuitem", { name: /Test Solana Wallet/ });
+  await expect(wallet).toBeFocused();
+  await shots(page, "destination-solana-picker");
+  await wallet.click();
   await expect(page.getByText("Signature verified.")).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { __solSigned: string }).__solSigned)).toBe(message);
   const body = api.callsTo("attestSettlementDestination")[0]?.body as { standard: string; signature: string };
@@ -121,7 +124,14 @@ test("live Solana: a base64 paste is refused before sending; program-derived add
   await page.getByLabel("Wallet address").fill("EyjEeiTxb4rvkoN3ZA2zTimuc6VyF8V1QuH9TT66Gkn6");
   api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
   await page.getByRole("button", { name: "Connect wallet & verify" }).click();
-  await page.getByText("Signed somewhere else? Paste the signature").click();
+  // no Solana wallet in this browser: the empty state is inside the menu, with the paste fallback
+  await page.getByRole("button", { name: "Connect Solana wallet" }).click();
+  await expect(page.getByTestId("wallet-picker-empty")).toContainText("No wallet found in this browser");
+  await expect(page.getByRole("menuitem", { name: "Search again" })).toBeFocused();
+  await shots(page, "destination-solana-picker-empty");
+  await page.getByRole("menuitem", { name: "Paste a signature instead" }).click();
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.getByTestId("solana-signature")).toBeFocused();
   await page.getByTestId("solana-signature").fill(Buffer.alloc(64, 7).toString("base64"));
   await page.getByRole("button", { name: "Verify signature" }).click();
   await expect(page.getByText(/Paste the signature in base58/)).toBeVisible();
@@ -151,10 +161,10 @@ test("live Bitcoin destination: P2WPKH/P2TR only, lower-cased, BIP-322 simple pa
   await expect(page.getByTestId("address-note")).toContainText("bc1qpct5sxzppv204tth290uen85nqkhzw9sq5m0ku");
   api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
   await page.getByRole("button", { name: "Connect wallet & verify" }).click();
+  await expect(page.getByTestId("bitcoin-signer")).toContainText("Sparrow");
   expect((api.callsTo("createSettlementDestination")[0]?.body as { address?: string } | undefined)?.address).toBe(
     "bc1qpct5sxzppv204tth290uen85nqkhzw9sq5m0ku",
   );
-  await expect(page.getByTestId("bitcoin-signer")).toContainText("Sparrow");
   await page.getByTestId("bip322-signature").fill(full);
   await page.getByRole("button", { name: "Verify signature" }).click();
   await expect(page.getByText(/doesn't look like a BIP-322 "simple" signature/)).toBeVisible();

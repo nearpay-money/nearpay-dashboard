@@ -71,7 +71,7 @@ test.describe("home and settlement destinations", () => {
     await page.getByRole("button", { name: "Connect wallet & verify" }).click();
     await expect(page.getByTestId("challenge-message")).toContainText(`Address: ${NEAR_ACCOUNT}`);
     expect(api.callsTo("createSettlementDestination")[0]?.headers["nearpay-mode"]).toBe("live");
-    await page.getByRole("button", { name: "Sign with NEAR wallet" }).click();
+    await page.getByRole("button", { name: "Connect NEAR wallet" }).click();
     await page.locator('.connect-item[data-type="test-near-wallet"]').click();
     await expect(page.getByText("Signature verified.")).toBeVisible();
     await expect(page.getByText("1WZ5-TFJZ-CM")).toBeVisible();
@@ -99,8 +99,27 @@ test.describe("home and settlement destinations", () => {
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
     await page.getByRole("button", { name: "Connect wallet & verify" }).click();
     const message = await page.getByTestId("challenge-message").textContent();
-    await page.getByRole("button", { name: "Sign with EVM wallet" }).click();
-    await page.getByRole("button", { name: "Sign with Test EVM Wallet" }).click();
+    // wallet picker (menu button): keyboard opens it on the detected wallet, Esc closes and returns focus
+    const trigger = page.getByRole("button", { name: "Connect EVM wallet" });
+    await expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    await trigger.focus();
+    await page.keyboard.press("Enter");
+    const menu = page.getByRole("menu");
+    const item = menu.getByRole("menuitem", { name: /Test EVM Wallet/ });
+    await expect(item).toBeFocused();
+    await expect(item).toContainText("Detected");
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await page.keyboard.press("ArrowDown");
+    await expect(item).toBeFocused();
+    await page.getByTestId("challenge-message").click(); // click outside closes
+    await expect(menu).toHaveCount(0);
+    await trigger.click();
+    await expect(item).toBeFocused();
+    await page.keyboard.press("Enter");
     await expect(page.getByText("Signature verified.")).toBeVisible();
     const calls = (
       await page.evaluate(
@@ -115,6 +134,32 @@ test.describe("home and settlement destinations", () => {
     expect(body.signature).toMatch(/^0x[0-9a-f]{130}$/);
   });
 
+  test("EVM wallet picker: a wrong account shows the error and reopens the menu on that wallet", async ({
+    page,
+    api,
+  }) => {
+    const other = "0x1111111111111111111111111111111111111111";
+    await signIn(page, api, "/settlement/new?mode=live");
+    await page.getByLabel("Currency").selectOption("USDC");
+    await page.getByLabel("Network", { exact: true }).selectOption(USDC_BASE);
+    await page.getByRole("radio", { name: /Address on Base/ }).check();
+    await page.getByLabel("Wallet address").fill(other);
+    await page.getByLabel("Destination name").fill("Base USDC");
+    api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
+    await page.getByRole("button", { name: "Connect wallet & verify" }).click();
+    await page.getByRole("button", { name: "Connect EVM wallet" }).click();
+    await page.getByRole("menuitem", { name: /Test EVM Wallet/ }).click();
+    await expect(page.getByRole("alert")).toContainText(`switch it to ${other}`);
+    const item = page.getByRole("menu").getByRole("menuitem", { name: /Test EVM Wallet/ });
+    await expect(item).toBeFocused();
+    await expect(item).toContainText("Tried last");
+    await expect(page.getByRole("button", { name: "Connect EVM wallet" })).not.toHaveAttribute("aria-busy", "true");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await expect(page.getByRole("alert")).toContainText(`switch it to ${other}`);
+    expect(api.callsTo("attestSettlementDestination")).toHaveLength(0);
+  });
+
   test("expired challenge: request a new one (step-up), then sign it (spec 0.1.5)", async ({ page, api }) => {
     await signIn(page, api, "/settlement/new?mode=live");
     await page.getByLabel("Currency").selectOption("USDC");
@@ -125,7 +170,7 @@ test.describe("home and settlement destinations", () => {
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
     await page.getByRole("button", { name: "Connect wallet & verify" }).click();
     await expect(page.getByText("The challenge expired.")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Sign with NEAR wallet" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Connect NEAR wallet" })).toHaveCount(0);
     const firstChallenge = await page.getByTestId("challenge-message").textContent();
 
     api.challengeTtlS = 600;
@@ -133,7 +178,7 @@ test.describe("home and settlement destinations", () => {
     await page.getByRole("button", { name: "Request new challenge" }).click();
     await expect(page.getByRole("dialog", { name: "Confirm it's you" })).toBeVisible();
     await page.getByRole("button", { name: "Confirm with passkey" }).click();
-    await expect(page.getByRole("button", { name: "Sign with NEAR wallet" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Connect NEAR wallet" })).toBeVisible();
     const calls = api.callsTo("challengeSettlementDestination");
     expect(calls).toHaveLength(2);
     expect(calls[0]?.headers["idempotency-key"]).toBe(calls[1]?.headers["idempotency-key"]);
@@ -143,7 +188,7 @@ test.describe("home and settlement destinations", () => {
 
     // the attestation answers the latest challenge (earlier ones stop being accepted)
     const latest = api.challenges.get(api.destinations.live[0]?.id ?? "")?.id;
-    await page.getByRole("button", { name: "Sign with NEAR wallet" }).click();
+    await page.getByRole("button", { name: "Connect NEAR wallet" }).click();
     await page.locator('.connect-item[data-type="test-near-wallet"]').click();
     await expect(page.getByText("Signature verified.")).toBeVisible();
     expect(api.callsTo("attestSettlementDestination")[0]?.body).toMatchObject({ challenge_id: latest });
@@ -200,7 +245,7 @@ test.describe("home and settlement destinations", () => {
     await page.getByLabel("Destination name").fill("Wrong");
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
     await page.getByRole("button", { name: "Connect wallet & verify" }).click();
-    await page.getByRole("button", { name: "Sign with NEAR wallet" }).click();
+    await page.getByRole("button", { name: "Connect NEAR wallet" }).click();
     await page.locator('.connect-item[data-type="test-near-wallet"]').click();
     await expect(page.getByRole("alert")).toContainText("switch it to someone-else.near");
     expect(api.callsTo("attestSettlementDestination")).toHaveLength(0);
