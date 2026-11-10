@@ -161,10 +161,10 @@ test("live Bitcoin destination: P2WPKH/P2TR only, lower-cased, BIP-322 simple pa
   await expect(page.getByTestId("address-note")).toContainText("bc1qpct5sxzppv204tth290uen85nqkhzw9sq5m0ku");
   api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
   await page.getByRole("button", { name: "Connect wallet & verify" }).click();
+  await expect(page.getByTestId("bitcoin-signer")).toContainText("Sparrow");
   expect((api.callsTo("createSettlementDestination")[0]?.body as { address?: string } | undefined)?.address).toBe(
     "bc1qpct5sxzppv204tth290uen85nqkhzw9sq5m0ku",
   );
-  await expect(page.getByTestId("bitcoin-signer")).toContainText("Sparrow");
   await page.getByTestId("bip322-signature").fill(full);
   await page.getByRole("button", { name: "Verify signature" }).click();
   await expect(page.getByText(/doesn't look like a BIP-322 "simple" signature/)).toBeVisible();
