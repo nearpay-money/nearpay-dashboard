@@ -43,8 +43,8 @@
   outline: 2px solid var(--np-color-focus);
   outline-offset: 2px;
 }
-.npf-appearance__swatch--087a68 {
-  background: #087a68;
+.npf-appearance__swatch--007a68 {
+  background: #007a68;
 }
 .npf-appearance__swatch--1d4ed8 {
   background: #1d4ed8;
@@ -67,9 +67,8 @@
 }
 .npf-appearance__eyebrow {
   margin: 0 0 var(--np-space-4);
-  font-size: var(--np-text-caption);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--np-text-small);
+  font-weight: var(--np-weight-semibold);
   color: var(--np-color-text-secondary);
 }
 .npf-appearance__preview {

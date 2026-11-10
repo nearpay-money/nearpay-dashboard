@@ -16,9 +16,8 @@
 }
 .npf-payment-links__eyebrow {
   margin: 0 0 var(--np-space-4);
-  font-size: var(--np-text-caption);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: var(--np-text-small);
+  font-weight: var(--np-weight-semibold);
   color: var(--np-color-text-secondary);
 }
 .npf-payment-links__merchant {
@@ -76,4 +75,77 @@
   display: flex;
   flex-direction: column;
   gap: var(--np-space-0-5);
+}
+
+/* design v2 checkout preview: navy order side over the pay side */
+.npf-plink-ck {
+  overflow: hidden;
+  border: 1px solid var(--np-color-border);
+  border-radius: var(--np-radius-panel);
+  background: var(--np-color-surface);
+}
+.npf-plink-ck p {
+  margin: 0;
+}
+.npf-plink-ck__order {
+  display: flex;
+  flex-direction: column;
+  gap: var(--np-space-2);
+  padding: var(--np-space-6);
+  background: var(--np-color-navy);
+  color: var(--np-color-on-navy);
+}
+.npf-plink-ck__merchant {
+  display: flex;
+  align-items: center;
+  gap: var(--np-space-2);
+  font-size: var(--np-text-small);
+  font-weight: var(--np-weight-semibold);
+  color: var(--np-color-on-navy-secondary);
+}
+.npf-plink-ck__avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--np-color-on-navy);
+  color: var(--np-color-navy);
+  font-size: 13px;
+  font-weight: var(--np-weight-bold);
+}
+.npf-plink-ck .npf-plink-ck__title {
+  margin-top: var(--np-space-3);
+  font-size: var(--np-text-body);
+  color: var(--np-color-on-navy-secondary);
+  overflow-wrap: anywhere;
+}
+.npf-plink-ck__price {
+  font-size: var(--np-text-amount-hero, 40px);
+  font-weight: var(--np-weight-strong);
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.npf-plink-ck__note {
+  font-size: var(--np-text-caption);
+  color: var(--np-color-on-navy-muted);
+}
+.npf-plink-ck__pay {
+  display: flex;
+  flex-direction: column;
+  gap: var(--np-space-4);
+  padding: var(--np-space-6);
+}
+.npf-plink-ck__label {
+  font-size: var(--np-text-small);
+  font-weight: var(--np-weight-semibold);
+}
+.npf-plink-ck__secured {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--np-space-2);
+  font-size: var(--np-text-caption);
+  color: var(--np-color-text-secondary);
 }

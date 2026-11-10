@@ -19,8 +19,9 @@ import {
   Money,
   truncateMiddle,
 } from "@nearpay-internal/ui";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useApp } from "../../app/context";
+import { WalletPicker } from "../../ui/WalletPicker";
 import { discoverEvmWallets, type EvmWallet, signEip191 } from "../../wallets/evm";
 import { nearConnector, signNep413 } from "../../wallets/near";
 import { useRefundCalls } from "./api";
@@ -103,14 +104,9 @@ function SignIntentReview({ refund, action: a, onUpdated }: SignRefundProps & { 
   const mismatch = useCheck(refund);
   const { busy, error, run } = useRun();
   const [expired, setExpired] = useState(false);
-  const [evm, setEvm] = useState<EvmWallet[]>();
   const signer = intentSigner(a);
   const sym = app.assets.get(a.transfer.token)?.symbol;
   const blocked = app.gate(submitRefundTx);
-
-  useEffect(() => {
-    if (signer === "erc191") void discoverEvmWallets().then(setEvm);
-  }, [signer]);
 
   if (mismatch) return <ErrorState error={mismatch} title="This return can't be signed" />;
 
@@ -166,33 +162,20 @@ function SignIntentReview({ refund, action: a, onUpdated }: SignRefundProps & { 
           Sign with NEAR wallet
         </Button>
       ) : signer === "erc191" ? (
-        evm === undefined ? (
-          <p className="np-text-secondary">Looking for browser wallets…</p>
-        ) : evm.length === 0 ? (
-          <Callout tone="warning" title="No EVM wallet found">
-            Install or unlock the wallet that controls {truncateMiddle(a.signer_id, 6, 4)}, then reopen this review.
-          </Callout>
-        ) : (
-          <div className="np-stack np-stack--sm">
-            {evm.map((w) => (
-              <Button
-                key={w.id}
-                fullWidth
-                loading={busy === w.id}
-                loadingText="Waiting for your wallet…"
-                disabled={Boolean(blocked)}
-                onClick={() =>
-                  run(w.id, async () => {
-                    const sig = await signEip191(w.provider, a.signer_id, a.payload);
-                    await submit(erc191MultiPayload(a, sig));
-                  })
-                }
-              >
-                Sign with {w.name}
-              </Button>
-            ))}
-          </div>
-        )
+        <WalletPicker<EvmWallet>
+          label="Connect EVM wallet"
+          discover={() => discoverEvmWallets()}
+          disabled={Boolean(blocked)}
+          onSign={async (w, ctx) => {
+            ctx.setPhase("signing");
+            const sig = await signEip191(w.provider, a.signer_id, a.payload);
+            if (ctx.signal.aborted) return;
+            ctx.setPhase("verifying");
+            await submit(erc191MultiPayload(a, sig));
+          }}
+          installHint={`Install or unlock the wallet that controls ${truncateMiddle(a.signer_id, 6, 4)}, then search again.`}
+          data-testid="refund-evm-picker"
+        />
       ) : (
         <Callout tone="warning" title="No supported signing method">
           This Intents account can't be signed from the dashboard ({a.standards.join(", ")}).
@@ -212,17 +195,12 @@ function SendReview({ refund, action: a, onUpdated }: SignRefundProps & { action
   const [expired, setExpired] = useState(false);
   const canWallet = evmTransfer(a) !== null;
   const [manual, setManual] = useState(!canWallet);
-  const [evm, setEvm] = useState<EvmWallet[]>();
   const [hash, setHash] = useState("");
   const [sender, setSender] = useState("");
   const needsSender = a.chain.startsWith("near:");
   const leg = refund.legs[0];
   const recipientAsset = app.assets.get(refund.recipient.asset_id);
   const blocked = app.gate(submitRefundTx);
-
-  useEffect(() => {
-    if (canWallet) void discoverEvmWallets().then(setEvm);
-  }, [canWallet]);
 
   if (mismatch) return <ErrorState error={mismatch} title="This return can't be signed" />;
 
@@ -309,31 +287,20 @@ function SendReview({ refund, action: a, onUpdated }: SignRefundProps & { action
         </div>
       ) : (
         <div className="np-stack np-stack--sm">
-          {evm === undefined ? (
-            <p className="np-text-secondary">Looking for browser wallets…</p>
-          ) : evm.length === 0 ? (
-            <Callout tone="warning" title="No browser wallet found">
-              Unlock the wallet that controls {truncateMiddle(a.from, 6, 4)}, or send it yourself.
-            </Callout>
-          ) : (
-            evm.map((w) => (
-              <Button
-                key={w.id}
-                fullWidth
-                loading={busy === w.id}
-                loadingText="Waiting for your wallet…"
-                disabled={Boolean(blocked)}
-                onClick={() =>
-                  run(w.id, async () => {
-                    const tx = await sendEvmTransfer(w.provider, a);
-                    await reported(tx);
-                  })
-                }
-              >
-                Send with {w.name}
-              </Button>
-            ))
-          )}
+          <WalletPicker<EvmWallet>
+            label="Connect EVM wallet"
+            discover={() => discoverEvmWallets()}
+            disabled={Boolean(blocked)}
+            onSign={async (w, ctx) => {
+              ctx.setPhase("signing");
+              const tx = await sendEvmTransfer(w.provider, a);
+              // the transfer is already broadcast: report it even if "Cancel" was pressed meanwhile
+              ctx.setPhase("verifying");
+              await reported(tx);
+            }}
+            installHint={`Unlock the wallet that controls ${truncateMiddle(a.from, 6, 4)} and search again, or send it yourself.`}
+            data-testid="refund-send-picker"
+          />
           <Button variant="secondary" fullWidth onClick={() => setManual(true)} data-testid="send-manually">
             Send it yourself
           </Button>

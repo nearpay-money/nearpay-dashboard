@@ -11,20 +11,20 @@ function AddDestinationRoute() {
 
 export default defineFeature({
   id: "settlement",
-  nav: [{ slot: "settlement", label: "Settlement", href: "/settlement" }],
+  nav: [{ slot: "settlement", label: "Payout wallets", href: "/settlement" }],
   routes: [
     {
       name: "settlement",
       pattern: "/settlement",
       section: "settlement",
-      title: "Settlement",
+      title: "Payout wallets",
       render: () => <Destinations />,
     },
     {
       name: "settlement-new",
       pattern: "/settlement/new",
       section: "settlement",
-      title: "Add a destination",
+      title: "Add a payout wallet",
       render: () => <AddDestinationRoute />,
     },
     {

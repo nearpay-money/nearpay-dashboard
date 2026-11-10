@@ -41,13 +41,13 @@
 import type { Role } from "@nearpay/spec";
 import type { ReactNode } from "react";
 
-/** Sidebar slots, in Figma order. */
+/** Sidebar slots, in design v2 order (artboard "Dashboard-proposed"; Developers and Settings form a second group). */
 export const NAV_SLOTS = [
   "overview",
   "payments",
   "payment-links",
-  "customers",
   "billing",
+  "customers",
   "agent-payments",
   "settlement",
   "developers",

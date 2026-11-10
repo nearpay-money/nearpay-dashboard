@@ -4,7 +4,8 @@
  * Unknown values (open enums from a newer server) render as received, humanized, with a neutral tone.
  */
 
-export type Tone = "success" | "warning" | "danger" | "neutral" | "info";
+/** Kit 0.5 tones; `progress` (violet) = still moving (Confirming, Payment detected, Pending). */
+export type Tone = "success" | "progress" | "warning" | "danger" | "neutral" | "info";
 
 export type StatusKind =
   | "payment"
@@ -26,8 +27,8 @@ type Entry = readonly [label: string, tone: Tone];
 
 const TABLES: Readonly<Record<StatusKind, Readonly<Record<string, Entry>>>> = {
   payment: {
-    requires_payment: ["Not paid", "warning"],
-    processing: ["Confirming", "warning"],
+    requires_payment: ["Not paid", "neutral"],
+    processing: ["Confirming", "progress"],
     requires_review: ["Review", "warning"],
     succeeded: ["Paid", "success"],
     canceled: ["Canceled", "neutral"],
@@ -35,12 +36,12 @@ const TABLES: Readonly<Record<StatusKind, Readonly<Record<string, Entry>>>> = {
   },
   attempt: {
     quoting: ["Quoting", "neutral"],
-    awaiting_deposit: ["Awaiting payment", "warning"],
-    deposit_detected: ["Payment detected", "warning"],
+    awaiting_deposit: ["Awaiting payment", "neutral"],
+    deposit_detected: ["Payment detected", "progress"],
     incomplete_deposit: ["Incomplete payment", "warning"],
-    processing: ["Confirming", "warning"],
-    settling: ["Confirming", "warning"],
-    verifying: ["Confirming", "warning"],
+    processing: ["Confirming", "progress"],
+    settling: ["Confirming", "progress"],
+    verifying: ["Confirming", "progress"],
     held: ["Under review", "warning"],
     succeeded: ["Complete", "success"],
     failed: ["Failed", "danger"],
@@ -61,19 +62,19 @@ const TABLES: Readonly<Record<StatusKind, Readonly<Record<string, Entry>>>> = {
   },
   delivery: {
     succeeded: ["Delivered", "success"],
-    pending: ["Pending", "warning"],
+    pending: ["Pending", "progress"],
     failed: ["Failed", "danger"],
     abandoned: ["Abandoned", "danger"],
   },
   agent_payment: {
     settled: ["Paid", "success"],
-    submitted: ["Confirming", "warning"],
-    pending: ["Pending", "warning"],
+    submitted: ["Confirming", "progress"],
+    pending: ["Pending", "progress"],
     failed: ["Failed", "danger"],
     expired: ["Expired", "danger"],
   },
   kyb: {
-    not_started: ["Not submitted", "warning"],
+    not_started: ["Not submitted", "neutral"],
     pending: ["Submitted", "info"],
     needs_info: ["Action needed", "warning"],
     approved: ["Live", "success"],
@@ -128,8 +129,8 @@ const GENERIC: Readonly<Record<string, Tone>> = {
   complete: "success",
   approved: "success",
   settled: "success",
-  pending: "warning",
-  processing: "warning",
+  pending: "progress",
+  processing: "progress",
   failed: "danger",
   rejected: "danger",
   expired: "danger",

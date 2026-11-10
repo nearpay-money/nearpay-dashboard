@@ -48,7 +48,7 @@ test.describe("payments and agent payments", () => {
 
   test("mode switch refetches in live mode", async ({ page, api }) => {
     await signIn(page, api, "/payments");
-    await page.getByRole("switch", { name: "Live mode" }).click();
+    await page.getByRole("radio", { name: "Live" }).click();
     await expect(page.getByRole("heading", { name: "No live payments yet" })).toBeVisible();
     expect(api.callsTo("listPaymentIntents").at(-1)?.headers["nearpay-mode"]).toBe("live");
   });

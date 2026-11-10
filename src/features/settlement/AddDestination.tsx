@@ -52,10 +52,10 @@ export function AddDestination() {
   const family = chainFamily(chain);
   const addrCheck = checkAddressForChain(family, address, live);
 
-  const back = { label: "Settlement", to: "/settlement" };
+  const back = { label: "Payout wallets", to: "/settlement" };
   if (done)
     return (
-      <Page title="Destination added" back={back} width="narrow">
+      <Page title="Payout wallet added" back={back} width="narrow">
         <DestinationResult d={done} />
       </Page>
     );
@@ -63,7 +63,7 @@ export function AddDestination() {
     return (
       <Page
         title="Verify your wallet"
-        subtitle="Prove you control this destination before it can receive payments."
+        subtitle="Prove you control this wallet before it can receive payments."
         back={back}
         width="narrow"
       >
@@ -115,13 +115,13 @@ export function AddDestination() {
 
   return (
     <Page
-      title="Add a destination"
+      title="Add a payout wallet"
       subtitle={`Tell us where your future ${app.mode} payments should arrive.`}
       back={back}
       width="narrow"
     >
       <form className="dash-form np-card np-card--pad-md" onSubmit={submit} noValidate>
-        <Field label="Destination name" hint="Shown in your dashboard, e.g. Treasury." error={errFor("label")}>
+        <Field label="Wallet name" hint="Shown in your dashboard, e.g. Treasury." error={errFor("label")}>
           {(id) => (
             <Input
               id={id}
@@ -280,13 +280,13 @@ export function AddDestination() {
             and a short security hold if one applies, this destination can receive new payments.
           </Callout>
         ) : (
-          <Callout tone="info" title="Test destinations are active immediately">
+          <Callout tone="info" title="Test payout wallets are active immediately">
             They receive sandbox settlements only. Test mode · no real funds move.
           </Callout>
         )}
         <ErrorNote error={error} />
         <Button type="submit" busy={busy} blocked={blocked} fullWidth className="np-button--full">
-          {live ? "Connect wallet & verify" : "Add destination"}
+          {live ? "Connect wallet & verify" : "Add payout wallet"}
         </Button>
         <p className="np-text-caption np-text-secondary">
           <Link to="/settlement">Cancel</Link>

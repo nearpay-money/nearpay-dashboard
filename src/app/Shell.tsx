@@ -1,17 +1,20 @@
 /**
- * Workspace shell (Figma "workspace shell", tiles b00–b04; mobile b04/b05): the kit AppShell with the
- * sidebar slots filled from the feature registry, the account switcher (`listMemberships` /
- * `switchSessionAccount`, spec 0.2.0), breadcrumb, Live/Test switch, notifications, and the test/live
- * banners. Below 960 px the sidebar is a drawer (kit), closed again after every navigation.
+ * Workspace shell (design v2, artboard "Dashboard-proposed"): the kit AppShell v2 — navy sidebar with the
+ * Convergence logo, the account switcher (`listMemberships` / `switchSessionAccount`, spec 0.2.0), the
+ * registry's sidebar slots in two groups (workspace, then build: Developers, Settings), the signed-in user
+ * and Sign out at the bottom; a top bar with the page/ID jumper (`Jump.tsx`), the Live/Test switch and
+ * notifications; the test/live banners. Below 960 px the kit shows its navy mobile bar and the sidebar
+ * opens as a drawer, closed again after every navigation.
  */
 import { listMemberships, listPaymentIntents, listSettlementDestinations } from "@nearpay/spec";
-import { AppShell, Breadcrumb, Button, Callout, type NavGroup, StatusBadge } from "@nearpay-internal/ui";
+import { AppShell, Breadcrumb, Button, Callout, ModeSwitch, type NavGroup } from "@nearpay-internal/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useAsync } from "../lib/hooks";
 import { humanStatus } from "../lib/status";
 import { ErrorNote, Loading, Modal } from "../ui/ui";
 import { Link, useApp } from "./context";
-import type { NavSlot } from "./registry";
+import { useJump } from "./Jump";
+import type { NavEntry, NavSlot } from "./registry";
 
 export const HELP_URL = "https://docs.nearpay.money/support";
 
@@ -26,29 +29,6 @@ export interface ShellProps {
 function shortId(id: string): string {
   const [prefix, rest = ""] = id.split("_");
   return rest.length > 8 ? `${prefix}_…${rest.slice(-4)}` : id;
-}
-
-/** Live/Test switch styled as the Figma mode pill (a `switch`: checked = live). */
-function ModeSwitch() {
-  const app = useApp();
-  const live = app.mode === "live";
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={live}
-      aria-label="Live mode"
-      className={`dash-mode-switch dash-mode-switch--${app.mode}`}
-      title={live ? "Viewing live data. Switch to test mode." : "Viewing test data. Switch to live mode."}
-      onClick={() => app.setMode(live ? "test" : "live")}
-      data-testid="mode-switch"
-    >
-      <span className="dash-mode-switch__track" aria-hidden="true">
-        <span className="dash-mode-switch__thumb" />
-      </span>
-      <StatusBadge tone={live ? "success" : "warning"}>{live ? "Live" : "Test"}</StatusBadge>
-    </button>
-  );
 }
 
 function AccountSwitcher({ onClose }: { onClose: () => void }) {
@@ -146,14 +126,14 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
     if (d.status === "pending_approval")
       items.push({
         key: d.id,
-        title: "A destination is awaiting approval",
+        title: "A payout wallet is awaiting approval",
         body: `${d.label} needs an owner or admin to approve it.`,
         to: "/settlement",
       });
     if (d.status === "pending_verification")
       items.push({
         key: d.id,
-        title: "A destination is awaiting its wallet signature",
+        title: "A payout wallet is awaiting its signature",
         body: `${d.label} receives nothing until its wallet signs.`,
         to: `/settlement/${d.id}/attest`,
       });
@@ -179,29 +159,26 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
+/** Sidebar slots of the second group (separated by a rule in the v2 sidebar). */
+const BUILD_SLOTS: ReadonlySet<NavSlot> = new Set<NavSlot>(["developers", "settings"]);
+
 export function Shell({ section, crumb, children }: ShellProps) {
   const app = useApp();
   const [switching, setSwitching] = useState(false);
   const [notifying, setNotifying] = useState(false);
   const accountName = app.account?.display_name ?? app.session?.account.display_name ?? "";
   const navEntries = app.registry.nav;
+  const item = (n: NavEntry) => ({ id: n.slot, label: n.label, href: app.href(n.href), current: n.slot === section });
   const nav: NavGroup[] = [
-    {
-      label: "Workspace",
-      items: navEntries.map((n) => ({
-        id: n.slot,
-        label: n.label,
-        href: app.href(n.href),
-        current: n.slot === section,
-      })),
-    },
-  ];
+    { label: "Workspace", hideLabel: true, items: navEntries.filter((n) => !BUILD_SLOTS.has(n.slot)).map(item) },
+    { label: "Build", hideLabel: true, items: navEntries.filter((n) => BUILD_SLOTS.has(n.slot)).map(item) },
+  ].filter((g) => g.items.length > 0);
   const sectionEntry = navEntries.find((n) => n.slot === section);
-  const crumbs = [
-    { label: accountName, href: app.href("/") },
-    ...(sectionEntry ? [{ label: sectionEntry.label, href: crumb ? app.href(sectionEntry.href) : undefined }] : []),
-    ...(crumb ? [{ label: crumb }] : []),
-  ];
+  // detail pages and forms get a breadcrumb under the top bar; section pages are named by their heading
+  const crumbs = crumb
+    ? [...(sectionEntry ? [{ label: sectionEntry.label, href: app.href(sectionEntry.href) }] : []), { label: crumb }]
+    : undefined;
+  const jump = useJump();
 
   // close the mobile drawer and move focus to the page after a navigation
   const path = app.location.pathname;
@@ -232,19 +209,28 @@ export function Shell({ section, crumb, children }: ShellProps) {
       className={`dash-shell dash-shell--${app.mode}`}
       workspace={{
         name: accountName,
-        subtitle: app.account?.verified_legal_name ?? (app.account ? shortId(app.account.id) : undefined),
+        subtitle: app.account?.verified_legal_name ?? undefined,
         onSwitch: () => setSwitching(true),
       }}
       nav={nav}
+      navLabel="Main"
       footerLinks={[{ label: "Help & support", href: HELP_URL }]}
       user={app.session ? { name: app.session.user.email, role: role ? humanStatus(role) : undefined } : undefined}
-      breadcrumb={<Breadcrumb items={crumbs} />}
+      footerActions={
+        <Button variant="quiet" size="sm" className="dash-signout" onClick={() => void app.signOut()}>
+          Sign out
+        </Button>
+      }
+      breadcrumb={crumbs ? <Breadcrumb items={crumbs} /> : undefined}
+      search={jump.search}
+      modeSwitch={
+        <span className="dash-mode" data-testid="mode-switch">
+          <ModeSwitch value={app.mode} onChange={(m) => app.setMode(m)} label="Mode" />
+        </span>
+      }
       topbarActions={
         <>
-          <ModeSwitch />
-          <Button variant="ghost" size="sm" className="dash-signout" onClick={() => void app.signOut()}>
-            Sign out
-          </Button>
+          {jump.panel}
           <span hidden data-testid="account-name">
             {accountName}
           </span>
@@ -254,7 +240,7 @@ export function Shell({ section, crumb, children }: ShellProps) {
     >
       {app.mode === "test" && (
         <p className="dash-banner dash-banner--test" data-testid="test-banner">
-          <strong>Test mode — no real funds.</strong> Objects use the sandbox rail.
+          <strong>You're in test mode.</strong> No real funds move; payments use the sandbox.
         </p>
       )}
       {app.mode === "live" && req && !req.live_enabled && (
@@ -265,7 +251,7 @@ export function Shell({ section, crumb, children }: ShellProps) {
           data-testid="live-banner"
         >
           <p>
-            Live keys and webhook endpoints unlock once your business details are reviewed and a live destination is
+            Live keys and webhook endpoints unlock once you save your business details and a live payout wallet is
             active. <Link to="/setup">View requirements</Link>
           </p>
         </Callout>

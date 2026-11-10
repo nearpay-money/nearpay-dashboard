@@ -5,10 +5,10 @@
  */
 import { deriveAccent } from "@nearpay-internal/ui";
 
-export const DEFAULT_ACCENT = "#087A68";
+export const DEFAULT_ACCENT = "#007A68";
 
 export const PRESETS = [
-  { value: "#087A68", label: "NearPay teal" },
+  { value: "#007A68", label: "NearPay teal" },
   { value: "#1D4ED8", label: "Blue" },
   { value: "#6D28D9", label: "Violet" },
   { value: "#BE123C", label: "Rose" },
@@ -70,7 +70,7 @@ export function validate(f: AppearanceForm): { displayName?: string; accent?: st
   const n = f.displayName.trim();
   if (!n) e.displayName = "Enter the name customers see.";
   else if (n.length > 100) e.displayName = "Use at most 100 characters.";
-  if (!normalizeHex(f.accent)) e.accent = "Enter a colour like #087A68.";
+  if (!normalizeHex(f.accent)) e.accent = "Enter a colour like #007A68.";
   return e;
 }
 

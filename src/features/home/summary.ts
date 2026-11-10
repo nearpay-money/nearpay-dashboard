@@ -1,16 +1,22 @@
 /**
- * Overview numbers from real payment intents (no analytics endpoint in v1): settled volume and trend,
- * successful payments, what needs attention, and daily volume for the chart. Amounts are summed as
+ * Home numbers from real payment intents (no analytics endpoint in v1): settled volume and trend,
+ * successful payments of those started, average payment, what needs attention, and daily volume split by
+ * the chain the customer paid from (the paying attempt's `origin_chain`) for the chart. Amounts are summed as
  * bigint minor units of one fiat currency (INV-5); percentages are display-only ratios.
  */
 import type { PaymentIntent } from "@nearpay/spec";
 
-type Intent = Pick<PaymentIntent, "status" | "amount" | "currency" | "created" | "succeeded_at">;
+type Attempt = Pick<PaymentIntent["attempts"][number], "status" | "origin_chain" | "is_overpayment">;
+type Intent = Pick<PaymentIntent, "status" | "amount" | "currency" | "created" | "succeeded_at"> & {
+  readonly attempts?: readonly Attempt[];
+};
 
 export interface DayBucket {
   /** Local midnight (unix seconds) of the day. */
   readonly start: number;
   readonly value: bigint;
+  /** The day's volume by the chain the customer paid from (CAIP-2 id; `""` when no attempt says). */
+  readonly byChain: ReadonlyMap<string, bigint>;
 }
 
 export interface OverviewSummary {
@@ -30,6 +36,25 @@ export interface OverviewSummary {
   /** Succeeded payments priced in another currency or an asset (not in `volume`). */
   readonly otherCurrency: number;
   readonly days: readonly DayBucket[];
+  /** Succeeded payments in `currency` in the period (the base of `average`). */
+  readonly paidInCurrency: number;
+  /** Average succeeded payment in `currency` (bigint floor division), or null with none. */
+  readonly average: bigint | null;
+  /** Origin chains by volume in the period, largest first. */
+  readonly chains: readonly { readonly chain: string; readonly value: bigint }[];
+  /** Latest `succeeded_at` among the intents (unix seconds), or null. */
+  readonly lastPaidAt: number | null;
+}
+
+/** The chain the customer paid from: the attempt that paid the intent (not an overpayment), else the newest. */
+export function paidFromChain(pi: { readonly attempts?: readonly Attempt[] }): string {
+  const a = pi.attempts ?? [];
+  return (
+    a.find((x) => x.status === "succeeded" && !x.is_overpayment)?.origin_chain ??
+    a.find((x) => x.status === "succeeded")?.origin_chain ??
+    a[0]?.origin_chain ??
+    ""
+  );
 }
 
 export const PERIOD_DAYS = 7;
@@ -69,7 +94,11 @@ export function summarize(intents: readonly Intent[], nowSec: number, days = PER
   let reviews = 0;
   let delayed = 0;
   let otherCurrency = 0;
+  let paidInCurrency = 0;
+  let lastPaidAt: number | null = null;
   const buckets = starts.map(() => 0n);
+  const chainBuckets = starts.map(() => new Map<string, bigint>());
+  const chainTotals = new Map<string, bigint>();
   for (const pi of intents) {
     if (pi.status === "requires_review") reviews++;
     if (pi.status === "processing" && nowSec - pi.created > DELAYED_AFTER_S) delayed++;
@@ -77,6 +106,7 @@ export function summarize(intents: readonly Intent[], nowSec: number, days = PER
     const inPrev = pi.created >= prevStart && pi.created < periodStart;
     if (inPeriod) total++;
     if (pi.status !== "succeeded") continue;
+    if (pi.succeeded_at != null && (lastPaidAt === null || pi.succeeded_at > lastPaidAt)) lastPaidAt = pi.succeeded_at;
     if (inPeriod) succeeded++;
     if (pi.currency !== currency) {
       if (inPeriod) otherCurrency++;
@@ -86,10 +116,15 @@ export function summarize(intents: readonly Intent[], nowSec: number, days = PER
     if (inPrev) previousVolume += amount;
     if (!inPeriod) continue;
     volume += amount;
+    paidInCurrency++;
     const at = pi.succeeded_at ?? pi.created;
     let idx = starts.length - 1;
     while (idx > 0 && at < (starts[idx] as number)) idx--;
     buckets[idx] = (buckets[idx] as bigint) + amount;
+    const chain = paidFromChain(pi);
+    const day = chainBuckets[idx] as Map<string, bigint>;
+    day.set(chain, (day.get(chain) ?? 0n) + amount);
+    chainTotals.set(chain, (chainTotals.get(chain) ?? 0n) + amount);
   }
   const permille = (num: bigint, den: bigint) => Number((num * 1000n) / den);
   return {
@@ -103,7 +138,17 @@ export function summarize(intents: readonly Intent[], nowSec: number, days = PER
     reviews,
     delayed,
     otherCurrency,
-    days: starts.map((start, i) => ({ start, value: buckets[i] as bigint })),
+    days: starts.map((start, i) => ({
+      start,
+      value: buckets[i] as bigint,
+      byChain: chainBuckets[i] as Map<string, bigint>,
+    })),
+    paidInCurrency,
+    average: paidInCurrency > 0 ? volume / BigInt(paidInCurrency) : null,
+    chains: [...chainTotals.entries()]
+      .map(([chain, value]) => ({ chain, value }))
+      .sort((a, b) => (b.value > a.value ? 1 : b.value < a.value ? -1 : a.chain.localeCompare(b.chain))),
+    lastPaidAt,
   };
 }
 

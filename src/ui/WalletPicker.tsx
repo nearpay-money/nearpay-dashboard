@@ -1,5 +1,5 @@
 /**
- * Wallet picker for message signing (settlement attestations): one primary "Connect … wallet" menu
+ * Wallet picker for signing (settlement attestations, refund signing): one primary "Connect … wallet" menu
  * button. Opening it runs wallet discovery once (EIP-6963, Wallet Standard, injected Bitcoin providers)
  * and lists the detected wallets in a dropdown menu (WAI-ARIA menu button); an empty result is shown
  * inside the menu, with "Search again" and, where the flow has one, "Paste a signature instead".
@@ -190,6 +190,8 @@ export interface WalletPickerViewProps<W extends PickerWallet> {
   onPick?: (item: PickerItem) => void;
   onCancel?: () => void;
   testId?: string;
+  /** Not available right now (role or live-mode gate): the trigger is disabled. */
+  disabled?: boolean;
 }
 
 /** Stateless rendering of the picker (the container below owns state, focus and effects). */
@@ -207,6 +209,7 @@ export function WalletPickerView<W extends PickerWallet>({
   onPick,
   onCancel,
   testId,
+  disabled,
 }: WalletPickerViewProps<W>) {
   const items = pickerItems(state.wallets, state.canPaste);
   const progress = progressText(state.pending);
@@ -245,6 +248,7 @@ export function WalletPickerView<W extends PickerWallet>({
             aria-controls={state.open ? ids.menu : undefined}
             loading={busy}
             loadingText={progress}
+            disabled={disabled && !busy}
             leadingIcon={<WalletIcon size={18} aria-hidden="true" />}
             trailingIcon={<ChevronDownIcon size={16} aria-hidden="true" className="dash-wallet-picker__chevron" />}
             onClick={onTriggerClick}
@@ -346,6 +350,8 @@ export interface WalletPickerProps<W extends PickerWallet> {
   onPaste?: () => void;
   installHint: ReactNode;
   "data-testid"?: string;
+  /** Disables the trigger (e.g. a role or live-mode gate). */
+  disabled?: boolean;
 }
 
 export function WalletPicker<W extends PickerWallet>({
@@ -355,6 +361,7 @@ export function WalletPicker<W extends PickerWallet>({
   onPaste,
   installHint,
   "data-testid": testId,
+  disabled,
 }: WalletPickerProps<W>) {
   const [state, dispatch] = useReducer(pickerReducer<W>, Boolean(onPaste), (p: boolean) => initialPickerState<W>(p));
   const base = useId();
@@ -503,6 +510,7 @@ export function WalletPicker<W extends PickerWallet>({
           triggerRef.current?.focus();
         }}
         testId={testId}
+        disabled={disabled}
       />
     </div>
   );

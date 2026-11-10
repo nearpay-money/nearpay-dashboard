@@ -49,7 +49,7 @@ test("live tail: new events stream in, reconnects resume, pause replays, clear, 
   await page.getByTestId("tail-type").selectOption("invoice.paid");
   await expect.poll(() => api.callsTo("streamEvents").at(-1)?.query.types).toBe("invoice.paid");
   // switching mode opens a live-mode stream
-  await page.getByTestId("mode-switch").click();
+  await page.getByTestId("mode-switch").getByRole("radio", { name: "Live" }).click();
   await expect.poll(() => api.callsTo("streamEvents").at(-1)?.headers["nearpay-mode"]).toBe("live");
   await expect(page.getByTestId("tail-state")).toContainText(/live events|Connecting|Reconnecting/);
 });

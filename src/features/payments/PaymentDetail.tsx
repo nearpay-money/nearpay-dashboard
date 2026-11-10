@@ -142,7 +142,7 @@ function AttemptsList({ intent }: { intent: PaymentIntent }) {
             <KeyValue
               rows={[
                 ["Attempt", <Mono key="id">{a.id}</Mono>],
-                ["Paid with", `${assetLabel(a.origin_asset_id, app.assets)} · ${networkName(a.origin_chain)}`],
+                ["Paid with", `${assetLabel(a.origin_asset_id, app.assets)} on ${networkName(a.origin_chain)}`],
                 [
                   "Expected settlement",
                   a.settlement_amount ? formatAsset(a.settlement_amount, intent.settlement_asset_id, app.assets) : "—",
