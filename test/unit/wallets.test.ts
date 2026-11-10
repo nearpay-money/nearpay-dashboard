@@ -31,7 +31,9 @@ describe("EVM / EIP-191", () => {
 
   it("signs the exact message with the destination account", async () => {
     const p = provider([ADDR.toUpperCase().replace("0X", "0x")]);
-    await expect(signEip191(p, ADDR, "NearPay settlement destination\nNonce: 1")).resolves.toBe(SIG);
+    const onSigning = vi.fn(() => expect(p.calls).toHaveLength(1)); // after the account check, before signing
+    await expect(signEip191(p, ADDR, "NearPay settlement destination\nNonce: 1", onSigning)).resolves.toBe(SIG);
+    expect(onSigning).toHaveBeenCalledOnce();
     expect(p.calls[1]).toEqual({
       method: "personal_sign",
       params: [utf8ToHex("NearPay settlement destination\nNonce: 1"), ADDR],
@@ -39,9 +41,11 @@ describe("EVM / EIP-191", () => {
   });
 
   it("refuses another account and bad signatures", async () => {
+    const onSigning = vi.fn();
     await expect(
-      signEip191(provider(["0x0000000000000000000000000000000000000001"]), ADDR, "m"),
+      signEip191(provider(["0x0000000000000000000000000000000000000001"]), ADDR, "m", onSigning),
     ).rejects.toBeInstanceOf(WalletMismatchError);
+    expect(onSigning).not.toHaveBeenCalled();
     await expect(signEip191(provider([]), ADDR, "m")).rejects.toThrow(/no account/);
     await expect(signEip191(provider([ADDR], "0x12"), ADDR, "m")).rejects.toThrow(/invalid signature/);
     await expect(signEip191(provider([ADDR, 5 as unknown as string], null), ADDR, "m")).rejects.toThrow(/invalid/);
@@ -53,20 +57,22 @@ describe("EVM / EIP-191", () => {
     target.addEventListener("eip6963:requestProvider", () => {
       target.dispatchEvent(
         new CustomEvent("eip6963:announceProvider", {
-          detail: { info: { rdns: "io.test", name: "Test" }, provider: p },
+          detail: { info: { rdns: "io.test", name: "Test", icon: "data:image/svg+xml;base64,PHN2Zy8+" }, provider: p },
         }),
       );
       target.dispatchEvent(
-        new CustomEvent("eip6963:announceProvider", { detail: { info: { uuid: "u2" }, provider: p } }),
+        new CustomEvent("eip6963:announceProvider", {
+          detail: { info: { uuid: "u2", icon: "https://tracker.example/i.png" }, provider: p },
+        }),
       );
       target.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail: { provider: p } }));
       target.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail: { info: { name: "bad" } } }));
     });
     const found = await discoverEvmWallets(target as unknown as Window, 5);
-    expect(found.map((w) => [w.id, w.name])).toEqual([
-      ["io.test", "Test"],
-      ["u2", "u2"],
-      ["wallet-2", "wallet-2"],
+    expect(found.map((w) => [w.id, w.name, w.icon])).toEqual([
+      ["io.test", "Test", "data:image/svg+xml;base64,PHN2Zy8+"],
+      ["u2", "u2", undefined],
+      ["wallet-2", "wallet-2", undefined],
     ]);
     const legacy = new EventTarget() as EventTarget & { ethereum?: Eip1193Provider };
     legacy.ethereum = p;
@@ -101,13 +107,19 @@ describe("NEAR / NEP-413", () => {
 
   it("signs {message, recipient, nonce} with the destination account", async () => {
     const w = wallet(["merchant.near"]);
-    const r = await signNep413(connectorOf(w), {
-      message: "msg",
-      recipient: "nearpay.money",
-      nonce,
-      address: "merchant.near",
-    });
+    const onSigning = vi.fn();
+    const r = await signNep413(
+      connectorOf(w),
+      {
+        message: "msg",
+        recipient: "nearpay.money",
+        nonce,
+        address: "merchant.near",
+      },
+      onSigning,
+    );
     expect(r).toEqual(signed);
+    expect(onSigning).toHaveBeenCalledOnce();
     expect(w.signMessage).toHaveBeenCalledWith({
       message: "msg",
       recipient: "nearpay.money",

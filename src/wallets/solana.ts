@@ -8,6 +8,7 @@
  */
 import { base58Encode } from "../lib/chains";
 import { WalletMismatchError } from "./evm";
+import { safeWalletIcon } from "./icon";
 
 interface StdAccount {
   readonly address: string;
@@ -34,6 +35,8 @@ interface SignMessageFeature {
 export interface SolanaWallet {
   readonly id: string;
   readonly name: string;
+  /** The wallet's icon (image data URI only), if any. */
+  readonly icon?: string | undefined;
   readonly wallet: StdWallet;
 }
 
@@ -49,7 +52,7 @@ export function discoverSolanaWallets(win: Window = window, waitMs = 250): Promi
       for (const w of wallets) {
         if (!w || !canSign(w)) continue;
         const id = w.name;
-        if (!found.has(id)) found.set(id, { id, name: w.name, wallet: w });
+        if (!found.has(id)) found.set(id, { id, name: w.name, icon: safeWalletIcon(w.icon), wallet: w });
       }
       return () => {};
     };
@@ -71,8 +74,16 @@ export function discoverSolanaWallets(win: Window = window, waitMs = 250): Promi
   });
 }
 
-/** Connects `w`, checks it holds `address`, signs the UTF-8 bytes of `message`; returns base58. */
-export async function signSolanaMessage(w: SolanaWallet, address: string, message: string): Promise<string> {
+/**
+ * Connects `w`, checks it holds `address`, signs the UTF-8 bytes of `message`; returns base58.
+ * `onSigning` (UI progress only) is called once the account check passed, right before the signature request.
+ */
+export async function signSolanaMessage(
+  w: SolanaWallet,
+  address: string,
+  message: string,
+  onSigning?: () => void,
+): Promise<string> {
   const connect = w.wallet.features["standard:connect"] as ConnectFeature;
   const { accounts } = await connect.connect();
   const all = [...accounts, ...w.wallet.accounts];
@@ -84,6 +95,7 @@ export async function signSolanaMessage(w: SolanaWallet, address: string, messag
     );
   const bytes = new TextEncoder().encode(message);
   const sign = w.wallet.features["solana:signMessage"] as SignMessageFeature;
+  onSigning?.();
   const [out] = await sign.signMessage({ account, message: bytes });
   if (!out) throw new Error("The wallet returned no signature.");
   // the wallet must sign exactly our bytes (no off-chain header or SIWS wrapper)

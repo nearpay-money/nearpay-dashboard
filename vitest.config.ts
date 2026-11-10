@@ -6,7 +6,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   esbuild: { jsx: "automatic" },
   test: {
-    include: ["test/unit/**/*.test.ts", "src/features/**/*.test.ts"],
+    include: ["test/unit/**/*.test.{ts,tsx}", "src/features/**/*.test.ts"],
     coverage: {
       provider: "v8",
       include: ["src/lib/**/*.ts", "src/wallets/**/*.ts"],

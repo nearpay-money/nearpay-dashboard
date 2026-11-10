@@ -3,6 +3,7 @@
  * legacy `window.ethereum` as fallback), `personal_sign` over the exact challenge message. The address
  * that signs must be the destination address; nothing else is ever signed here.
  */
+import { safeWalletIcon } from "./icon";
 
 export interface Eip1193Provider {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
@@ -11,11 +12,13 @@ export interface Eip1193Provider {
 export interface EvmWallet {
   readonly id: string;
   readonly name: string;
+  /** The wallet's announced icon (image data URI only), if any. */
+  readonly icon?: string | undefined;
   readonly provider: Eip1193Provider;
 }
 
 interface AnnounceDetail {
-  info?: { uuid?: string; name?: string; rdns?: string };
+  info?: { uuid?: string; name?: string; rdns?: string; icon?: unknown };
   provider?: Eip1193Provider;
 }
 
@@ -27,7 +30,7 @@ export function discoverEvmWallets(win: Window = window, waitMs = 250): Promise<
       const d = (e as CustomEvent<AnnounceDetail>).detail;
       if (!d?.provider || typeof d.provider.request !== "function") return;
       const id = d.info?.rdns ?? d.info?.uuid ?? `wallet-${found.size}`;
-      found.set(id, { id, name: d.info?.name ?? id, provider: d.provider });
+      found.set(id, { id, name: d.info?.name ?? id, icon: safeWalletIcon(d.info?.icon), provider: d.provider });
     };
     win.addEventListener("eip6963:announceProvider", onAnnounce);
     win.dispatchEvent(new Event("eip6963:requestProvider"));
@@ -54,13 +57,22 @@ export class WalletMismatchError extends Error {
   }
 }
 
-/** Asks the wallet for accounts, checks `address` is among them, signs `message` with EIP-191. */
-export async function signEip191(provider: Eip1193Provider, address: string, message: string): Promise<string> {
+/**
+ * Asks the wallet for accounts, checks `address` is among them, signs `message` with EIP-191.
+ * `onSigning` (UI progress only) is called once the account check passed, right before the signature request.
+ */
+export async function signEip191(
+  provider: Eip1193Provider,
+  address: string,
+  message: string,
+  onSigning?: () => void,
+): Promise<string> {
   const accounts = ((await provider.request({ method: "eth_requestAccounts" })) as unknown[])
     .filter((a): a is string => typeof a === "string")
     .map((a) => a.toLowerCase());
   const want = address.toLowerCase();
   if (!accounts.includes(want)) throw new WalletMismatchError(address, accounts);
+  onSigning?.();
   const sig = await provider.request({ method: "personal_sign", params: [utf8ToHex(message), want] });
   if (typeof sig !== "string" || !/^0x[0-9a-fA-F]{130}$/.test(sig)) {
     throw new Error("The wallet returned an invalid signature.");

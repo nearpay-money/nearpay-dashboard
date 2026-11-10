@@ -32,10 +32,19 @@ export function detectBitcoinWallets(win: Window = window): BitcoinWallet[] {
   return out;
 }
 
-/** Asks for accounts, checks the destination address is connected, signs BIP-322 simple; returns base64. */
-export async function signBip322(w: BitcoinWallet, address: string, message: string): Promise<string> {
+/**
+ * Asks for accounts, checks the destination address is connected, signs BIP-322 simple; returns base64.
+ * `onSigning` (UI progress only) is called once the account check passed, right before the signature request.
+ */
+export async function signBip322(
+  w: BitcoinWallet,
+  address: string,
+  message: string,
+  onSigning?: () => void,
+): Promise<string> {
   const accounts = (await w.provider.requestAccounts()).map((a) => a.toLowerCase());
   if (!accounts.includes(address.toLowerCase())) throw new WalletMismatchError(address, accounts);
+  onSigning?.();
   const sig = await w.provider.signMessage(message, "bip322-simple");
   if (typeof sig !== "string" || !sig) throw new Error("The wallet returned no signature.");
   return sig.trim();

@@ -15,7 +15,7 @@ import {
   type SettlementDestination,
 } from "@nearpay/spec";
 import { CopyText, Textarea } from "@nearpay-internal/ui";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { checkBip322Signature, checkBitcoinAddress, checkSolanaSignature, networkName } from "../../lib/chains";
 import { formatTime, relative } from "../../lib/format";
@@ -26,10 +26,11 @@ type SigningStandard = (typeof DESTINATION_SIGNING_STANDARDS)[number];
 
 import { Page } from "../../ui/page";
 import { Badge, Button, Card, ErrorNote, Field, KeyValue, Loading, Mono, Note } from "../../ui/ui";
-import { type BitcoinWallet, detectBitcoinWallets, signBip322 } from "../../wallets/bitcoin";
+import { type SignContext, WalletConnectButton, WalletPicker } from "../../ui/WalletPicker";
+import { detectBitcoinWallets, signBip322 } from "../../wallets/bitcoin";
 import { discoverEvmWallets, type EvmWallet, signEip191 } from "../../wallets/evm";
 import { nearConnector, signNep413 } from "../../wallets/near";
-import { discoverSolanaWallets, type SolanaWallet, signSolanaMessage } from "../../wallets/solana";
+import { discoverSolanaWallets, signSolanaMessage } from "../../wallets/solana";
 import { aboutDuration, activationClock, secondsUntilActive } from "./cooloff";
 import { approvalText } from "./Destinations";
 
@@ -100,7 +101,6 @@ export function AttestPanel({
   const now = useNow();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
-  const [evmWallets, setEvmWallets] = useState<EvmWallet[]>();
   const expired = c.expires_at <= now;
 
   const submit = async (body: { standard: SigningStandard; signature: string; public_key?: string }) => {
@@ -123,23 +123,31 @@ export function AttestPanel({
     }
   };
 
-  const signNear = () =>
-    run(async () => {
-      if (!c.nonce || !c.recipient) throw new Error("The challenge has no NEP-413 nonce/recipient.");
-      const signed = await signNep413(nearConnector, {
+  // Wallet actions run in the picker / connect button: only the chosen action shows progress, and a
+  // signature that arrives after "Cancel" is discarded instead of submitted.
+  const signNear = async (ctx: SignContext) => {
+    if (!c.nonce || !c.recipient) throw new Error("The challenge has no NEP-413 nonce/recipient.");
+    const signed = await signNep413(
+      nearConnector,
+      {
         message: c.message,
         recipient: c.recipient,
         nonce: c.nonce,
         address: destination.address,
-      });
-      await submit({ standard: "nep413", signature: signed.signature, public_key: signed.publicKey });
-    });
+      },
+      () => ctx.setPhase("signing"),
+    );
+    if (ctx.signal.aborted) return;
+    ctx.setPhase("verifying");
+    await submit({ standard: "nep413", signature: signed.signature, public_key: signed.publicKey });
+  };
 
-  const signEvm = (w: EvmWallet) =>
-    run(async () => {
-      const signature = await signEip191(w.provider, destination.address, c.message);
-      await submit({ standard: "eip191", signature });
-    });
+  const signEvm = async (w: EvmWallet, ctx: SignContext) => {
+    const signature = await signEip191(w.provider, destination.address, c.message, () => ctx.setPhase("signing"));
+    if (ctx.signal.aborted) return;
+    ctx.setPhase("verifying");
+    await submit({ standard: "eip191", signature });
+  };
 
   return (
     <Card title="Prove you control this destination">
@@ -167,33 +175,27 @@ export function AttestPanel({
             destinationId={destination.id}
             onChallenge={(d) => {
               setError(undefined);
-              setEvmWallets(undefined);
               setDestination(d);
             }}
           />
         </>
       )}
       {!expired && c.signing_standard === "nep413" && (
-        <Button busy={busy} onClick={() => void signNear()}>
-          Sign with NEAR wallet
-        </Button>
+        <WalletConnectButton
+          label="Connect NEAR wallet"
+          walletName="your NEAR wallet"
+          onSign={signNear}
+          data-testid="near-connect"
+        />
       )}
       {!expired && c.signing_standard === "eip191" && (
-        <div className="wallets">
-          {!evmWallets && (
-            <Button busy={busy} onClick={() => void discoverEvmWallets().then(setEvmWallets)}>
-              Sign with EVM wallet
-            </Button>
-          )}
-          {evmWallets?.length === 0 && (
-            <Note tone="warn">No EVM wallet found in this browser. Install or unlock one and retry.</Note>
-          )}
-          {evmWallets?.map((w) => (
-            <Button key={w.id} busy={busy} onClick={() => void signEvm(w)}>
-              Sign with {w.name}
-            </Button>
-          ))}
-        </div>
+        <WalletPicker
+          label="Connect EVM wallet"
+          discover={() => discoverEvmWallets()}
+          onSign={signEvm}
+          installHint="Install or unlock an EVM wallet such as MetaMask, Rabby or Coinbase Wallet, then search again."
+          data-testid="evm-picker"
+        />
       )}
       {!expired && c.signing_standard === "solana" && (
         <SolanaSigner destination={destination} message={c.message} busy={busy} run={run} submit={submit} />
@@ -220,6 +222,7 @@ const KNOWN_STANDARDS = new Set(Object.keys(STANDARD_TEXT));
 interface SignerProps {
   destination: SettlementDestination;
   message: string;
+  /** The paste form's submit is in flight (wallet signing shows its own progress in the picker). */
   busy: boolean;
   run(fn: () => Promise<void>): Promise<void>;
   submit(body: { standard: SigningStandard; signature: string }): Promise<void>;
@@ -233,6 +236,7 @@ function PasteSignature({
   busy,
   onSubmit,
   testId,
+  id,
 }: {
   label: string;
   hint: React.ReactNode;
@@ -240,12 +244,15 @@ function PasteSignature({
   busy: boolean;
   onSubmit(sig: string): void;
   testId: string;
+  /** Anchor id, so "Paste a signature instead" in the wallet picker can scroll here. */
+  id?: string;
 }) {
   const [sig, setSig] = useState("");
   const [touched, setTouched] = useState(false);
   const problem = sig.trim() ? check(sig.trim()) : "Paste the signature first.";
   return (
     <form
+      id={id}
       className="np-stack"
       noValidate
       onSubmit={(e) => {
@@ -276,38 +283,37 @@ function PasteSignature({
   );
 }
 
+/** Opens (if needed), scrolls to and focuses the paste field: the picker's "Paste a signature instead". */
+function revealPaste(root: HTMLElement | null, testId: string, details?: HTMLDetailsElement | null) {
+  if (details) details.open = true;
+  requestAnimationFrame(() => {
+    const field = root?.querySelector<HTMLTextAreaElement>(`[data-testid="${testId}"]`);
+    if (!field) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    field.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+    field.focus({ preventScroll: true });
+  });
+}
+
 function SolanaSigner({ destination, message, busy, run, submit }: SignerProps) {
-  const [wallets, setWallets] = useState<SolanaWallet[]>();
+  const root = useRef<HTMLDivElement>(null);
+  const details = useRef<HTMLDetailsElement>(null);
   return (
-    <div className="np-stack" data-testid="solana-signer">
-      <div className="wallets">
-        {!wallets && (
-          <Button busy={busy} onClick={() => void discoverSolanaWallets().then(setWallets)}>
-            Sign with Solana wallet
-          </Button>
-        )}
-        {wallets?.map((w) => (
-          <Button
-            key={w.id}
-            busy={busy}
-            onClick={() =>
-              void run(async () => {
-                const signature = await signSolanaMessage(w, destination.address, message);
-                await submit({ standard: "solana", signature });
-              })
-            }
-          >
-            Sign with {w.name}
-          </Button>
-        ))}
-      </div>
-      {wallets?.length === 0 && (
-        <Note tone="warn">
-          No Solana wallet found in this browser. Install or unlock Phantom, Solflare or Backpack and retry, or paste a
-          signature below.
-        </Note>
-      )}
-      <details className="dash-disclosure">
+    <div className="np-stack" data-testid="solana-signer" ref={root}>
+      <WalletPicker
+        label="Connect Solana wallet"
+        discover={() => discoverSolanaWallets()}
+        onSign={async (w, ctx) => {
+          const signature = await signSolanaMessage(w, destination.address, message, () => ctx.setPhase("signing"));
+          if (ctx.signal.aborted) return;
+          ctx.setPhase("verifying");
+          await submit({ standard: "solana", signature });
+        }}
+        onPaste={() => revealPaste(root.current, "solana-signature", details.current)}
+        installHint="Install or unlock Phantom, Solflare or Backpack and search again, or paste a signature made elsewhere."
+        data-testid="solana-picker"
+      />
+      <details className="dash-disclosure" ref={details}>
         <summary>Signed somewhere else? Paste the signature</summary>
         <div className="np-stack">
           <p className="np-text-small np-text-secondary">
@@ -330,31 +336,26 @@ function SolanaSigner({ destination, message, busy, run, submit }: SignerProps) 
 }
 
 function BitcoinSigner({ destination, message, busy, run, submit }: SignerProps) {
-  const [wallets] = useState<BitcoinWallet[]>(() => detectBitcoinWallets());
+  const root = useRef<HTMLDivElement>(null);
   const addr = checkBitcoinAddress(destination.address);
   const type = addr.ok ? addr.type : "p2wpkh";
   return (
-    <div className="np-stack" data-testid="bitcoin-signer">
-      {wallets.length ? (
-        <div className="wallets">
-          {wallets.map((w) => (
-            <Button
-              key={w.id}
-              busy={busy}
-              onClick={() =>
-                void run(async () => {
-                  const signature = await signBip322(w, destination.address, message);
-                  const problem = checkBip322Signature(signature, type);
-                  if (problem) throw new Error(problem);
-                  await submit({ standard: "bip322", signature });
-                })
-              }
-            >
-              Sign with {w.name}
-            </Button>
-          ))}
-        </div>
-      ) : null}
+    <div className="np-stack" data-testid="bitcoin-signer" ref={root}>
+      <WalletPicker
+        label="Connect Bitcoin wallet"
+        discover={() => detectBitcoinWallets()}
+        onSign={async (w, ctx) => {
+          const signature = await signBip322(w, destination.address, message, () => ctx.setPhase("signing"));
+          const problem = checkBip322Signature(signature, type);
+          if (problem) throw new Error(problem);
+          if (ctx.signal.aborted) return;
+          ctx.setPhase("verifying");
+          await submit({ standard: "bip322", signature });
+        }}
+        onPaste={() => revealPaste(root.current, "bip322-signature")}
+        installHint="UniSat and OKX Wallet can sign here. With Sparrow, Xverse, Leather or another wallet, paste a signature."
+        data-testid="bitcoin-picker"
+      />
       <div className="np-stack">
         <p className="np-text-small">
           Sign the message above with the wallet that holds <Mono>{destination.address}</Mono> using{" "}
