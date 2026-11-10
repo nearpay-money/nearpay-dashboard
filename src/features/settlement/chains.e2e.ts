@@ -83,7 +83,7 @@ async function solanaWallet(page: Page) {
 }
 
 async function newDestination(page: Page, symbol: string, address: string, label: string) {
-  await page.getByLabel("Destination name").fill(label);
+  await page.getByLabel("Wallet name").fill(label);
   await page.getByLabel("Currency").selectOption(symbol);
   await page.getByRole("radio", { name: /Address on/ }).check();
   await page.getByLabel("Wallet address").fill(address);

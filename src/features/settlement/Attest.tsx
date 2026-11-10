@@ -150,7 +150,7 @@ export function AttestPanel({
   };
 
   return (
-    <Card title="Prove you control this destination">
+    <Card title="Prove you control this wallet">
       <KeyValue
         rows={[
           ["Receive", `${assetLabel(destination.asset_id, app.assets)} (${destination.asset_id})`],
@@ -416,7 +416,7 @@ export function DestinationResult({ d }: { d: SettlementDestination }) {
         )}
         {d.status === "active" && <Note tone="ok">Active — payments can settle here now.</Note>}
         <p>
-          <Link to="/settlement">Back to destinations</Link>
+          <Link to="/settlement">Back to payout wallets</Link>
         </p>
       </div>
     </Card>
@@ -429,11 +429,11 @@ export function AttestPage({ id }: { id: string }) {
   const d = useAsync(() => app.api.call(getSettlementDestination, { params: { id } }), [app.api, app.mode, id]);
   const [done, setDone] = useState<SettlementDestination>();
   const [fresh, setFresh] = useState<SettlementDestination>();
-  const back = { label: "Settlement", to: "/settlement" };
+  const back = { label: "Payout wallets", to: "/settlement" };
   const wrap = (node: React.ReactNode) => (
     <Page
       title="Verify your wallet"
-      subtitle="Prove you control this destination before it can receive payments."
+      subtitle="Prove you control this wallet before it can receive payments."
       back={back}
       width="narrow"
     >
@@ -447,7 +447,7 @@ export function AttestPage({ id }: { id: string }) {
   const current = fresh ?? d.data;
   if (!current.attestation_challenge) {
     return wrap(
-      <Card title="Prove you control this destination">
+      <Card title="Prove you control this wallet">
         <p>
           {current.label} — fingerprint <Mono>{current.fingerprint}</Mono>
         </p>

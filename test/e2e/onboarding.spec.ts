@@ -2,13 +2,18 @@ import { USDC_BASE, USDC_NEAR } from "./fixtures";
 import { EVM_ADDRESS, expect, NEAR_ACCOUNT, signIn, test } from "./harness";
 
 test.describe("home and settlement destinations", () => {
-  test("Overview shows payments; the checklist links to business details (self-declared KYB)", async ({
-    page,
-    api,
-  }) => {
+  test("Home shows payments; the checklist links to business details (self-declared KYB)", async ({ page, api }) => {
     await signIn(page, api);
-    await expect(page.getByRole("heading", { name: "Your payments, in focus." })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening), Acme Coffee$/ })).toBeVisible();
     await expect(page.getByTestId("payments-table")).toContainText("$2.00");
+    // design v2 Home: KPIs from real payments, chart by origin chain, payout wallet, paid-with column
+    await expect(page.getByTestId("kpi-succeeded")).toContainText(/of \d+ started/);
+    await expect(page.getByTestId("kpi-average")).toContainText("Average payment");
+    await expect(page.getByRole("img", { name: /Volume by where customers paid from/ })).toContainText("");
+    await expect(page.getByRole("list", { name: "Chains" })).toContainText("Base");
+    await expect(page.getByTestId("payout-wallet-card")).toContainText("1 block on each chain");
+    await expect(page.getByTestId("payments-table")).toContainText("USDC on Base");
+    await expect(page.getByRole("link", { name: "Create payment link" })).toHaveAttribute("href", "/payment-links/new");
     await expect(page.getByTestId("test-banner")).toBeVisible();
     await page.getByRole("link", { name: "View the checklist" }).click();
     const list = page.getByTestId("requirements");
@@ -32,13 +37,13 @@ test.describe("home and settlement destinations", () => {
 
   test("test destination: step-up, then active immediately", async ({ page, api }) => {
     await signIn(page, api);
-    await page.getByRole("link", { name: "Settlement" }).click();
-    await page.getByRole("link", { name: "Add destination" }).click();
+    await page.getByRole("link", { name: "Payout wallets" }).click();
+    await page.getByRole("link", { name: "Add payout wallet" }).click();
     await page.getByLabel("Currency").selectOption("USDC");
     await page.getByLabel("Network", { exact: true }).selectOption(USDC_NEAR);
     await page.getByLabel("NEAR Intents account", { exact: true }).fill("acme.near");
-    await page.getByLabel("Destination name").fill("Test USDC");
-    await page.getByRole("button", { name: "Add destination" }).click();
+    await page.getByLabel("Wallet name").fill("Test USDC");
+    await page.getByRole("button", { name: "Add payout wallet" }).click();
     // createSettlementDestination needs a fresh step-up
     await expect(page.getByRole("dialog", { name: "Confirm it's you" })).toBeVisible();
     await page.getByRole("button", { name: "Confirm with passkey" }).click();
@@ -48,7 +53,7 @@ test.describe("home and settlement destinations", () => {
     expect(creates[0]?.headers["idempotency-key"]).toBe(creates[1]?.headers["idempotency-key"]);
     expect(creates[1]?.headers["x-csrf-token"]).toBe(api.csrf);
     expect(api.callsTo("stepUpVerify")).toHaveLength(1);
-    await page.getByRole("link", { name: "Back to destinations" }).click();
+    await page.getByRole("link", { name: "Back to payout wallets" }).click();
     await expect(page.getByTestId("destinations-table")).toContainText("Test USDC");
   });
 
@@ -57,17 +62,17 @@ test.describe("home and settlement destinations", () => {
     api,
   }) => {
     await signIn(page, api);
-    await page.getByRole("switch", { name: "Live mode" }).click();
+    await page.getByRole("radio", { name: "Live" }).click();
     await expect(page).toHaveURL(/mode=live/);
     await expect(page.getByTestId("live-banner")).toBeVisible();
     // no live payments and live mode off: Overview is the onboarding checklist; step 02 continues to a live destination
     await page.getByTestId("requirements").getByRole("link", { name: "Continue" }).click();
-    await expect(page.getByRole("heading", { name: "Add a destination" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Add a payout wallet" })).toBeVisible();
     await expect(page.getByText("future live payments")).toBeVisible();
     await page.getByLabel("Currency").selectOption("USDC");
     await page.getByLabel("Network", { exact: true }).selectOption(USDC_NEAR);
     await page.getByLabel("NEAR Intents account", { exact: true }).fill(NEAR_ACCOUNT);
-    await page.getByLabel("Destination name").fill("Live USDC");
+    await page.getByLabel("Wallet name").fill("Live USDC");
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
     await page.getByRole("button", { name: "Connect wallet & verify" }).click();
     await expect(page.getByTestId("challenge-message")).toContainText(`Address: ${NEAR_ACCOUNT}`);
@@ -86,7 +91,7 @@ test.describe("home and settlement destinations", () => {
     expect(signed.message).toContain("NearPay settlement destination\nAccount: acct_");
     expect(chl.standard).toBe("nep413");
     expect(chl.public_key).toMatch(/^ed25519:/);
-    await page.getByRole("link", { name: "Back to destinations" }).click();
+    await page.getByRole("link", { name: "Back to payout wallets" }).click();
     await expect(page.getByTestId("cooloff")).toContainText("Activates in");
   });
 
@@ -96,7 +101,7 @@ test.describe("home and settlement destinations", () => {
     await page.getByLabel("Network", { exact: true }).selectOption(USDC_BASE);
     await page.getByRole("radio", { name: /Address on Base/ }).check();
     await page.getByLabel("Wallet address").fill(EVM_ADDRESS);
-    await page.getByLabel("Destination name").fill("Base USDC");
+    await page.getByLabel("Wallet name").fill("Base USDC");
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
     await page.getByRole("button", { name: "Connect wallet & verify" }).click();
     const message = await page.getByTestId("challenge-message").textContent();
@@ -145,7 +150,7 @@ test.describe("home and settlement destinations", () => {
     await page.getByLabel("Network", { exact: true }).selectOption(USDC_BASE);
     await page.getByRole("radio", { name: /Address on Base/ }).check();
     await page.getByLabel("Wallet address").fill(other);
-    await page.getByLabel("Destination name").fill("Base USDC");
+    await page.getByLabel("Wallet name").fill("Base USDC");
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
     await page.getByRole("button", { name: "Connect wallet & verify" }).click();
     await page.getByRole("button", { name: "Connect EVM wallet" }).click();
@@ -166,7 +171,7 @@ test.describe("home and settlement destinations", () => {
     await page.getByLabel("Currency").selectOption("USDC");
     await page.getByLabel("Network", { exact: true }).selectOption(USDC_NEAR);
     await page.getByLabel("NEAR Intents account", { exact: true }).fill(NEAR_ACCOUNT);
-    await page.getByLabel("Destination name").fill("Live USDC");
+    await page.getByLabel("Wallet name").fill("Live USDC");
     api.challengeTtlS = -1; // the challenge issued on create is already expired
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
     await page.getByRole("button", { name: "Connect wallet & verify" }).click();
@@ -243,7 +248,7 @@ test.describe("home and settlement destinations", () => {
     await page.getByLabel("Currency").selectOption("USDC");
     await page.getByLabel("Network", { exact: true }).selectOption(USDC_NEAR);
     await page.getByLabel("NEAR Intents account", { exact: true }).fill("someone-else.near");
-    await page.getByLabel("Destination name").fill("Wrong");
+    await page.getByLabel("Wallet name").fill("Wrong");
     api.stepUpUntil = Math.floor(Date.now() / 1000) + 600;
     await page.getByRole("button", { name: "Connect wallet & verify" }).click();
     await page.getByRole("button", { name: "Connect NEAR wallet" }).click();

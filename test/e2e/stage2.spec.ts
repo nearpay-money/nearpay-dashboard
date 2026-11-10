@@ -218,8 +218,8 @@ test.describe("dashboard core (step 2.3)", () => {
       }
       if (width < 960) {
         await page.getByRole("button", { name: "Open menu" }).click();
-        await page.getByRole("link", { name: "Settlement" }).click();
-        await expect(page.getByRole("heading", { name: "Settlement" })).toBeVisible();
+        await page.getByRole("link", { name: "Payout wallets" }).click();
+        await expect(page.getByRole("heading", { name: "Payout wallets", level: 1 })).toBeVisible();
         await expect(page.getByRole("button", { name: "Open menu" })).toHaveAttribute("aria-expanded", "false");
       }
     });

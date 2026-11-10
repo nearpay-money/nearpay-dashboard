@@ -54,7 +54,7 @@ export function Checklist({ hasTestPayment }: { hasTestPayment: boolean }) {
       action: (
         <LinkButton
           href={hrefFor("/settlement/new", "live")}
-          label={current === 1 ? "Continue" : "Add destination"}
+          label={current === 1 ? "Continue" : "Add payout wallet"}
           primary={current === 1}
         />
       ),
@@ -99,7 +99,7 @@ export function LiveStatusCard() {
           <StatusBadge tone="success">Live</StatusBadge>
           <CardTitle>Live payments are active</CardTitle>
           <p className="np-text-secondary">
-            You're live — you can accept real payments. Your business details are saved and a live destination is
+            You're live — you can accept real payments. Your business details are saved and a live payout wallet is
             active.
           </p>
         </div>
@@ -113,8 +113,8 @@ export function LiveStatusCard() {
         <StatusBadge tone="warning">Pending</StatusBadge>
         <CardTitle>Live payments are not active yet</CardTitle>
         <p className="np-text-secondary">
-          Add your business details and activate a settlement destination. A new destination may take effect after a
-          short security hold.
+          Add your business details and activate a payout wallet. A new wallet may take effect after a short security
+          hold.
         </p>
         <button
           type="button"
@@ -133,7 +133,7 @@ export function LiveStatusCard() {
               </StatusBadge>
             </li>
             <li>
-              <span>An active live settlement destination</span>
+              <span>An active live payout wallet</span>
               <StatusBadge tone={missing.has("destination") ? "warning" : "success"}>
                 {missing.has("destination") ? "Missing" : "Done"}
               </StatusBadge>

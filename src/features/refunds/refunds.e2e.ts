@@ -58,7 +58,8 @@ test.describe("refunds", () => {
     const action = (mock.refunds.live[0]?.next_action ?? {}) as { payload: string };
     await page.waitForTimeout(400);
     await page.screenshot({ path: `${SHOTS}/refund-sign-1440.png`, fullPage: true });
-    await page.getByRole("button", { name: "Sign with Test EVM Wallet" }).click();
+    await page.getByRole("button", { name: "Connect EVM wallet" }).click();
+    await page.getByRole("menuitem", { name: /Test EVM Wallet/ }).click();
     await expect(page.getByTestId("refund-status")).toHaveText("Pending");
     const calls = (await page.evaluate(() => (window as unknown as { __evmCalls: unknown[] }).__evmCalls)) as {
       method: string;

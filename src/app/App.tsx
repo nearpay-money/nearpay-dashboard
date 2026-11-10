@@ -34,7 +34,7 @@ const PUBLIC = new Set(PUBLIC_ROUTES.map((r) => r.name));
 function NotFound() {
   return (
     <Page title="Page not found" subtitle="The page you opened doesn't exist or has moved.">
-      <Link to="/">Go to Overview</Link>
+      <Link to="/">Go to Home</Link>
     </Page>
   );
 }

@@ -34,8 +34,8 @@ test.describe("developers", () => {
   test("a viewer cannot manage keys", async ({ page, api }) => {
     api.role = "viewer";
     await signIn(page, api, "/settlement");
-    await page.getByRole("link", { name: "Add destination" }).click();
-    await expect(page.getByRole("button", { name: "Add destination" })).toBeDisabled();
+    await page.getByRole("link", { name: "Add payout wallet" }).click();
+    await expect(page.getByRole("button", { name: "Add payout wallet" })).toBeDisabled();
   });
 
   test("webhook endpoints: create (secret once), test ping, disable, delete; events", async ({ page, api }) => {

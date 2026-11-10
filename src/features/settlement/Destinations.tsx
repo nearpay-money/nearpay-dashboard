@@ -115,19 +115,19 @@ export function Destinations() {
     toast.show({ tone: "success", title: `${d.label} rejected`, body: "The destination is disabled." });
   });
 
-  if (list.loading && !list.data) return <LoadingState what="Loading settlement destinations" />;
-  if (!list.data) return <ErrorState title="Settlement" error={list.error} onRetry={list.reload} />;
+  if (list.loading && !list.data) return <LoadingState what="Loading payout wallets" />;
+  if (!list.data) return <ErrorState title="Payout wallets" error={list.error} onRetry={list.reload} />;
   const rows = list.data.data;
   // only destinations still waiting; with no cool-off (active_at ≤ now) there is nothing to count down
   const coolingOff = rows.filter((d) => d.status === "cooling_off" && secondsUntilActive(d.active_at, now) > 0);
 
   return (
     <Page
-      title="Settlement"
+      title="Payout wallets"
       subtitle="Choose the currency and wallet where you receive payments."
       actions={
         <Link to="/settlement/new" className={buttonClassName({ variant: "primary" })}>
-          <span>Add destination</span>
+          <span>Add payout wallet</span>
         </Link>
       }
     >
@@ -139,28 +139,28 @@ export function Destinations() {
       {rows.length === 0 ? (
         <Empty
           icon={<WalletIcon size={32} />}
-          title={`No ${app.mode} destinations yet`}
+          title={`No ${app.mode} payout wallets yet`}
           action={
             <Link to="/settlement/new" className={buttonClassName({ variant: "secondary" })}>
-              <span>Add your first destination</span>
+              <span>Add your first payout wallet</span>
             </Link>
           }
           footnote={app.mode === "test" ? "Test mode · no real funds move" : undefined}
         >
           {app.mode === "test"
-            ? "Test destinations are active immediately and receive sandbox settlements only."
-            : `Live destinations are verified with a wallet signature and may take effect after ${SECURITY_HOLD_COPY}.`}
+            ? "Test payout wallets are active immediately and receive sandbox settlements only."
+            : `Live payout wallets are verified with a wallet signature and may take effect after ${SECURITY_HOLD_COPY}.`}
         </Empty>
       ) : (
         <div data-testid="destinations-table">
           <Table
-            caption="Settlement destinations"
+            caption="Payout wallets"
             rows={rows}
             rowKey={(d) => d.id}
             columns={[
               {
                 key: "dest",
-                header: "Destination",
+                header: "Payout wallet",
                 primary: true,
                 cell: (d) => (
                   <span className="dash-cell-stack" data-testid={`destination-${d.id}`}>
@@ -180,7 +180,9 @@ export function Destinations() {
               {
                 key: "asset",
                 header: "Receive in",
-                cell: (d) => `${assetLabel(d.asset_id, app.assets)} · ${networkName(d.chain)}`,
+                cell: (d) => (
+                  <span className="dash-nowrap">{`${assetLabel(d.asset_id, app.assets)} on ${networkName(d.chain)}`}</span>
+                ),
               },
               {
                 key: "wallet",
