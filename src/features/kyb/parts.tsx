@@ -5,7 +5,7 @@ import { ApiError, StepUpCanceled } from "../../lib/errors";
 
 const COPY: Readonly<Record<string, string>> = {
   kyb_profile_incomplete: "Some required business details are missing. Complete every field marked required.",
-  state_conflict: "Your business details are under review and can't be changed right now.",
+  state_conflict: "Your business details are already saved and can't be changed here. Contact support to update them.",
   permission_denied: "Only owners can change and submit business details.",
   invalid_response:
     "NearPay sent a response the dashboard doesn't understand. Reload; contact support if it continues.",

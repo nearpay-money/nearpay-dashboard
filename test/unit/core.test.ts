@@ -58,7 +58,8 @@ describe("status vocabulary", () => {
   it("maps API values to design-system labels and tones", () => {
     expect(statusOf("payment", "succeeded")).toEqual({ label: "Paid", tone: "success" });
     expect(statusOf("payment", "requires_review")).toEqual({ label: "Review", tone: "warning" });
-    expect(statusOf("kyb", "approved")).toEqual({ label: "Reviewed", tone: "success" });
+    expect(statusOf("kyb", "approved")).toEqual({ label: "Live", tone: "success" });
+    expect(statusOf("kyb", "pending")).toEqual({ label: "Submitted", tone: "info" });
     expect(statusOf("destination", "cooling_off").label).toBe("Cooling off");
     // unknown open-enum values render as received
     expect(statusOf("delivery", "quarantined")).toEqual({ label: "Quarantined", tone: "neutral" });

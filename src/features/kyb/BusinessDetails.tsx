@@ -1,9 +1,9 @@
 /**
- * Business details (`/settings/business`; lld/dashboard-and-console.md §1 "KYB"; ADR-0020 decision 3):
- * the owner declares minimum business details, saves drafts and submits them for NearPay ops review
- * (declaration checkbox, step-up). Statuses: not submitted, pending review, needs more info (with
- * `requested_info`), reviewed (approved), rejected. Admins see the details read-only.
- * Copy: "Business details reviewed by NearPay" — never "verified".
+ * Business details (`/settings/business`; lld/dashboard-and-console.md §1 "KYB"; ADR-0020 decision 3,
+ * ADR-0024 open onboarding): the owner declares minimum business details, saves drafts and saves them
+ * as final (declaration checkbox, step-up) — live mode turns on at once, no NearPay review. Statuses:
+ * not submitted, submitted (manual review only), needs more info (with `requested_info`), live
+ * (approved), not accepted (rejected). Admins see the details read-only. Never "verified"/"reviewed".
  */
 import { submitKyb, updateKybProfile } from "@nearpay/spec";
 import {
@@ -45,7 +45,7 @@ import "./kyb.css";
 const HEADER = (
   <PageHeader
     title="Business details"
-    subtitle="Self-declared details that NearPay reviews before live payments are enabled."
+    subtitle="Declare your business to accept live payments. Live mode turns on as soon as you save complete details."
   />
 );
 
@@ -115,7 +115,9 @@ function KybView({ initial }: { initial: KybCase }) {
       const next = await calls.submit();
       setKase(next);
       setForm(formOf(next.profile));
-      setAnnounce("Business details submitted for review.");
+      setAnnounce(
+        next.status === "approved" ? "You're live — you can accept real payments." : "Business details submitted.",
+      );
       app.refreshAccount();
     } catch (err) {
       setError(err);
@@ -203,8 +205,7 @@ function KybView({ initial }: { initial: KybCase }) {
                 })}
               </div>
               {field("registration_number", "Registration number", text("registration_number", { maxLength: 64 }), {
-                required: true,
-                hint: "Company or trade register number. Use your tax ID if there is none.",
+                hint: "Optional. Company or trade register number, or your tax ID.",
               })}
               {field("website", "Website", text("website", { inputMode: "url", autoComplete: "url" }), {
                 hint: "Optional. Your public website or store front (https).",
@@ -262,7 +263,7 @@ function KybView({ initial }: { initial: KybCase }) {
           </Card>
           <Checkbox
             label="I declare that these business details are true and complete."
-            description="NearPay reviews the details you declare. No documents are needed now; we'll ask if we need more."
+            description="No documents are needed. Live payments turn on as soon as you save."
             checked={declared}
             onChange={(e) => {
               setDeclared(e.target.checked);
@@ -280,11 +281,11 @@ function KybView({ initial }: { initial: KybCase }) {
             <Button
               type="submit"
               loading={busy === "submit"}
-              loadingText="Submitting…"
+              loadingText="Saving…"
               disabled={busy !== null || Boolean(app.gate(submitKyb))}
               data-testid="kyb-submit"
             >
-              Submit for review
+              Save and go live
             </Button>
             <Button
               variant="secondary"
@@ -296,7 +297,7 @@ function KybView({ initial }: { initial: KybCase }) {
               Save draft
             </Button>
           </div>
-          <p className="np-text-caption np-text-secondary">You'll confirm the submission with your passkey.</p>
+          <p className="np-text-caption np-text-secondary">You'll confirm with your passkey.</p>
           <ActionError error={error} />
         </form>
       ) : (
@@ -319,7 +320,7 @@ function ReadOnly({ kase, countries }: { kase: KybCase; countries: readonly { va
           items={[
             { label: "Registered legal name", value: p.legal_name },
             { label: "Country of incorporation", value: labelOf(countries, p.country_of_incorporation) },
-            { label: "Registration number", value: p.registration_number ?? "—" },
+            { label: "Registration number", value: p.registration_number ?? "Not provided" },
             { label: "Business type", value: labelOf(BUSINESS_TYPES, p.business_type) },
             { label: "Website", value: p.website ?? "—" },
             {

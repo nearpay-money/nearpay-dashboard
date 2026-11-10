@@ -57,7 +57,7 @@ export function VerifyMagicLink() {
           <p>
             Email verified: <strong>{reg.email}</strong>. The registration expires in 5 minutes.
           </p>
-          <Field label="Business name" hint="Shown to payers until NearPay reviews your business details.">
+          <Field label="Business name" hint="Shown to payers until you save your business details.">
             {(id) => <Input id={id} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} />}
           </Field>
           <Field label="Passkey name">

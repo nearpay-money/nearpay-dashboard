@@ -16,8 +16,9 @@ const full = {
 };
 
 describe("KYB (self-declared)", () => {
-  it("requires every field except website and optional address lines to submit", () => {
+  it("requires every field except website, registration number and optional address lines to submit", () => {
     expect(submitErrors(full)).toEqual({});
+    expect(submitErrors({ ...full, registration_number: "" })).toEqual({});
     const e = submitErrors(formOf(undefined));
     expect(Object.keys(e).sort()).toEqual(
       [
@@ -28,7 +29,6 @@ describe("KYB (self-declared)", () => {
         "expected_monthly_volume",
         "legal_name",
         "line1",
-        "registration_number",
         "rep_name",
         "rep_title",
       ].sort(),
@@ -51,12 +51,13 @@ describe("KYB (self-declared)", () => {
       representative: { name: "Alex Morgan", title: "Director" },
     });
   });
-  it("never claims verification", () => {
+  it("never claims verification or a NearPay review (open onboarding, ADR-0024)", () => {
     for (const s of ["not_started", "pending", "needs_info", "approved", "rejected", "new_thing"]) {
       const i = statusInfo({ status: s as never });
-      expect(`${i.title} ${i.body} ${i.badge}`).not.toMatch(/verif/i);
+      expect(`${i.title} ${i.body} ${i.badge}`).not.toMatch(/verif|review|waiting/i);
     }
-    expect(statusInfo({ status: "approved" }).title).toBe("Business details reviewed by NearPay");
+    expect(statusInfo({ status: "approved" }).title).toBe("You're live — you can accept real payments");
+    expect(statusInfo({ status: "not_started" }).body).toContain("as soon as you save");
     expect(countryOptions("en").find((c) => c.value === "GB")?.label).toBe("United Kingdom");
   });
 });

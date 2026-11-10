@@ -1,7 +1,8 @@
 /**
- * Self-declared KYB (ADR-0020 decision 3; spec `KybProfile`): form ↔ profile mapping, the draft PATCH
- * body, the completeness check `submitKyb` enforces, and status copy. Copy rule: business details are
- * self-declared and reviewed by NearPay ops — never "verified".
+ * Self-declared KYB (ADR-0020 decision 3, ADR-0024 open onboarding; spec `KybProfile`): form ↔ profile
+ * mapping, the draft PATCH body, the completeness check `submitKyb` enforces, and status copy. Saving
+ * complete details turns live mode on at once (no NearPay review). Copy rule: business details are
+ * self-declared — never "verified" or "reviewed".
  */
 import type { KybCase as KybCaseSchema, KybProfile as KybProfileSchema, z } from "@nearpay/spec";
 
@@ -94,7 +95,6 @@ export function formatErrors(f: KybForm): Errors {
 const REQUIRED: readonly [KybField, string][] = [
   ["legal_name", "Enter the registered legal name."],
   ["country_of_incorporation", "Choose the country of incorporation."],
-  ["registration_number", "Enter the registration number."],
   ["business_type", "Choose the business type."],
   ["line1", "Enter the street address."],
   ["city", "Enter the city."],
@@ -104,7 +104,10 @@ const REQUIRED: readonly [KybField, string][] = [
   ["expected_monthly_volume", "Choose the expected volume."],
 ];
 
-/** Everything `submitKyb` requires (all fields except website and the optional address lines). */
+/**
+ * Everything `submitKyb` requires: all fields except website, registration number (optional since
+ * ADR-0024) and the optional address lines.
+ */
 export function submitErrors(f: KybForm): Errors {
   const e: Errors = { ...formatErrors(f) };
   for (const [k, msg] of REQUIRED) if (!t(f[k]) && !e[k]) e[k] = msg;
@@ -152,35 +155,36 @@ export function statusInfo(c: Pick<KybCase, "status">): StatusInfo {
         badge: "Not submitted",
         tone: "neutral",
         title: "Add your business details",
-        body: "Live payments start once NearPay has reviewed your business details. Save a draft any time.",
+        body: "Live payments turn on as soon as you save complete details. Save a draft any time.",
       };
     case "pending":
+      // only seen when an operator has turned manual review back on (NP_KYB_MODE=manual)
       return {
-        badge: "Pending review",
-        tone: "warning",
-        title: "Your details are with NearPay for review",
-        body: "We'll email the owners when the review is done. Details can't be changed while they are under review.",
+        badge: "Submitted",
+        tone: "info",
+        title: "Your details are submitted",
+        body: "Live payments turn on as soon as they are processed; we'll email the owners. Details can't be changed meanwhile.",
       };
     case "needs_info":
       return {
-        badge: "Review",
+        badge: "More information",
         tone: "warning",
         title: "NearPay needs more information",
-        body: "Update the details below and submit them again.",
+        body: "Update the details below and save them again.",
       };
     case "approved":
       return {
-        badge: "Reviewed",
+        badge: "Live",
         tone: "success",
-        title: "Business details reviewed by NearPay",
-        body: "Your self-declared details were reviewed. Customers see your approved legal name at checkout.",
+        title: "You're live — you can accept real payments",
+        body: "Your business details are saved. Customers see your declared legal name at checkout.",
       };
     case "rejected":
       return {
-        badge: "Rejected",
+        badge: "Not accepted",
         tone: "danger",
-        title: "Business details not approved",
-        body: "NearPay couldn't approve these details for live payments. Contact support to discuss next steps.",
+        title: "Live payments aren't available for this business",
+        body: "These details can't be used for live payments. Contact support to discuss next steps.",
       };
     default:
       return { badge: String(c.status).replace(/_/g, " "), tone: "neutral", title: "Business details", body: "" };
