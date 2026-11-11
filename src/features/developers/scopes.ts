@@ -2,7 +2,7 @@
  * Restricted-key permissions (spec `KEY_SCOPES`, identity §6): one row per resource with the levels the
  * spec defines (`read`, `write` — write implies read — or a single action such as `facilitate`).
  */
-import { KEY_SCOPES } from "@nearpay/spec";
+import { KEY_SCOPES } from "@nearpay-money/spec";
 
 export interface ScopeResource {
   /** `"payment_intents"`. */

@@ -5,7 +5,7 @@
  * previews use the spec's normative `computeInvoiceTotals` (the same code billing runs), so a draft's
  * preview equals what the server computes for the same lines and rates.
  */
-import { computeInvoiceTotals, type InvoiceTotals, periodBoundary, type TaxRateInput } from "@nearpay/spec";
+import { computeInvoiceTotals, type InvoiceTotals, periodBoundary, type TaxRateInput } from "@nearpay-money/spec";
 import { type AssetInfo, currencyDigits, formatPrice } from "./money";
 
 /** Fiat currencies the forms offer (payments' default pricing currencies, rails §8). */

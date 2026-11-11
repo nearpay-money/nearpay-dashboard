@@ -38,7 +38,7 @@
  * - UI: `@nearpay-internal/ui` components; page patterns in `src/ui/page.tsx` (`Page`, `Section`, `LoadingState`,
  *   `ErrorState`, `ConfirmDialog`, `StatRow`); legacy helpers in `src/ui/ui.tsx` stay supported.
  */
-import type { Role } from "@nearpay/spec";
+import type { Role } from "@nearpay-money/spec";
 import type { ReactNode } from "react";
 
 /** Sidebar slots, in design v2 order (artboard "Dashboard-proposed"; Developers and Settings form a second group). */

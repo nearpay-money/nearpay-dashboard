@@ -5,7 +5,7 @@ import type {
   MandateFundingInstructions as FundingSchema,
   MandateSimulation as SimulationSchema,
   z,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 
 export type MandateCancelInstructions = z.output<typeof CancelSchema>;
 export type MandateCollection = z.output<typeof CollectionSchema>;

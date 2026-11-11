@@ -4,8 +4,9 @@
  * (`updateAccount`: `display_name`, `settings.branding.accent_color`, and since spec 0.2.1 `theme` and
  * `corner_radius`).
  */
-import { updateAccount } from "@nearpay/spec";
+
 import { Button, Callout, Card, Field, Input, LiveRegion, PageHeader, Select, ThemeRoot } from "@nearpay-internal/ui";
+import { updateAccount } from "@nearpay-money/spec";
 import { useEffect, useState } from "react";
 import { useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";

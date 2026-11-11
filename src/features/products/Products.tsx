@@ -2,8 +2,9 @@
  * Billing → Products (catalogue): filter active/archived, table Product · Pricing · Status · Updated,
  * "Add product" with its first price. Pricing per product comes from one `listPrices` (active, ≤ 100).
  */
-import { createProduct, listPrices, listProducts, type Price, type Product } from "@nearpay/spec";
+
 import { Button, FilterBar, FilterPill, Pager, Table } from "@nearpay-internal/ui";
+import { createProduct, listPrices, listProducts, type Price, type Product } from "@nearpay-money/spec";
 import { useState } from "react";
 import { useApp } from "../../app/context";
 import { priceSummary } from "../../lib/billing";

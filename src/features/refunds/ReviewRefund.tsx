@@ -4,7 +4,7 @@
  * "Review in wallet" creates the refund (Idempotency-Key from the client; one request per click) and
  * opens the wallet review on the refund page, where the exact `next_action` is signed.
  */
-import { createRefund, type PaymentIntent } from "@nearpay/spec";
+
 import {
   Button,
   Callout,
@@ -19,6 +19,7 @@ import {
   RadioCardGroup,
   Select,
 } from "@nearpay-internal/ui";
+import { createRefund, type PaymentIntent } from "@nearpay-money/spec";
 import { useId, useMemo, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";

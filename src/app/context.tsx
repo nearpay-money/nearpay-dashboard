@@ -9,7 +9,7 @@ import {
   type AccountRequirements as RequirementsSchema,
   switchSessionAccount,
   type z,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import {
   type AnchorHTMLAttributes,
   createContext,

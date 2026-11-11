@@ -9,7 +9,7 @@ import {
   listWebhookEndpointDeliveries,
   logout,
   revokeApiKey,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import { describe, expect, it, vi } from "vitest";
 import { ApiClient, encodeQuery, filenameOf } from "../../src/lib/api";
 import { ApiError, describeError, StepUpCanceled } from "../../src/lib/errors";

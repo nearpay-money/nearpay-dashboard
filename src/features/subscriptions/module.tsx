@@ -2,7 +2,7 @@
  * Subscriptions module (lld/billing.md §4, §11 d8–d9, spec `subscriptions`; Figma b02 "Subscriptions"):
  * Billing → Subscriptions tab, create, detail (cancel now / at period end, upcoming renewal, dunning).
  */
-import { createSubscription, getSubscription, listSubscriptions } from "@nearpay/spec";
+import { createSubscription, getSubscription, listSubscriptions } from "@nearpay-money/spec";
 import { lazyPage } from "../../app/lazy";
 import { defineFeature } from "../../app/registry";
 

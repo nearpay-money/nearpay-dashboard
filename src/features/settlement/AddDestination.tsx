@@ -9,8 +9,9 @@
  * can't sign, and the unverified path has no public route yet, so it is refused in live mode with an
  * explanation.
  */
-import { createSettlementDestination, type SettlementDestination } from "@nearpay/spec";
+
 import { Callout, Input, OptionCard, RadioCardGroup, Select } from "@nearpay-internal/ui";
+import { createSettlementDestination, type SettlementDestination } from "@nearpay-money/spec";
 import { type FormEvent, useMemo, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import {

@@ -2,7 +2,7 @@
  * Customers list (Figma b03): Customer · Reference · Total paid · Last payment, "Wallet-only checkout"
  * callout, add customer, exact email lookup (the list filter is `email`, ADR-0018), cursor pager.
  */
-import { type Customer, createCustomer, listCustomers } from "@nearpay/spec";
+
 import {
   Button,
   Callout,
@@ -14,6 +14,7 @@ import {
   Table,
   type TableColumn,
 } from "@nearpay-internal/ui";
+import { type Customer, createCustomer, listCustomers } from "@nearpay-money/spec";
 import { useRef, useState } from "react";
 import { useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";

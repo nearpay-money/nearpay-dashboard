@@ -6,8 +6,9 @@
  * Stage 4 (billing §14): the collection method (switch between emailed invoices and auto-debit —
  * leaving auto-debit releases a linked mandate) and the auto-debit panel (`SubscriptionMandate`).
  */
-import { cancelSubscription, type Subscription, updateSubscription } from "@nearpay/spec";
+
 import { Button, Callout, KeyValueList, LiveRegion, MenuButton, Table, useToast } from "@nearpay-internal/ui";
+import { cancelSubscription, type Subscription, updateSubscription } from "@nearpay-money/spec";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { FEATURE_STAGE } from "../../app/registry";

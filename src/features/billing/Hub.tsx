@@ -6,8 +6,9 @@
  * active subscriptions, summed per currency with bigint arithmetic; other currencies are counted, not
  * converted, and "+" marks a capped count.
  */
-import { listInvoices, listSubscriptions } from "@nearpay/spec";
+
 import { Callout } from "@nearpay-internal/ui";
+import { listInvoices, listSubscriptions } from "@nearpay-money/spec";
 import type { ReactNode } from "react";
 import { Link, useApp } from "../../app/context";
 import { FEATURE_STAGE } from "../../app/registry";

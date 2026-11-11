@@ -3,8 +3,9 @@
  * checkout preview. Pricing is immutable after creation (INV-6), so it is validated here first and by the
  * API at creation (destination active, minimum, unverified cap, currency).
  */
-import { createPaymentLink } from "@nearpay/spec";
+
 import { Button, Callout, Card, Checkbox, Field, Input, PageHeader, Select } from "@nearpay-internal/ui";
+import { createPaymentLink } from "@nearpay-money/spec";
 import { useMemo, useState } from "react";
 import { useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";

@@ -3,7 +3,7 @@
  * with the session cookie, `NearPay-Mode`, the CSRF header on unsafe methods and an Idempotency-Key on
  * idempotent writes. A `401 step_up_required` opens the step-up dialog and replays the request once
  * with the same Idempotency-Key; a lost session (401 / CSRF mismatch) signs the user out.
- * Routes, paths and types come from `@nearpay/spec`. Responses are parsed with the route's response
+ * Routes, paths and types come from `@nearpay-money/spec`. Responses are parsed with the route's response
  * schema via `safeParseTolerant` (spec 0.1.5): unknown fields and unknown open-enum values (new statuses,
  * reasons) are kept and rendered as received; anything else that breaks the contract is an
  * `invalid_response` error instead of a page rendering malformed data.
@@ -16,7 +16,7 @@ import {
   type RouteBody,
   type RouteResponse,
   safeParseTolerant,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import { ApiError } from "./errors";
 
 export type Mode = "test" | "live";

@@ -84,7 +84,7 @@ only and sent as `X-CSRF-Token` on unsafe methods. A reload or a new tab recover
   `prepareMandate` funding details, simulated funding in test mode). `mandate.*` in Developers.
 - Solana and Bitcoin destinations (`lld/identity.md` §20): address checks (P2WPKH / P2TR only), Wallet Standard
   `solana:signMessage` or pasted base58 signature, BIP-322 simple via UniSat / OKX or pasted base64.
-- Contracts: `@nearpay/spec` 0.4.0 (mandates, `Subscription.mandate`, `Invoice.mandate_collection`, `mandate.*`
+- Contracts: `@nearpay-money/spec` 0.4.0 (mandates, `Subscription.mandate`, `Invoice.mandate_collection`, `mandate.*`
   events, `standard: solana | bip322`); Solana/Bitcoin checks are tested against its `test-vectors`.
 - Stage 4 pages show by default (`VITE_NP_STAGE` defaults to 4).
 
@@ -109,7 +109,7 @@ pnpm verify           # typecheck + Biome + unit tests (coverage ≥ 90% branche
 ## Tests
 
 - `test/unit` (Vitest, Node): API client (headers, CSRF, idempotency, step-up replay, session loss, tolerant
-  response parsing), session recovery, integer money formatting, fingerprint vs `@nearpay/spec/test-vectors/destination-fingerprint.json`,
+  response parsing), session recovery, integer money formatting, fingerprint vs `@nearpay-money/spec/test-vectors/destination-fingerprint.json`,
   explorer links, role/live gates from the spec route table, EVM/NEAR signing helpers.
 - `test/e2e` (Playwright on system Chrome, `NP_CHROME_PATH`, default `/usr/bin/google-chrome`): the built app
   against a spec-driven mock of `/api` (`test/e2e/mock-api.ts`: strict body/query validation, CSRF, mode header,
@@ -121,6 +121,6 @@ pnpm verify           # typecheck + Biome + unit tests (coverage ≥ 90% branche
 
 Libraries are listed here as they are added (hackathon rule Q-005). Code and documentation are written with AI assistance (Claude) under human direction and review.
 
-- Runtime: React 19, `@nearpay/spec` (contracts) + `zod`, `@simplewebauthn/browser` (passkeys),
+- Runtime: React 19, `@nearpay-money/spec` (contracts) + `zod`, `@simplewebauthn/browser` (passkeys),
   `@hot-labs/near-connect` (NEAR wallets, NEP-413), Cloudflare Turnstile (sign-up only).
 - Development: Vite 5 (esbuild JSX), TypeScript, Vitest (+ coverage-v8), Playwright, Biome.

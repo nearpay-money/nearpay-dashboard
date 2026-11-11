@@ -7,7 +7,7 @@ import {
   type Subscription,
   type SubscriptionStatus,
   type z,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import { useApp } from "../../app/context";
 import { useAsync, useCursorList } from "../../lib/hooks";
 

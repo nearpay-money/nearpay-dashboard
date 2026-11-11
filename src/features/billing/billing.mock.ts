@@ -5,7 +5,7 @@
  * normative `computeInvoiceTotals`. Test-only.
  */
 import { randomBytes } from "node:crypto";
-import { API_VERSION, computeInvoiceTotals, Event, periodBoundary, type Role } from "@nearpay/spec";
+import { API_VERSION, computeInvoiceTotals, Event, periodBoundary, type Role } from "@nearpay-money/spec";
 import { intent, NOW, newId } from "../../../test/e2e/fixtures";
 import { CustomersMock, installFeatureMock, type MockCtx, type Reply } from "../customers/customers.mock";
 

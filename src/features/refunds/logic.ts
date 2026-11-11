@@ -4,7 +4,7 @@
  * checks run on a `next_action` before anything is signed. Integer money only (INV-5): amounts are
  * bigint / base-unit strings, never floats.
  */
-import type { PaymentIntent, Refund, RefundNextAction } from "@nearpay/spec";
+import type { PaymentIntent, Refund, RefundNextAction } from "@nearpay-money/spec";
 
 export type Attempt = PaymentIntent["attempts"][number];
 export type Leg = Refund["legs"][number];

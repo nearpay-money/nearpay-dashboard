@@ -5,7 +5,7 @@
  * (`pi_…` → payment, `cus_…` → customer, …; `cs_…` → the payments list filtered by checkout session, an
  * existing ADR-0018 filter). Pure functions here; the combobox lives in `Jump.tsx`.
  */
-import type { Role } from "@nearpay/spec";
+import type { Role } from "@nearpay-money/spec";
 import type { Registry } from "./registry";
 
 export interface JumpTarget {

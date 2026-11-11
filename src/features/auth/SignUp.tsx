@@ -1,5 +1,5 @@
-import { signup } from "@nearpay/spec";
 import { Input } from "@nearpay-internal/ui";
+import { signup } from "@nearpay-money/spec";
 import { useEffect, useRef, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { AuthLayout } from "../../ui/auth";

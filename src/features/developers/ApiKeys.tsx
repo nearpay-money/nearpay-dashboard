@@ -5,6 +5,8 @@
  * API asks; the client replays with the same Idempotency-Key) and are blocked in live mode until live
  * mode is enabled (lld §1, L-DB-02).
  */
+
+import { Input, OptionCard, RadioCardGroup, Select, Table, useToast } from "@nearpay-internal/ui";
 import {
   type ApiKey as ApiKeySchema,
   createApiKey,
@@ -13,8 +15,7 @@ import {
   rollApiKey,
   updateApiKey,
   type z,
-} from "@nearpay/spec";
-import { Input, OptionCard, RadioCardGroup, Select, Table, useToast } from "@nearpay-internal/ui";
+} from "@nearpay-money/spec";
 import { useState } from "react";
 import { useApp } from "../../app/context";
 import { formatDate, relative } from "../../lib/format";

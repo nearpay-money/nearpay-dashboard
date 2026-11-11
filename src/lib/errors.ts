@@ -1,5 +1,5 @@
 /** API errors as the dashboard sees them (error envelope, api-conventions §6). */
-import { HEADERS } from "@nearpay/spec";
+import { HEADERS } from "@nearpay-money/spec";
 
 export class ApiError extends Error {
   readonly status: number;

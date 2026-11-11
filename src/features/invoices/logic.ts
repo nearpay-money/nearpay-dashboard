@@ -3,7 +3,7 @@
  * totals preview (spec `computeInvoiceTotals`, INV-5), which actions a status allows, and the activity
  * timeline built from the invoice's events and status transitions.
  */
-import type { Invoice, Price, TaxRate, TaxRateInput } from "@nearpay/spec";
+import type { Invoice, Price, TaxRate, TaxRateInput } from "@nearpay-money/spec";
 import {
   dateInputValue,
   dueDateFromInput,

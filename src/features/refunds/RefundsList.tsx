@@ -2,7 +2,7 @@
  * Refund lists: `PaymentRefunds` (card for the payment detail page: refunds of one payment +
  * "Refund payment") and the `/refunds` page (all refunds, status filter, cursor pager).
  */
-import { createRefund, type PaymentIntent, type Refund } from "@nearpay/spec";
+
 import {
   buttonClassName,
   Card,
@@ -16,6 +16,7 @@ import {
   Table,
   type TableColumn,
 } from "@nearpay-internal/ui";
+import { createRefund, type PaymentIntent, type Refund } from "@nearpay-money/spec";
 import { useRef, useState } from "react";
 import { useApp } from "../../app/context";
 import { PAGE_SIZE, useRefundList } from "./api";

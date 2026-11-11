@@ -2,7 +2,7 @@
  * Audit log logic (identity §12, spec `AuditEvent`): filter → query, action labels, and the client-side
  * CSV export (RFC 4180 quoting; cells that a spreadsheet would run as a formula are prefixed with `'`).
  */
-import type { AuditEvent as AuditEventSchema, z } from "@nearpay/spec";
+import type { AuditEvent as AuditEventSchema, z } from "@nearpay-money/spec";
 
 export type AuditEvent = z.output<typeof AuditEventSchema>;
 

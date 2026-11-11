@@ -9,8 +9,8 @@
  * polls the mandate until the vault's `canceled` event reaches billing (INV-2: it never assumes success).
  */
 
-import { type Mandate, prepareMandateCancel } from "@nearpay/spec";
 import { CopyField, KeyValueList, LiveRegion } from "@nearpay-internal/ui";
+import { type Mandate, prepareMandateCancel } from "@nearpay-money/spec";
 import { useState } from "react";
 import { useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";

@@ -16,7 +16,7 @@ import {
   simulateRefundDeposit,
   submitRefundTx,
   updateRefundRecipient,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import { useCallback, useEffect, useState } from "react";
 import { useApp } from "../../app/context";
 import type { ApiClient } from "../../lib/api";

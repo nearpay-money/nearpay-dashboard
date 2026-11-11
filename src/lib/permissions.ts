@@ -14,7 +14,7 @@ import {
   testWebhookEndpoint,
   updateApiKey,
   updateWebhookEndpoint,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import type { Mode } from "./api";
 
 /** Session-callable for this role (ignores key-only routes). */

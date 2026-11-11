@@ -4,7 +4,7 @@
  * subscription page embeds the mandate panel (`./SubscriptionMandate.tsx`).
  */
 
-import { getMandate, listMandates } from "@nearpay/spec";
+import { getMandate, listMandates } from "@nearpay-money/spec";
 import { lazyPage } from "../../app/lazy";
 import { defineFeature } from "../../app/registry";
 

@@ -1,4 +1,4 @@
-/** Spec-valid fixtures for the mock API (each is parsed by its `@nearpay/spec` schema). */
+/** Spec-valid fixtures for the mock API (each is parsed by its `@nearpay-money/spec` schema). */
 import {
   Account,
   AgentPayment,
@@ -12,7 +12,7 @@ import {
   WebhookDelivery,
   WebhookEndpoint,
   type z,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 
 const ALPHA = "0123456789abcdefghjkmnpqrstvwxyz";
 let seq = 0;

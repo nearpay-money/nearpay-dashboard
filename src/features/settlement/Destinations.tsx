@@ -4,6 +4,8 @@
  * actions sign / approve / reject / make default / disable. Approval follows the server's rule
  * (`approveSettlementDestination`, `403 approver_conflict`); the UI never decides it.
  */
+
+import { buttonClassName, Callout, StatusBadge, Table, useToast, WalletIcon } from "@nearpay-internal/ui";
 import {
   approveSettlementDestination,
   disableSettlementDestination,
@@ -11,8 +13,7 @@ import {
   listSettlementDestinations,
   type SettlementDestination,
   setDefaultSettlementDestination,
-} from "@nearpay/spec";
-import { buttonClassName, Callout, StatusBadge, Table, useToast, WalletIcon } from "@nearpay-internal/ui";
+} from "@nearpay-money/spec";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { networkName } from "../../lib/chains";

@@ -6,13 +6,14 @@
  * `listPaymentIntents` (no analytics endpoint in v1) and `listSettlementDestinations`. Before the first
  * payment, while live mode is off, the onboarding checklist takes its place.
  */
+
+import { buttonClassName, Callout, KpiCard, KpiGrid, Skeleton, truncateMiddle } from "@nearpay-internal/ui";
 import {
   listPaymentIntents,
   listSettlementDestinations,
   type PaymentIntent,
   type SettlementDestination,
-} from "@nearpay/spec";
-import { buttonClassName, Callout, KpiCard, KpiGrid, Skeleton, truncateMiddle } from "@nearpay-internal/ui";
+} from "@nearpay-money/spec";
 import type { ReactNode } from "react";
 import { Link, useApp } from "../../app/context";
 import type { ApiClient } from "../../lib/api";

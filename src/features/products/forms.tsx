@@ -1,6 +1,7 @@
 /** Product and price dialogs (create/edit product, add price). Pricing is immutable after creation. */
-import { createPrice, createProduct, type Price, type Product, updateProduct } from "@nearpay/spec";
+
 import { Button, Field, Input, Modal, SegmentedControl, Select, Textarea } from "@nearpay-internal/ui";
+import { createPrice, createProduct, type Price, type Product, updateProduct } from "@nearpay-money/spec";
 import { useState } from "react";
 import { useApp } from "../../app/context";
 import { BILLING_CURRENCIES } from "../../lib/billing";

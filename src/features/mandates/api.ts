@@ -6,7 +6,7 @@ import {
   listMandates,
   listSettlementDestinations,
   type Mandate,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import { useApp } from "../../app/context";
 import { useAsync, useCursorList } from "../../lib/hooks";
 

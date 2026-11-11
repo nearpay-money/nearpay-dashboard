@@ -3,7 +3,7 @@
  * append-only audit events with action / actor / date filters, a cursor pager, and a client-side CSV
  * export that walks the list with the same filters (spec description of `listAccountAuditEvents`).
  */
-import { listAccountAuditEvents } from "@nearpay/spec";
+
 import {
   Button,
   Callout,
@@ -16,6 +16,7 @@ import {
   Table,
   type TableColumn,
 } from "@nearpay-internal/ui";
+import { listAccountAuditEvents } from "@nearpay-money/spec";
 import { useRef, useState } from "react";
 import { useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";

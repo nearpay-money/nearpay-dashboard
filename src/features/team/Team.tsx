@@ -4,13 +4,7 @@
  * "Awaiting approval" for destinations that need a second owner/admin (`approver_conflict` explained),
  * and the "Two-person approval" callout. The UI never decides the two-person rule itself — the API does.
  */
-import {
-  approveSettlementDestination,
-  createInvitation,
-  listMembers,
-  type Role,
-  type SettlementDestination,
-} from "@nearpay/spec";
+
 import {
   Button,
   Callout,
@@ -26,6 +20,13 @@ import {
   Table,
   type TableColumn,
 } from "@nearpay-internal/ui";
+import {
+  approveSettlementDestination,
+  createInvitation,
+  listMembers,
+  type Role,
+  type SettlementDestination,
+} from "@nearpay-money/spec";
 import { useState } from "react";
 import { useApp } from "../../app/context";
 import { ApiError } from "../../lib/errors";

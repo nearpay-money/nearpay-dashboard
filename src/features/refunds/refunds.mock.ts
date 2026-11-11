@@ -3,7 +3,7 @@
  * validated against the spec by the mock). Test-only: never imported by the app.
  */
 import { randomBytes } from "node:crypto";
-import type { Role } from "@nearpay/spec";
+import type { Role } from "@nearpay-money/spec";
 import { NOW, newId, USDC_NEAR } from "../../../test/e2e/fixtures";
 
 export interface MockCtx {

@@ -8,9 +8,10 @@
  * per-period changes are refused while a linked mandate is active (§14 d6). Test mode can play the
  * customer (`simulateMandateFunding` on the sandbox vault).
  */
-import type { Invoice, Subscription } from "@nearpay/spec";
-import { type Mandate, prepareMandate, simulateMandateFunding } from "@nearpay/spec";
+
 import { Callout, CopyField, KeyValueList, Select, useToast } from "@nearpay-internal/ui";
+import type { Invoice, Subscription } from "@nearpay-money/spec";
+import { type Mandate, prepareMandate, simulateMandateFunding } from "@nearpay-money/spec";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatDate, formatWhen } from "../../lib/format";

@@ -1,5 +1,5 @@
 /** Tax rates module (lld/billing.md §11 d1–d2, spec `billing-catalog`): Billing → Tax rates. */
-import { listTaxRates } from "@nearpay/spec";
+import { listTaxRates } from "@nearpay-money/spec";
 import { lazyPage } from "../../app/lazy";
 import { defineFeature } from "../../app/registry";
 

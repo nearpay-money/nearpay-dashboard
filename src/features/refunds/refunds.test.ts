@@ -1,4 +1,4 @@
-import { Refund, RefundNextAction } from "@nearpay/spec";
+import { Refund, RefundNextAction } from "@nearpay-money/spec";
 import { describe, expect, it, vi } from "vitest";
 import {
   activity,

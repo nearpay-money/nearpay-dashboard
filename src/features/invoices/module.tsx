@@ -2,7 +2,7 @@
  * Invoices module (lld/billing.md §5, spec `invoices`; Figma b02 "Billing" + "Create invoice", mobile
  * "Invoice INV–2041"): the Billing hub's Invoices tab (`/billing`), create, draft edit and detail.
  */
-import { createInvoice, getInvoice, listInvoices, updateInvoice } from "@nearpay/spec";
+import { createInvoice, getInvoice, listInvoices, updateInvoice } from "@nearpay-money/spec";
 import { lazyPage } from "../../app/lazy";
 import { defineFeature } from "../../app/registry";
 

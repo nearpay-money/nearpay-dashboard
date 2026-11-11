@@ -5,7 +5,7 @@
  * and offers "Finalize & get link" / "Save draft". The first save creates the draft; later saves
  * update the same draft (no duplicates when finalizing fails and the user retries).
  */
-import { createInvoice, finalizeInvoice, type Invoice, type Price, type TaxRate, updateInvoice } from "@nearpay/spec";
+
 import {
   Button,
   Card,
@@ -20,6 +20,14 @@ import {
   Select,
   Textarea,
 } from "@nearpay-internal/ui";
+import {
+  createInvoice,
+  finalizeInvoice,
+  type Invoice,
+  type Price,
+  type TaxRate,
+  updateInvoice,
+} from "@nearpay-money/spec";
 import { useMemo, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { amountText, BILLING_CURRENCIES, percentText, previewTotals, pricingDecimals } from "../../lib/billing";

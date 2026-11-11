@@ -6,7 +6,7 @@
  * collection method, unlinked mandates, `mandate.*` in Developers. CSP guard via the harness.
  */
 import { mkdirSync } from "node:fs";
-import { API_VERSION } from "@nearpay/spec";
+import { API_VERSION } from "@nearpay-money/spec";
 import type { Page } from "@playwright/test";
 import { destination, NOW } from "../../../test/e2e/fixtures";
 import { expect, NEAR_ACCOUNT, signIn, test } from "../../../test/e2e/harness";

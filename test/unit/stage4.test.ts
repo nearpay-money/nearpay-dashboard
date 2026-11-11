@@ -1,6 +1,6 @@
 /**
  * Stage 4 (step 4.3) unit tests: Solana/Bitcoin address and signature checks against the spec 0.4.0
- * vectors (`@nearpay/spec/test-vectors`), explorer links, Solana / Bitcoin / NEAR transaction wallets.
+ * vectors (`@nearpay-money/spec/test-vectors`), explorer links, Solana / Bitcoin / NEAR transaction wallets.
  */
 import { generateKeyPairSync, sign } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -27,7 +27,7 @@ import { discoverSolanaWallets, signSolanaMessage } from "../../src/wallets/sola
 
 const require = createRequire(import.meta.url);
 const vectors = (name: string) =>
-  JSON.parse(readFileSync(require.resolve(`@nearpay/spec/test-vectors/${name}`), "utf8"));
+  JSON.parse(readFileSync(require.resolve(`@nearpay-money/spec/test-vectors/${name}`), "utf8"));
 const ADDR = vectors("chains-solana-bitcoin.json");
 const ATT = vectors("destination-attestation.json");
 

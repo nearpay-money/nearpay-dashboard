@@ -3,8 +3,9 @@
  * Customer · Due date · Amount · Status, cursor pager, empty state. `InvoiceTable` is reused by the
  * customer and subscription pages.
  */
-import { createInvoice, type Invoice } from "@nearpay/spec";
+
 import { buttonClassName, FilterBar, FilterPill, Pager, Table } from "@nearpay-internal/ui";
+import { createInvoice, type Invoice } from "@nearpay-money/spec";
 import { Link, useApp } from "../../app/context";
 import { amountText } from "../../lib/billing";
 import { formatDate } from "../../lib/format";

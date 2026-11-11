@@ -3,8 +3,9 @@
  * and the four integration steps, each reflecting real account state (keys, destinations, webhook
  * endpoints, a succeeded payment) in the current mode.
  */
-import { listApiKeys, listPaymentIntents, listSettlementDestinations, listWebhookEndpoints } from "@nearpay/spec";
+
 import { buttonClassName, Card, CardTitle, ExternalLinkIcon, type StepItem, Steps } from "@nearpay-internal/ui";
+import { listApiKeys, listPaymentIntents, listSettlementDestinations, listWebhookEndpoints } from "@nearpay-money/spec";
 import { useApp } from "../../app/context";
 import { useAsync } from "../../lib/hooks";
 import { Page, StatRow } from "../../ui/page";

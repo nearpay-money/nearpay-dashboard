@@ -1,5 +1,5 @@
 /** CLI login approval rules (lld/identity.md §6.2, §19; spec `cli`). */
-import { CliUserCode } from "@nearpay/spec";
+import { CliUserCode } from "@nearpay-money/spec";
 
 /** Typed or linked code → `XXXX-XXXX` (upper case, dash inserted), or null when it can't be a user code. */
 export function normalizeUserCode(input: string | null | undefined): string | null {

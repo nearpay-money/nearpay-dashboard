@@ -4,7 +4,7 @@
  * the cookie with `GET /v1/auth/session` (spec 0.1.5, CR-15-01); nothing is written to web storage.
  * Builds before 0.1.5 kept the session (incl. the CSRF token) in `sessionStorage`: that copy is removed.
  */
-import { type DashboardSession as DashboardSessionSchema, getDashboardSession, type z } from "@nearpay/spec";
+import { type DashboardSession as DashboardSessionSchema, getDashboardSession, type z } from "@nearpay-money/spec";
 import type { ApiClient } from "./api";
 import { ApiError } from "./errors";
 

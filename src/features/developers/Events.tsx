@@ -2,8 +2,9 @@
  * Events (last 30 days) with a type filter, and the event page with its JSON and "Resend" (spec 0.2.0).
  * Stage 4: the 0.4.0 event union (`mandate.*` included).
  */
-import { type Event, getEvent, listEvents, resendEvent, WEBHOOK_TYPE_NAMES } from "@nearpay/spec";
+
 import { Callout, Select, Table } from "@nearpay-internal/ui";
+import { type Event, getEvent, listEvents, resendEvent, WEBHOOK_TYPE_NAMES } from "@nearpay-money/spec";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatTime, formatWhen, shortId } from "../../lib/format";

@@ -1,5 +1,5 @@
-import { verifyMagicLink } from "@nearpay/spec";
 import { Input } from "@nearpay-internal/ui";
+import { verifyMagicLink } from "@nearpay-money/spec";
 import { useEffect, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { AuthLayout } from "../../ui/auth";

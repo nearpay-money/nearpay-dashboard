@@ -9,7 +9,7 @@ import {
   removeMember,
   revokeInvitation,
   updateMember,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import { useApp } from "../../app/context";
 import type { ApiClient } from "../../lib/api";
 import { useAsync } from "../../lib/hooks";

@@ -1,6 +1,6 @@
 /**
  * Spec-driven mock of the gateway + services for the dashboard E2E tests (Playwright route
- * interception of `/api/**`). Each request is matched to a `@nearpay/spec` public route and checked like
+ * interception of `/api/**`). Each request is matched to a `@nearpay-money/spec` public route and checked like
  * the real stack would: `NearPay-Mode` header, session cookie (an in-memory flag), CSRF header on unsafe
  * methods, Idempotency-Key on idempotent writes, roles, step-up freshness, strict body/query validation
  * against the route schemas. Every mocked response is validated against the route's response schema
@@ -8,7 +8,7 @@
  * Calls are recorded for assertions.
  */
 import { createPublicKey, randomBytes, verify } from "node:crypto";
-import { type AnyRoute, PUBLIC_ROUTES, pathMatcher, type Role, safeParseTolerant } from "@nearpay/spec";
+import { type AnyRoute, PUBLIC_ROUTES, pathMatcher, type Role, safeParseTolerant } from "@nearpay-money/spec";
 import type { Page, Route } from "@playwright/test";
 import {
   type AccountT,

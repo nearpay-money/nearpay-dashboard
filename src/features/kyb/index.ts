@@ -2,7 +2,7 @@
  * KYB / business details feature module (lld/dashboard-and-console.md §1 Stage 2 "KYB"; ADR-0020):
  * routes + nav metadata for the core route registry.
  */
-import { getKyb, type Role } from "@nearpay/spec";
+import { getKyb, type Role } from "@nearpay-money/spec";
 import { createElement, type ReactElement } from "react";
 import { BusinessDetails } from "./BusinessDetails";
 export interface FeatureRoute {
