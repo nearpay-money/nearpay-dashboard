@@ -1,13 +1,12 @@
 /**
- * Settlement-destination cool-off copy. The cool-off length is server configuration (identity
- * `NP_COOLOFF_SECONDS`, 0 in the beta) and no endpoint exposes it, so the UI never states a duration:
- * it derives the wait from the destination's own `active_at`, and generic copy (before a destination
- * exists) speaks of "a short security hold" without a number.
+ * Payout-wallet activation copy. Owner decision 2026-11-11 (final): a payout wallet is active the moment
+ * its ownership is verified (and, when a second owner/admin must approve, the moment the last approval
+ * lands) — there is no waiting period by default. An operator can still configure a delay in identity
+ * (`NP_COOLOFF_SECONDS` > 0, status `cooling_off`); the UI then shows neutral "activating" copy derived
+ * from the destination's own `active_at`, and never speaks of a hold or a waiting policy.
  */
+import type { SettlementDestination } from "@nearpay-money/spec";
 import { formatDate } from "../../lib/format";
-
-/** Generic copy for places with no destination yet (Setup, Add destination, empty states). */
-export const SECURITY_HOLD_COPY = "a short security hold";
 
 /** Seconds until `activeAt`, or 0 when it has passed or is now (no waiting). */
 export function secondsUntilActive(activeAt: number | null | undefined, now: number): number {
@@ -30,19 +29,26 @@ export function activationClock(unix: number): string {
   return `${formatDate(unix).replace(/ \d{4}$/, "")} at ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** Short status line for a cooling-off destination: `"Activates in about 3 hours"` or `"Activating now"`. */
+/** Short status line for an activating (`cooling_off`) destination: `"Activates in about 3 hours"` or `"Activating now"`. */
 export function activationStatus(activeAt: number | null | undefined, now: number): string {
   const wait = secondsUntilActive(activeAt, now);
   return wait > 0 ? `Activates in ${aboutDuration(wait)}` : "Activating now";
 }
 
-/** Announcement after approving a destination: `"Payout approved. It becomes active in about 3 hours."`. */
-export function activationNotice(
+/**
+ * Announcement after approving a destination, from the server's answer: `"Main approved. Payout wallet
+ * active."` (the default), or, with an operator-configured delay, `"Main approved. It becomes active in
+ * about 2 hours."` / `"… It is activating now."`.
+ */
+export function approvalNotice(
   label: string,
-  activeAt: number | null | undefined,
+  d: Pick<SettlementDestination, "status" | "active_at">,
   now = Math.floor(Date.now() / 1000),
 ): string {
-  const wait = secondsUntilActive(activeAt, now);
+  if (d.status === "active") return `${label} approved. Payout wallet active.`;
+  if (d.status === "disabled") return `${label} approved, but it didn't pass screening and was disabled.`;
+  if (d.status !== "cooling_off") return `${label} approved.`;
+  const wait = secondsUntilActive(d.active_at, now);
   return wait > 0
     ? `${label} approved. It becomes active in ${aboutDuration(wait)}.`
     : `${label} approved. It is activating now.`;

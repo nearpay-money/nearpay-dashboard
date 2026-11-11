@@ -60,7 +60,7 @@ describe("status vocabulary", () => {
     expect(statusOf("payment", "requires_review")).toEqual({ label: "Review", tone: "warning" });
     expect(statusOf("kyb", "approved")).toEqual({ label: "Live", tone: "success" });
     expect(statusOf("kyb", "pending")).toEqual({ label: "Submitted", tone: "info" });
-    expect(statusOf("destination", "cooling_off").label).toBe("Cooling off");
+    expect(statusOf("destination", "cooling_off").label).toBe("Activating");
     // unknown open-enum values render as received
     expect(statusOf("delivery", "quarantined")).toEqual({ label: "Quarantined", tone: "neutral" });
     expect(statusOf("generic", "failed").tone).toBe("danger");

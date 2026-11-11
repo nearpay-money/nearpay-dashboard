@@ -88,7 +88,10 @@ test.describe("dashboard core (step 2.3)", () => {
     await expect(page.getByRole("button", { name: "Approve" })).toBeDisabled();
   });
 
-  test("cool-off copy follows active_at: countdown when waiting, 'now' with no cool-off", async ({ page, api }) => {
+  test("an operator-configured activation delay (cooling_off) shows neutral 'activating' copy", async ({
+    page,
+    api,
+  }) => {
     const now = Math.floor(Date.now() / 1000);
     const live = {
       livemode: true,
@@ -97,16 +100,17 @@ test.describe("dashboard core (step 2.3)", () => {
       status: "cooling_off" as const,
     };
     api.destinations.live.push(
-      destination({ ...live, label: "Instant", address: "instant.near", active_at: now }), // NP_COOLOFF_SECONDS=0
+      destination({ ...live, label: "Instant", address: "instant.near", active_at: now }), // job not run yet
       destination({ ...live, label: "Later", address: "later.near", active_at: now + 3 * 3600 + 60 }),
     );
     await signIn(page, api, "/settlement?mode=live");
-    const status = page.getByTestId("cooloff");
+    const status = page.getByTestId("activating");
     await expect(status.nth(0)).toHaveText("Activating now");
     await expect(status.nth(1)).toHaveText("Activates in about 3 hours");
     await expect(page.getByText(/Later activates .* · about 3 hours remaining/)).toBeVisible();
     await expect(page.getByText(/Instant activates/)).toHaveCount(0);
     await expect(page.getByText(/24.hour/)).toHaveCount(0);
+    await expect(page.getByText(/cool-off|cooling off|security hold/i)).toHaveCount(0);
   });
 
   test("restricted key with the scope matrix; edit scopes", async ({ page, api }) => {

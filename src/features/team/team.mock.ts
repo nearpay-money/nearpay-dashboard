@@ -136,7 +136,9 @@ export class TeamMock {
         this.pending = this.pending.filter((x) => x !== d);
         return ok({
           ...d,
-          status: c.body.decision === "approve" ? "cooling_off" : "disabled",
+          // the last approval activates it at once (no cool-off by default, owner decision 2026-11-11)
+          status: c.body.decision === "approve" ? "active" : "disabled",
+          ...(c.body.decision === "approve" ? { active_at: Math.floor(Date.now() / 1000) } : {}),
           approval: { ...a, approved_by: [...a.approved_by, c.userId] },
         });
       }

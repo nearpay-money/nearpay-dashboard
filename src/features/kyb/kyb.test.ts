@@ -52,12 +52,14 @@ describe("KYB (self-declared)", () => {
     });
   });
   it("never claims verification or a NearPay review (open onboarding, ADR-0024)", () => {
-    for (const s of ["not_started", "pending", "needs_info", "approved", "rejected", "new_thing"]) {
+    for (const s of ["pending", "needs_info", "approved", "rejected", "new_thing"]) {
       const i = statusInfo({ status: s as never });
-      expect(`${i.title} ${i.body} ${i.badge}`).not.toMatch(/verif|review|waiting/i);
+      expect(i).not.toBeNull();
+      expect(`${i?.title} ${i?.body} ${i?.badge}`).not.toMatch(/verif|review|waiting/i);
     }
-    expect(statusInfo({ status: "approved" }).title).toBe("You're live — you can accept real payments");
-    expect(statusInfo({ status: "not_started" }).body).toContain("as soon as you save");
+    expect(statusInfo({ status: "approved" })?.title).toBe("You're live — you can accept real payments");
+    // no "not submitted" card before the details are saved (owner decision 2026-11-11): the form is the prompt
+    expect(statusInfo({ status: "not_started" })).toBeNull();
     expect(countryOptions("en").find((c) => c.value === "GB")?.label).toBe("United Kingdom");
   });
 });
