@@ -31,7 +31,7 @@ import { useState } from "react";
 import { useApp } from "../../app/context";
 import { ApiError } from "../../lib/errors";
 import { roleAllows } from "../../lib/permissions";
-import { activationNotice } from "../settlement/cooloff";
+import { approvalNotice } from "../settlement/activation";
 import { usePendingApprovals, useTeam, useTeamCalls } from "./api";
 import { TENURE_COPY } from "./approval-copy";
 import {
@@ -135,8 +135,8 @@ export function Team() {
       )}
       <Approvals onAnnounce={setAnnounce} members={members} />
       <Callout title="Two-person approval">
-        When an account has two or more owners or admins, destination changes need two approvers and any security hold
-        still applies.
+        When an account has two or more owners or admins, a new payout wallet needs a second approver. It becomes active
+        as soon as the second approval lands.
       </Callout>
       <InviteDialog
         open={inviting}
@@ -498,13 +498,7 @@ function ApproveDialog({
     setError(undefined);
     try {
       const r = await calls.decide(d.id, decision);
-      onDone(
-        decision === "reject"
-          ? `${d.label} was rejected and disabled.`
-          : r.status === "cooling_off"
-            ? activationNotice(d.label, r.active_at)
-            : `${d.label} approved.`,
-      );
+      onDone(decision === "reject" ? `${d.label} was rejected and disabled.` : approvalNotice(d.label, r));
     } catch (e) {
       setError(e);
     } finally {

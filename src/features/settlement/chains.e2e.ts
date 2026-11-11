@@ -105,7 +105,7 @@ test("live Solana destination: raw-message signature from a Wallet Standard wall
   await expect(wallet).toBeFocused();
   await shots(page, "destination-solana-picker");
   await wallet.click();
-  await expect(page.getByText("Signature verified.")).toBeVisible();
+  await expect(page.getByText("Payout wallet active")).toBeVisible();
   expect(await page.evaluate(() => (window as unknown as { __solSigned: string }).__solSigned)).toBe(message);
   const body = api.callsTo("attestSettlementDestination")[0]?.body as { standard: string; signature: string };
   expect(body.standard).toBe("solana");
@@ -172,7 +172,7 @@ test("live Bitcoin destination: P2WPKH/P2TR only, lower-cased, BIP-322 simple pa
   await shots(page, "destination-bitcoin-attest");
   await page.getByTestId("bip322-signature").fill(valid);
   await page.getByRole("button", { name: "Verify signature" }).click();
-  await expect(page.getByText("Signature verified.")).toBeVisible();
+  await expect(page.getByText("Payout wallet active")).toBeVisible();
   const body = api.callsTo("attestSettlementDestination")[0]?.body as { standard: string; signature: string };
   expect(body).toMatchObject({ standard: "bip322", signature: valid });
 });

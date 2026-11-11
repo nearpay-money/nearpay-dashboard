@@ -52,7 +52,8 @@ const TABLES: Readonly<Record<StatusKind, Readonly<Record<string, Entry>>>> = {
   destination: {
     pending_verification: ["Awaiting signature", "warning"],
     pending_approval: ["Awaiting approval", "warning"],
-    cooling_off: ["Cooling off", "warning"],
+    // only with an operator-configured activation delay (no cool-off by default, owner decision 2026-11-11)
+    cooling_off: ["Activating", "progress"],
     active: ["Active", "success"],
     disabled: ["Disabled", "neutral"],
   },

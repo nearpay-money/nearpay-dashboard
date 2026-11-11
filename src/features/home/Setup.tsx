@@ -113,8 +113,7 @@ export function LiveStatusCard() {
         <StatusBadge tone="warning">Pending</StatusBadge>
         <CardTitle>Live payments are not active yet</CardTitle>
         <p className="np-text-secondary">
-          Add your business details and activate a payout wallet. A new wallet may take effect after a short security
-          hold.
+          Add your business details and verify a payout wallet. A verified wallet is active right away.
         </p>
         <button
           type="button"

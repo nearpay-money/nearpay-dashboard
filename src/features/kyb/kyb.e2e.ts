@@ -16,7 +16,11 @@ test("business details: validate → save draft → save and go live (step-up), 
   installFeatureMock(api, mock);
   await signIn(page, api);
   await page.goto("/settings/business");
-  await expect(page.getByTestId("kyb-status")).toContainText("Add your business details");
+  // no "not submitted" status card before the details are saved; the form is shown straight away
+  await expect(page.getByTestId("kyb-legal_name")).toBeVisible();
+  await expect(page.getByTestId("kyb-status")).toHaveCount(0);
+  await expect(page.getByText("Not submitted")).toHaveCount(0);
+  await expect(page.getByText(/Save a draft any time/)).toHaveCount(0);
   await page.screenshot({ path: `${SHOTS}/kyb-1440.png`, fullPage: true });
   await page.getByTestId("kyb-submit").click();
   await expect(page.getByText("Enter the registered legal name.")).toBeVisible();

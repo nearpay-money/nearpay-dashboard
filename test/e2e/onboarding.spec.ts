@@ -47,7 +47,8 @@ test.describe("home and settlement destinations", () => {
     // createSettlementDestination needs a fresh step-up
     await expect(page.getByRole("dialog", { name: "Confirm it's you" })).toBeVisible();
     await page.getByRole("button", { name: "Confirm with passkey" }).click();
-    await expect(page.getByText("Active — payments can settle here now.")).toBeVisible();
+    await expect(page.getByText("Payout wallet active")).toBeVisible();
+    await expect(page.getByText("Test payments settle to this wallet now (sandbox only).")).toBeVisible();
     const creates = api.callsTo("createSettlementDestination");
     expect(creates).toHaveLength(2);
     expect(creates[0]?.headers["idempotency-key"]).toBe(creates[1]?.headers["idempotency-key"]);
@@ -57,7 +58,7 @@ test.describe("home and settlement destinations", () => {
     await expect(page.getByTestId("destinations-table")).toContainText("Test USDC");
   });
 
-  test("live NEAR Intents destination: NEP-413 signature via NEAR Connect, cool-off, fingerprint", async ({
+  test("live NEAR Intents destination: NEP-413 signature via NEAR Connect, active at once, fingerprint", async ({
     page,
     api,
   }) => {
@@ -79,7 +80,7 @@ test.describe("home and settlement destinations", () => {
     expect(api.callsTo("createSettlementDestination")[0]?.headers["nearpay-mode"]).toBe("live");
     await page.getByRole("button", { name: "Connect NEAR wallet" }).click();
     await page.locator('.connect-item[data-type="test-near-wallet"]').click();
-    await expect(page.getByText("Signature verified.")).toBeVisible();
+    await expect(page.getByText("Payout wallet active")).toBeVisible();
     await expect(page.getByText("1WZ5-TFJZ-CM")).toBeVisible();
     const signed = (await page.evaluate(() => (window as unknown as { __nearCalls: unknown[] }).__nearCalls))[0] as {
       message: string;
@@ -91,8 +92,12 @@ test.describe("home and settlement destinations", () => {
     expect(signed.message).toContain("NearPay settlement destination\nAccount: acct_");
     expect(chl.standard).toBe("nep413");
     expect(chl.public_key).toMatch(/^ed25519:/);
+    // active right away (owner decision 2026-11-11): no waiting copy anywhere in the default flow
+    await expect(page.getByText(/cool-off|cooling off|security hold/i)).toHaveCount(0);
     await page.getByRole("link", { name: "Back to payout wallets" }).click();
-    await expect(page.getByTestId("cooloff")).toContainText("Activates in");
+    await expect(page.getByTestId("destinations-table")).toContainText("Active");
+    await expect(page.getByTestId("activating")).toHaveCount(0);
+    await expect(page.getByText(/cool-off|cooling off|security hold/i)).toHaveCount(0);
   });
 
   test("live EVM destination: EIP-191 personal_sign of the exact challenge", async ({ page, api }) => {
@@ -126,7 +131,7 @@ test.describe("home and settlement destinations", () => {
     await trigger.click();
     await expect(item).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(page.getByText("Signature verified.")).toBeVisible();
+    await expect(page.getByText("Payout wallet active")).toBeVisible();
     const calls = (
       await page.evaluate(
         () => (window as unknown as { __evmCalls: { method: string; params?: string[] }[] }).__evmCalls,
@@ -196,7 +201,7 @@ test.describe("home and settlement destinations", () => {
     const latest = api.challenges.get(api.destinations.live[0]?.id ?? "")?.id;
     await page.getByRole("button", { name: "Connect NEAR wallet" }).click();
     await page.locator('.connect-item[data-type="test-near-wallet"]').click();
-    await expect(page.getByText("Signature verified.")).toBeVisible();
+    await expect(page.getByText("Payout wallet active")).toBeVisible();
     expect(api.callsTo("attestSettlementDestination")[0]?.body).toMatchObject({ challenge_id: latest });
   });
 

@@ -1,6 +1,7 @@
 /**
- * Settlement destinations (Figma "Settlement"): where payments settle, with status (cool-off with the
- * activation time, pending approval with the two-approver progress from spec 0.2.0 `approval`), and the
+ * Settlement destinations (Figma "Settlement"): where payments settle, with status (active as soon as
+ * verified and approved — owner decision 2026-11-11; an operator-configured activation delay shows its
+ * activation time; pending approval with the two-approver progress from spec 0.2.0 `approval`), and the
  * actions sign / approve / reject / make default / disable. Approval follows the server's rule
  * (`approveSettlementDestination`, `403 approver_conflict`); the UI never decides it.
  */
@@ -25,7 +26,7 @@ import { statusOf } from "../../lib/status";
 import { ConfirmDialog, Empty, ErrorState, LoadingState, Page, useConfirm } from "../../ui/page";
 import { Button, ErrorNote, Mono } from "../../ui/ui";
 import { TENURE_COPY } from "../team/approval-copy";
-import { aboutDuration, activationClock, activationStatus, SECURITY_HOLD_COPY, secondsUntilActive } from "./cooloff";
+import { aboutDuration, activationClock, activationStatus, secondsUntilActive } from "./activation";
 
 type Dest = SettlementDestination;
 
@@ -49,7 +50,7 @@ function DestinationStatus({ d, now }: { d: Dest; now: number }) {
         </span>
       ) : null}
       {d.status === "cooling_off" && d.active_at ? (
-        <span className="np-text-caption np-text-secondary" data-testid="cooloff">
+        <span className="np-text-caption np-text-secondary" data-testid="activating">
           {activationStatus(d.active_at, now)}
         </span>
       ) : null}
@@ -119,8 +120,8 @@ export function Destinations() {
   if (list.loading && !list.data) return <LoadingState what="Loading payout wallets" />;
   if (!list.data) return <ErrorState title="Payout wallets" error={list.error} onRetry={list.reload} />;
   const rows = list.data.data;
-  // only destinations still waiting; with no cool-off (active_at ≤ now) there is nothing to count down
-  const coolingOff = rows.filter((d) => d.status === "cooling_off" && secondsUntilActive(d.active_at, now) > 0);
+  // only with an operator-configured activation delay: destinations still waiting (active_at in the future)
+  const activating = rows.filter((d) => d.status === "cooling_off" && secondsUntilActive(d.active_at, now) > 0);
 
   return (
     <Page
@@ -150,7 +151,7 @@ export function Destinations() {
         >
           {app.mode === "test"
             ? "Test payout wallets are active immediately and receive sandbox settlements only."
-            : `Live payout wallets are verified with a wallet signature and may take effect after ${SECURITY_HOLD_COPY}.`}
+            : "Live payout wallets are verified with a wallet signature and are active as soon as they're verified."}
         </Empty>
       ) : (
         <div data-testid="destinations-table">
@@ -299,10 +300,10 @@ export function Destinations() {
           {TENURE_COPY} A destination that isn't fully approved within 7 days of being added expires.
         </Callout>
       ) : null}
-      {coolingOff.map((d) => (
+      {activating.map((d) => (
         <p key={d.id} className="np-text-caption np-text-secondary">
           {d.label} activates {activationClock(d.active_at as number)} ·{" "}
-          {aboutDuration(secondsUntilActive(d.active_at, now))} remaining. All owners were notified.
+          {aboutDuration(secondsUntilActive(d.active_at, now))} remaining.
         </p>
       ))}
       <ConfirmDialog

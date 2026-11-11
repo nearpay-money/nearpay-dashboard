@@ -150,23 +150,25 @@ function KybView({ initial }: { initial: KybCase }) {
     <div className="np-stack np-stack--lg">
       <LiveRegion>{announce}</LiveRegion>
       {HEADER}
-      <Callout tone={info.tone} title={info.title} data-testid="kyb-status" live>
-        <p>
-          <StatusBadge>{info.badge}</StatusBadge>
-        </p>
-        <p>{info.body}</p>
-        {kase.status === "needs_info" && kase.requested_info && (
-          <blockquote className="npf-kyb__requested" data-testid="kyb-requested-info">
-            {kase.requested_info}
-          </blockquote>
-        )}
-        {kase.submitted_at ? (
-          <p className="np-text-caption">
-            Submitted {fmtDate(kase.submitted_at)}
-            {kase.decided_at ? ` · Decided ${fmtDate(kase.decided_at)}` : ""}
+      {info ? (
+        <Callout tone={info.tone} title={info.title} data-testid="kyb-status" live>
+          <p>
+            <StatusBadge>{info.badge}</StatusBadge>
           </p>
-        ) : null}
-      </Callout>
+          <p>{info.body}</p>
+          {kase.status === "needs_info" && kase.requested_info && (
+            <blockquote className="npf-kyb__requested" data-testid="kyb-requested-info">
+              {kase.requested_info}
+            </blockquote>
+          )}
+          {kase.submitted_at ? (
+            <p className="np-text-caption">
+              Submitted {fmtDate(kase.submitted_at)}
+              {kase.decided_at ? ` · Decided ${fmtDate(kase.decided_at)}` : ""}
+            </p>
+          ) : null}
+        </Callout>
+      ) : null}
 
       {!isOwner && kase.status !== "approved" && (
         <Callout tone="neutral" title="Only owners can change business details">

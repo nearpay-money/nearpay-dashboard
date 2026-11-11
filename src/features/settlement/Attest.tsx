@@ -32,7 +32,7 @@ import { detectBitcoinWallets, signBip322 } from "../../wallets/bitcoin";
 import { discoverEvmWallets, type EvmWallet, signEip191 } from "../../wallets/evm";
 import { nearConnector, signNep413 } from "../../wallets/near";
 import { discoverSolanaWallets, signSolanaMessage } from "../../wallets/solana";
-import { aboutDuration, activationClock, secondsUntilActive } from "./cooloff";
+import { aboutDuration, activationClock, secondsUntilActive } from "./activation";
 import { approvalText } from "./Destinations";
 
 type Challenge = NonNullable<SettlementDestination["attestation_challenge"]>;
@@ -398,24 +398,32 @@ export function DestinationResult({ d }: { d: SettlementDestination }) {
             ["Address", <Mono key="a">{d.address}</Mono>],
           ]}
         />
-        {d.status === "cooling_off" && d.active_at && wait > 0 && (
-          <Note tone="info" title="Signature verified.">
-            For your safety the destination becomes active in {aboutDuration(wait)}, at {activationClock(d.active_at)}.
-            All owners are notified.
-          </Note>
-        )}
-        {d.status === "cooling_off" && d.active_at && wait === 0 && (
-          <Note tone="info" title="Signature verified.">
-            The destination is activating now and can receive payments in a moment. All owners are notified.
+        {d.status === "active" && (
+          <Note tone="ok" title="Payout wallet active">
+            {d.livemode
+              ? `${d.verification === "signature" ? "Signature verified. " : ""}Live payments can settle to this wallet now.`
+              : "Test payments settle to this wallet now (sandbox only)."}
           </Note>
         )}
         {d.status === "pending_approval" && (
           <Note tone="info" title="Signature verified.">
-            Another owner or admin must approve this destination{approvals ? ` (${approvals})` : ""}. Any security hold
-            starts after approval.
+            Another owner or admin must approve this payout wallet{approvals ? ` (${approvals})` : ""}. It becomes
+            active as soon as they approve.
           </Note>
         )}
-        {d.status === "active" && <Note tone="ok">Active — payments can settle here now.</Note>}
+        {/* only when an operator configured an activation delay (cool-off > 0); neutral copy */}
+        {d.status === "cooling_off" && (
+          <Note tone="info" title="Signature verified.">
+            {d.active_at && wait > 0
+              ? `This payout wallet becomes active in ${aboutDuration(wait)}, at ${activationClock(d.active_at)}.`
+              : "This payout wallet is activating and can receive payments in a moment."}
+          </Note>
+        )}
+        {d.status === "disabled" && d.disabled_reason === "compliance" && (
+          <Note tone="error" title="This wallet can't be used">
+            It didn't pass our compliance screening, so it can't receive payments. Add a different payout wallet.
+          </Note>
+        )}
         <p>
           <Link to="/settlement">Back to payout wallets</Link>
         </p>

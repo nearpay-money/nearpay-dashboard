@@ -453,10 +453,13 @@ export class MockApi {
         // BIP-322: the mock checks the witness shape only (the vectors are verified by identity)
         if (chl.standard === "bip322" && !/^[A-Za-z0-9+/]{80,}={0,2}$/.test(String(body.signature)))
           return err(400, "invalid_request_error", "attestation_invalid");
+        // identity activates it in the same request (no cool-off by default, owner decision 2026-11-11);
+        // the first active destination becomes the default
         const d = {
           ...(list_[i] as DestinationT),
-          status: "cooling_off" as const,
-          active_at: Math.floor(Date.now() / 1000) + 86_400,
+          status: "active" as const,
+          active_at: Math.floor(Date.now() / 1000),
+          is_default: !list_.some((x) => x.is_default && x.status === "active"),
         };
         list_[i] = d;
         this.challenges.delete(params.id ?? "");
@@ -662,8 +665,9 @@ export class MockApi {
         ds[i] = {
           ...d,
           approval: { ...a, approved_by },
-          status: done ? "cooling_off" : "pending_approval",
-          active_at: done ? Math.floor(Date.now() / 1000) + 86_400 : null,
+          // the last approval activates it at once (no cool-off by default, owner decision 2026-11-11)
+          status: done ? "active" : "pending_approval",
+          active_at: done ? Math.floor(Date.now() / 1000) : null,
         };
         return ok(ds[i]);
       }

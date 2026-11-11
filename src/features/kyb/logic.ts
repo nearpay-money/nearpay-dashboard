@@ -148,15 +148,15 @@ export interface StatusInfo {
   readonly body: string;
 }
 
-export function statusInfo(c: Pick<KybCase, "status">): StatusInfo {
+/**
+ * The status card above the business-details form, or null for none. Nothing is shown before the details
+ * are saved (`not_started`, owner decision 2026-11-11): with open onboarding the form itself is the
+ * call to action, so a "not submitted" card only adds noise.
+ */
+export function statusInfo(c: Pick<KybCase, "status">): StatusInfo | null {
   switch (c.status) {
     case "not_started":
-      return {
-        badge: "Not submitted",
-        tone: "neutral",
-        title: "Add your business details",
-        body: "Live payments turn on as soon as you save complete details. Save a draft any time.",
-      };
+      return null;
     case "pending":
       // only seen when an operator has turned manual review back on (NP_KYB_MODE=manual)
       return {

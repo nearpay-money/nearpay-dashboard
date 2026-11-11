@@ -5,7 +5,7 @@ import { ApiError, StepUpCanceled } from "../../lib/errors";
 
 const COPY: Readonly<Record<string, string>> = {
   destination_not_active:
-    "That settlement destination isn't active yet. Pick an active destination or wait for its cool-off to end.",
+    "That payout wallet isn't active. Pick an active payout wallet, or finish verifying this one first.",
   amount_below_destination_minimum: "The price is below the smallest payment this destination accepts.",
   amount_above_unverified_cap: "The price is above the per-payment cap of an unverified destination.",
   currency_unsupported: "This currency isn't supported for pricing.",

@@ -52,8 +52,8 @@ test.describe("screenshots", () => {
         destination({
           label: "Operations",
           is_default: false,
-          status: "cooling_off",
-          active_at: NOW + 18 * 3600,
+          status: "active",
+          active_at: NOW - 3600,
           address: "ops.near",
         }),
         destination({
