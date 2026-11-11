@@ -10,9 +10,24 @@ import { DOCS_URL } from "./Start";
 
 const TIME = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
-function objectId(e: Event): string {
+const NOUNS: Readonly<Record<string, string>> = {
+  pi: "payment",
+  cs: "checkout",
+  re: "refund",
+  in: "invoice",
+  sub: "subscription",
+  md: "mandate",
+  cus: "customer",
+  plink: "link",
+  sd: "wallet",
+  ap: "agent",
+};
+
+/** What the event is about, in a word ("payment", "invoice"), from its object id prefix. */
+function objectNoun(e: Event): string {
   const o = e.data.object as { id?: unknown };
-  return typeof o.id === "string" ? o.id : "";
+  const prefix = typeof o.id === "string" ? (o.id.split("_")[0] ?? "") : "";
+  return NOUNS[prefix] ?? "event";
 }
 
 export function Quickstart() {
@@ -73,7 +88,7 @@ export function Quickstart() {
                   <Link to={`/developers/events/${e.id}`} className="dash-dev__row">
                     <span className="dash-dev__time">{TIME.format(e.created * 1000)}</span>
                     <span className="dash-dev__type">{e.type}</span>
-                    <span className="dash-dev__obj">{objectId(e).split("_")[0] || "event"}</span>
+                    <span className="dash-dev__obj">{objectNoun(e)}</span>
                   </Link>
                 </li>
               ))}

@@ -626,6 +626,23 @@
   display: none;
 }
 
+/* inline filters beside a section title (Kind, Type): compact */
+.dash-root .dash-inline-field {
+  --np-size-field: 36px;
+}
+.dash-root .dash-inline-field .np-select__control {
+  font-size: 14px;
+}
+
+/* activity timelines: compact rows */
+.dash-root .np-timeline__item {
+  padding-block: 12px;
+}
+.dash-root .np-timeline__body {
+  font-size: 14px;
+  line-height: 20px;
+}
+
 /* forms */
 .dash-root .np-field__label {
   font-size: 13.5px;
@@ -743,7 +760,7 @@
 /* ---- agent payments: latest paid request (landing AgentCard) ----------------------------------- */
 .dash-agent-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+  grid-template-columns: minmax(0, 1fr) 360px;
   align-items: start;
   gap: 14px;
 }
@@ -1161,7 +1178,8 @@
   .dash-auth__pitch {
     margin: 0;
     color: var(--np-color-text);
-    font-size: 28px;
+    text-wrap: balance;
+    font-size: 26px;
     font-weight: var(--np-weight-strong);
     line-height: 32px;
     letter-spacing: -0.035em;
@@ -1341,6 +1359,9 @@
 @media (max-width: 719px) {
   .dash-crumbs {
     display: none;
+  }
+  .dash-root .dash-src__axis span:nth-child(even) {
+    visibility: visible;
   }
   .dash-kpis {
     grid-template-columns: minmax(0, 1fr);

@@ -304,6 +304,10 @@
 .dash-root .npf-invoice-doc .np-table td {
   font-weight: var(--np-weight-regular);
 }
+.dash-root .npf-invoice-doc .np-table th:last-child,
+.dash-root .npf-invoice-doc .np-table td:last-child {
+  text-align: right;
+}
 .npf-invoice-doc .npf-billing__totals {
   padding-top: 10px;
   border-top: 1px solid var(--np-color-border-subtle);

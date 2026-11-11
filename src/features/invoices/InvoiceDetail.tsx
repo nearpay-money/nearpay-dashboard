@@ -253,54 +253,12 @@ function InvoiceView({ initial }: { initial: Invoice }) {
           nothing is emailed until you send it.
         </Callout>
       ) : null}
-      {acts.link && inv.hosted_invoice_url ? (
-        <Section title="Payment page" data-testid="payment-page">
-          <div className="npf-billing__link-row">
-            <CopyText
-              value={inv.hosted_invoice_url}
-              label="Copy payment link"
-              copiedLabel="Payment link copied"
-              className="npf-billing__link"
-              data-testid="hosted-link"
-            >
-              {inv.hosted_invoice_url.split("#")[0]}
-            </CopyText>
-            <a
-              href={inv.hosted_invoice_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="np-button np-button--secondary np-button--sm"
-            >
-              <span>Open payment page</span>
-            </a>
-          </div>
-          <p className="np-text-small np-text-secondary">
-            Anyone with this link can view the invoice and pay it, so share it only with your customer. Payment fees are
-            shown to the payer at checkout. Funds settle directly to your chosen wallet.
-          </p>
-          <p className="np-text-small" id="npf-send-hint" data-testid="send-status">
-            {inv.status_transitions.sent_at
-              ? `Last emailed ${formatWhen(inv.status_transitions.sent_at)}. `
-              : "Not emailed yet. "}
-            {cooldown > 0
-              ? `An invoice can be emailed once every ${SEND_INTERVAL_S / 60} minutes — next send in ${durationText(cooldown)}.`
-              : `An invoice can be emailed once every ${SEND_INTERVAL_S / 60} minutes.`}
-          </p>
-        </Section>
-      ) : null}
-      {inv.status === "uncollectible" ? (
-        <Callout tone="warning" title="Marked uncollectible">
-          {inv.uncollectible_reason === "dunning_exhausted"
-            ? "The last reminder went out without payment."
-            : "You wrote this invoice off."}{" "}
-          Reminders stopped, but the payment page still accepts payment; a late payment marks it paid.
-        </Callout>
-      ) : null}
       <section className="npf-invoice-doc" aria-labelledby="npf-invoice-doc-title" data-testid="invoice-document">
         <div className="npf-invoice-doc__head">
-          <h2 id="npf-invoice-doc-title" className="npf-invoice-doc__title">
+          {/* not a heading: the page heading already names the invoice; this is the document's own title */}
+          <p id="npf-invoice-doc-title" className="npf-invoice-doc__title">
             Invoice <span>{inv.number ?? "draft"}</span>
-          </h2>
+          </p>
           <InvoiceStatus invoice={inv} now={now} />
         </div>
         <div className="npf-invoice-doc__meta">
@@ -383,6 +341,49 @@ function InvoiceView({ initial }: { initial: Invoice }) {
                   : statusOf("invoice", inv.status).label}
         </p>
       </section>
+      {acts.link && inv.hosted_invoice_url ? (
+        <Section title="Payment page" data-testid="payment-page">
+          <div className="npf-billing__link-row">
+            <CopyText
+              value={inv.hosted_invoice_url}
+              label="Copy payment link"
+              copiedLabel="Payment link copied"
+              className="npf-billing__link"
+              data-testid="hosted-link"
+            >
+              {inv.hosted_invoice_url.split("#")[0]}
+            </CopyText>
+            <a
+              href={inv.hosted_invoice_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="np-button np-button--secondary np-button--sm"
+            >
+              <span>Open payment page</span>
+            </a>
+          </div>
+          <p className="np-text-small np-text-secondary">
+            Anyone with this link can view the invoice and pay it, so share it only with your customer. Payment fees are
+            shown to the payer at checkout. Funds settle directly to your chosen wallet.
+          </p>
+          <p className="np-text-small" id="npf-send-hint" data-testid="send-status">
+            {inv.status_transitions.sent_at
+              ? `Last emailed ${formatWhen(inv.status_transitions.sent_at)}. `
+              : "Not emailed yet. "}
+            {cooldown > 0
+              ? `An invoice can be emailed once every ${SEND_INTERVAL_S / 60} minutes — next send in ${durationText(cooldown)}.`
+              : `An invoice can be emailed once every ${SEND_INTERVAL_S / 60} minutes.`}
+          </p>
+        </Section>
+      ) : null}
+      {inv.status === "uncollectible" ? (
+        <Callout tone="warning" title="Marked uncollectible">
+          {inv.uncollectible_reason === "dunning_exhausted"
+            ? "The last reminder went out without payment."
+            : "You wrote this invoice off."}{" "}
+          Reminders stopped, but the payment page still accepts payment; a late payment marks it paid.
+        </Callout>
+      ) : null}
       <div className="npf-billing__columns">
         <Section title="Details">
           <KeyValueList
