@@ -88,7 +88,7 @@ test.describe("dashboard core (step 2.3)", () => {
     await expect(page.getByRole("button", { name: "Approve" })).toBeDisabled();
   });
 
-  test("an operator-configured activation delay (cooling_off) shows neutral 'activating' copy", async ({
+  test("a destination the API still reports as cooling_off says only 'activating' (no cool-off wording)", async ({
     page,
     api,
   }) => {
@@ -100,17 +100,16 @@ test.describe("dashboard core (step 2.3)", () => {
       status: "cooling_off" as const,
     };
     api.destinations.live.push(
-      destination({ ...live, label: "Instant", address: "instant.near", active_at: now }), // job not run yet
+      destination({ ...live, label: "Instant", address: "instant.near", active_at: now }),
       destination({ ...live, label: "Later", address: "later.near", active_at: now + 3 * 3600 + 60 }),
     );
     await signIn(page, api, "/settlement?mode=live");
     const status = page.getByTestId("activating");
-    await expect(status.nth(0)).toHaveText("Activating now");
-    await expect(status.nth(1)).toHaveText("Activates in about 3 hours");
-    await expect(page.getByText(/Later activates .* · about 3 hours remaining/)).toBeVisible();
-    await expect(page.getByText(/Instant activates/)).toHaveCount(0);
+    await expect(status).toHaveCount(2);
+    await expect(status.nth(1)).toHaveText("Activating. It can receive payments once it shows as active.");
+    await expect(page.getByText(/activates|remaining|about 3 hours/i)).toHaveCount(0);
     await expect(page.getByText(/24.hour/)).toHaveCount(0);
-    await expect(page.getByText(/cool-off|cooling off|security hold/i)).toHaveCount(0);
+    await expect(page.getByText(/cool-off|cooling off|security hold|waiting period/i)).toHaveCount(0);
   });
 
   test("restricted key with the scope matrix; edit scopes", async ({ page, api }) => {
@@ -164,7 +163,7 @@ test.describe("dashboard core (step 2.3)", () => {
   test("account switcher lists memberships and switches the session account", async ({ page, api }) => {
     api.memberships = [{ id: "acct_01jbz9k3m4n5p6q7r8s9t0zzzz", display_name: "Bean There", role: "admin" }];
     await signIn(page, api);
-    await page.getByRole("button", { name: /Switch workspace/ }).click();
+    await page.getByRole("button", { name: /Switch account/ }).click();
     await page.getByRole("button", { name: /Bean There/ }).click();
     await expect(page.getByTestId("account-name")).toHaveText("Bean There");
     expect(api.callsTo("switchSessionAccount")[0]?.body).toEqual({ account: "acct_01jbz9k3m4n5p6q7r8s9t0zzzz" });

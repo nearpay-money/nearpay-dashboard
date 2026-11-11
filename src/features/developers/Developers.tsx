@@ -4,6 +4,7 @@ import { Page } from "../../ui/page";
 import { ApiKeys } from "./ApiKeys";
 import { EventDetail, Events } from "./Events";
 import { LiveTail } from "./LiveTail";
+import { Quickstart } from "./Quickstart";
 import { WebhookDetail, Webhooks } from "./Webhooks";
 
 const TABS: [string, string][] = [
@@ -50,6 +51,7 @@ export function Developers({ tab, id }: { tab: DevelopersTab; id?: string }) {
       <p className="np-text-caption np-text-secondary">Showing {app.mode} mode.</p>
       {tab === "keys" && (
         <>
+          <Quickstart />
           <ApiKeys />
           <Webhooks summary />
         </>

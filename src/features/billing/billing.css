@@ -232,3 +232,171 @@
   width: 240px;
   max-width: 100%;
 }
+
+/* Invoice document (landing InvoiceCard): title + status, Billed to / Due, lines, total, one status line */
+.npf-invoice-doc {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 760px;
+  padding: 20px 22px;
+  border-radius: 14px;
+  background: var(--np-color-surface);
+}
+.npf-invoice-doc__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.npf-invoice-doc__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: var(--np-weight-strong);
+  line-height: 24px;
+  letter-spacing: -0.02em;
+}
+.npf-invoice-doc__title span {
+  margin-left: 6px;
+  color: var(--np-color-text-secondary);
+  font-size: 14.5px;
+  font-weight: var(--np-weight-medium);
+  letter-spacing: 0;
+}
+.npf-invoice-doc__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.npf-invoice-doc__meta p {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+.npf-invoice-doc__meta span {
+  color: var(--np-color-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+.npf-invoice-doc__meta b {
+  font-size: 14.5px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+/* lines: hairline rows, no header band (the doc reads like the invoice the customer gets) */
+.npf-invoice-doc .np-table-scroll {
+  border: 0;
+  border-top: 1px solid var(--np-color-border-subtle);
+  border-radius: 0;
+}
+.dash-root .npf-invoice-doc .np-table th {
+  height: 30px;
+  background: transparent;
+}
+.dash-root .npf-invoice-doc .np-table th:first-child,
+.dash-root .npf-invoice-doc .np-table td:first-child {
+  padding-left: 0;
+}
+.dash-root .npf-invoice-doc .np-table th:last-child,
+.dash-root .npf-invoice-doc .np-table td:last-child {
+  padding-right: 0;
+}
+.dash-root .npf-invoice-doc .np-table td {
+  font-weight: var(--np-weight-regular);
+}
+.npf-invoice-doc .npf-billing__totals {
+  padding-top: 10px;
+  border-top: 1px solid var(--np-color-border-subtle);
+}
+.npf-invoice-doc__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--np-color-border-subtle);
+  color: var(--np-color-text-secondary);
+  font-size: 13.5px;
+  font-weight: var(--np-weight-semibold);
+}
+.npf-invoice-doc__foot::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--np-color-neutral-fg);
+}
+.npf-invoice-doc__foot--open::before {
+  background: var(--np-violet);
+}
+.npf-invoice-doc__foot--paid {
+  color: var(--np-color-success-fg);
+}
+.npf-invoice-doc__foot--paid::before {
+  background: var(--np-color-success-fg);
+}
+@media (max-width: 719px) {
+  .npf-invoice-doc {
+    padding: 16px;
+  }
+}
+
+/* Subscription plan card (landing InvoiceCard, lower card) */
+.npf-plan {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 14px;
+  max-width: 760px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--np-color-surface);
+}
+.npf-plan__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--np-color-info-bg);
+  color: var(--np-color-info-fg);
+}
+.npf-plan__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.npf-plan__text b {
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 20px;
+}
+.npf-plan__text span {
+  color: var(--np-color-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+.npf-plan__amount {
+  font-size: 18px;
+  font-weight: var(--np-weight-strong);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.npf-plan__amount small {
+  color: var(--np-color-text-secondary);
+  font-size: 13px;
+  font-weight: var(--np-weight-medium);
+  letter-spacing: 0;
+}
+.npf-plan__bar {
+  display: block;
+  grid-column: 1 / -1;
+  margin-top: 10px;
+}
+.npf-plan__track {
+  fill: var(--np-color-border-subtle);
+}
+.npf-plan__fill {
+  fill: var(--np-teal);
+}

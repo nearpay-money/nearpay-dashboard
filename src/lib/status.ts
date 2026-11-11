@@ -75,7 +75,7 @@ const TABLES: Readonly<Record<StatusKind, Readonly<Record<string, Entry>>>> = {
     expired: ["Expired", "danger"],
   },
   kyb: {
-    not_started: ["Not submitted", "neutral"],
+    not_started: ["Missing", "neutral"],
     pending: ["Submitted", "info"],
     needs_info: ["Action needed", "warning"],
     approved: ["Live", "success"],

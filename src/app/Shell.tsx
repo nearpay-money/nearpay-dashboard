@@ -370,7 +370,7 @@ export function Shell({ section, crumb, children }: ShellProps) {
             {req && !req.live_enabled ? (
               <>
                 {" "}
-                Live payments are not active yet. <Link to="/setup">View the checklist</Link>
+                Live payments need a few setup steps. <Link to="/setup">View the checklist</Link>
               </>
             ) : null}
           </p>

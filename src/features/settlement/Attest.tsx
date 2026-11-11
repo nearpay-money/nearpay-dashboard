@@ -32,7 +32,7 @@ import { detectBitcoinWallets, signBip322 } from "../../wallets/bitcoin";
 import { discoverEvmWallets, type EvmWallet, signEip191 } from "../../wallets/evm";
 import { nearConnector, signNep413 } from "../../wallets/near";
 import { discoverSolanaWallets, signSolanaMessage } from "../../wallets/solana";
-import { aboutDuration, activationClock, secondsUntilActive } from "./activation";
+import { ACTIVATING_TEXT } from "./activation";
 import { approvalText } from "./Destinations";
 
 type Challenge = NonNullable<SettlementDestination["attestation_challenge"]>;
@@ -387,8 +387,6 @@ function BitcoinSigner({ destination, message, busy, run, submit }: SignerProps)
 
 export function DestinationResult({ d }: { d: SettlementDestination }) {
   const approvals = approvalText(d);
-  const now = useNow();
-  const wait = secondsUntilActive(d.active_at, now);
   return (
     <Card title={d.label} actions={<Badge kind="destination" value={d.status} />}>
       <div className="np-stack">
@@ -411,12 +409,10 @@ export function DestinationResult({ d }: { d: SettlementDestination }) {
             active as soon as they approve.
           </Note>
         )}
-        {/* only when an operator configured an activation delay (cool-off > 0); neutral copy */}
+        {/* only if the API still reports `cooling_off`: no countdown or waiting-period wording */}
         {d.status === "cooling_off" && (
           <Note tone="info" title="Signature verified.">
-            {d.active_at && wait > 0
-              ? `This payout wallet becomes active in ${aboutDuration(wait)}, at ${activationClock(d.active_at)}.`
-              : "This payout wallet is activating and can receive payments in a moment."}
+            {ACTIVATING_TEXT}
           </Note>
         )}
         {d.status === "disabled" && d.disabled_reason === "compliance" && (

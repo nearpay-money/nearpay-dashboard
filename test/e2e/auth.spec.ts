@@ -85,4 +85,32 @@ test.describe("auth", () => {
     await page.getByRole("link", { name: "Payments", exact: true }).click();
     await expect(page).toHaveURL(/\/signin/);
   });
+
+  test("sign-up while signed in: no redirect; dashboard, another account, or sign out for a different email", async ({
+    page,
+    api,
+  }) => {
+    await signIn(page, api);
+    await expect(page.getByTestId("volume-chart")).toBeVisible();
+    await page.goto("/signup");
+    await expect(page).toHaveURL(/\/signup$/);
+    await expect(page.getByRole("heading", { name: "You're signed in as owner@acme.example" })).toBeVisible();
+    const choices = page.getByTestId("signed-in-choices");
+    await expect(choices.getByRole("link", { name: "Go to dashboard" })).toHaveAttribute("href", "/");
+    // another business account: the account switcher (no create-account API for a signed-in user)
+    await choices.getByRole("link", { name: "Create another business account" }).click();
+    await expect(page.getByRole("dialog", { name: "Switch account" })).toBeVisible();
+    await expect(page).toHaveURL(/\/$/);
+    await page.keyboard.press("Escape");
+    await page.goto("/signup");
+    await page.getByRole("button", { name: "Sign out and use a different email" }).click();
+    await expect(page.getByRole("heading", { name: "Create your NearPay account" })).toBeVisible();
+    await expect(page).toHaveURL(/\/signup$/);
+    expect(api.callsTo("logout")).toHaveLength(1);
+    await expect(page.getByLabel("Work email")).toBeVisible();
+    // the sign-in page while signed in keeps its behaviour: straight to the dashboard
+    await signIn(page, api);
+    await page.goto("/signin");
+    await expect(page).toHaveURL(/\/$/);
+  });
 });

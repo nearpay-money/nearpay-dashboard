@@ -7,7 +7,16 @@
  * leaving auto-debit releases a linked mandate) and the auto-debit panel (`SubscriptionMandate`).
  */
 
-import { Button, Callout, KeyValueList, LiveRegion, MenuButton, Table, useToast } from "@nearpay-internal/ui";
+import {
+  Button,
+  Callout,
+  KeyValueList,
+  LiveRegion,
+  MenuButton,
+  RefreshIcon,
+  Table,
+  useToast,
+} from "@nearpay-internal/ui";
 import { cancelSubscription, type Subscription, updateSubscription } from "@nearpay-money/spec";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
@@ -30,6 +39,59 @@ import { InvoiceTable } from "../invoices/InvoiceList";
 import { SubscriptionMandate } from "../mandates/SubscriptionMandate";
 import { useLatestInvoice, useSubscription } from "./api";
 import { dunningText, nextInvoiceText, subscriptionActions, upcomingRenewal } from "./logic";
+
+/**
+ * The plan card of the landing `InvoiceCard` ("Pro plan · Renewed, next on 1 Jan · $29.00/month") with a
+ * bar for how far the current period has run (SVG width attribute, no inline styles).
+ */
+function PlanCard({
+  name,
+  amount,
+  every,
+  when,
+  start,
+  end,
+  active,
+}: {
+  name: string;
+  amount: string;
+  every: string;
+  when: string;
+  start: number;
+  end: number;
+  active: boolean;
+}) {
+  const now = Math.floor(Date.now() / 1000);
+  const done =
+    active && end > start ? Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100))) : 0;
+  return (
+    <div className="npf-plan" data-testid="plan-card">
+      <span className="npf-plan__icon" aria-hidden="true">
+        <RefreshIcon size={18} />
+      </span>
+      <span className="npf-plan__text">
+        <b>{name}</b>
+        <span>{when}</span>
+      </span>
+      <span className="npf-plan__amount np-tabular">
+        {amount}
+        <small>/{every}</small>
+      </span>
+      {active ? (
+        <svg
+          className="npf-plan__bar"
+          width="100%"
+          height="4"
+          role="img"
+          aria-label={`${done}% of this period has passed`}
+        >
+          <rect className="npf-plan__track" width="100%" height="4" rx="2" />
+          <rect className="npf-plan__fill" width={`${done}%`} height="4" rx="2" />
+        </svg>
+      ) : null}
+    </div>
+  );
+}
 
 export function SubscriptionDetail({ id }: { id: string }) {
   const s = useSubscription(id);
@@ -144,6 +206,27 @@ function SubscriptionView({ initial }: { initial: Subscription }) {
     >
       <LiveRegion>{announce}</LiveRegion>
       <ErrorNote error={error} />
+      <PlanCard
+        name={sub.items.map((i) => products.get(i.price.product) ?? "…").join(", ") || "Subscription"}
+        amount={money(perPeriod)}
+        every={
+          sub.recurring.interval_count === 1
+            ? sub.recurring.interval
+            : `${sub.recurring.interval_count} ${sub.recurring.interval}s`
+        }
+        when={
+          sub.status === "canceled"
+            ? `Ended ${formatDate(sub.ended_at ?? sub.canceled_at ?? sub.current_period_end)}`
+            : sub.cancel_at_period_end
+              ? `Cancels on ${formatDate(sub.current_period_end)}`
+              : sub.status === "trialing" && sub.trial_end
+                ? `Trial ends ${formatDate(sub.trial_end)}`
+                : `Renews on ${formatDate(sub.current_period_end)}`
+        }
+        start={sub.current_period_start}
+        end={sub.current_period_end}
+        active={sub.status !== "canceled"}
+      />
       <StatRow
         items={[
           {

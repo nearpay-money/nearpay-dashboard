@@ -296,7 +296,29 @@ function InvoiceView({ initial }: { initial: Invoice }) {
           Reminders stopped, but the payment page still accepts payment; a late payment marks it paid.
         </Callout>
       ) : null}
-      <Section title="Items">
+      <section className="npf-invoice-doc" aria-labelledby="npf-invoice-doc-title" data-testid="invoice-document">
+        <div className="npf-invoice-doc__head">
+          <h2 id="npf-invoice-doc-title" className="npf-invoice-doc__title">
+            Invoice <span>{inv.number ?? "draft"}</span>
+          </h2>
+          <InvoiceStatus invoice={inv} now={now} />
+        </div>
+        <div className="npf-invoice-doc__meta">
+          <p>
+            <span>Billed to</span>
+            <b>{customer}</b>
+          </p>
+          <p>
+            <span>Due</span>
+            <b>
+              {inv.due_date
+                ? formatDate(inv.due_date)
+                : inv.days_until_due !== null
+                  ? `${inv.days_until_due} days after finalize`
+                  : "On finalize"}
+            </b>
+          </p>
+        </div>
         <Table
           caption="Invoice items"
           rows={inv.lines}
@@ -339,7 +361,7 @@ function InvoiceView({ initial }: { initial: Invoice }) {
                 value: money(t.amount),
               })),
               ...(inv.total_tax_amounts.length === 0 ? [{ label: "Tax", value: money(0) }] : []),
-              { label: "Amount due", value: money(inv.amount_due), total: true },
+              { label: "Total due", value: money(inv.amount_due), total: true },
               ...(inv.status !== "draft"
                 ? [
                     { label: "Paid", value: money(inv.amount_paid) },
@@ -349,7 +371,18 @@ function InvoiceView({ initial }: { initial: Invoice }) {
             ]}
           />
         </div>
-      </Section>
+        <p className={`npf-invoice-doc__foot npf-invoice-doc__foot--${inv.status}`}>
+          {inv.status === "paid" && inv.status_transitions.paid_at
+            ? `Paid ${formatWhen(inv.status_transitions.paid_at)}, settled to your payout wallet`
+            : inv.status === "draft"
+              ? "Draft: nobody can see or pay it yet"
+              : inv.status_transitions.sent_at
+                ? `Emailed to ${customer} ${formatWhen(inv.status_transitions.sent_at)}`
+                : inv.status === "open"
+                  ? "Finalized. Not emailed yet"
+                  : statusOf("invoice", inv.status).label}
+        </p>
+      </section>
       <div className="npf-billing__columns">
         <Section title="Details">
           <KeyValueList

@@ -9,7 +9,6 @@ import {
   Card,
   CardTitle,
   Checkbox,
-  CopyField,
   Field,
   Input,
   KeyValueList,
@@ -25,11 +24,83 @@ import {
 import { type PaymentIntent, type PaymentLink, updatePaymentLink } from "@nearpay-money/spec";
 import { useRef, useState } from "react";
 import { useApp } from "../../app/context";
+import { QrCode } from "../../ui/QrCode";
 import { useLink, useLinkCalls, useLinkPayments } from "./api";
 import { linkStatus, optionalCount, optionalUrl, priceText, shareUrl, usesText } from "./logic";
 import { ActionError, ErrorState, PageSkeleton } from "./parts";
 import { fmtDate, useSpaLinks } from "./ui";
 import "./payment-links.css";
+
+/**
+ * The share card, drawn after the landing `LinksCard`: product row (merchant tile, title, merchant, price),
+ * the link with a violet Copy button, and a scannable QR code of the same link.
+ */
+function ShareCard({
+  url,
+  title,
+  price,
+  onShare,
+}: {
+  url: string;
+  title: string;
+  price: string;
+  onShare?: () => void;
+}) {
+  const app = useApp();
+  const [copied, setCopied] = useState(false);
+  const merchant = app.account?.display_name ?? app.session?.account.display_name ?? "";
+  const logo = app.account?.settings.branding.logo_url;
+  return (
+    <section className="npf-share" aria-labelledby="npf-share-title" data-testid="share-card">
+      <h2 id="npf-share-title" className="np-sr-only">
+        Share
+      </h2>
+      <div className="npf-share__prod">
+        <span className="npf-share__thumb" aria-hidden="true">
+          {logo ? <img src={logo} alt="" width={26} height={26} /> : (merchant.trim()[0] ?? "N").toUpperCase()}
+        </span>
+        <span className="npf-share__text">
+          <b>{title}</b>
+          <small>{merchant}</small>
+        </span>
+        <b className="npf-share__price np-tabular">{price}</b>
+      </div>
+      <div className="npf-share__linkrow">
+        <span className="npf-share__url" title={url}>
+          {url}
+        </span>
+        <Button
+          size="sm"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(url);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            } catch {
+              // clipboard blocked: the link stays selectable
+            }
+          }}
+          aria-label={copied ? "Link copied" : "Copy link"}
+        >
+          {copied ? "Copied" : "Copy"}
+        </Button>
+      </div>
+      <div className="npf-share__qrrow">
+        <QrCode value={url} label={`QR code for ${url}`} className="npf-share__qr" />
+        <span className="npf-share__qrtext">
+          <b>Scan to pay</b>
+          <small>Any token, any chain. Settles to your payout wallet.</small>
+          {onShare ? (
+            <Button variant="secondary" size="sm" onClick={onShare}>
+              Share
+            </Button>
+          ) : null}
+        </span>
+      </div>
+      {app.mode === "test" ? <p className="npf-share__note">Test mode: no real funds move.</p> : null}
+    </section>
+  );
+}
 
 export function PaymentLinkDetail({ id }: { id: string }) {
   const l = useLink(id);
@@ -118,34 +189,18 @@ function LinkView({ initial }: { initial: PaymentLink }) {
           Raise or remove the limit to accept more payments.
         </Callout>
       )}
-      <Card>
-        <div className="np-stack">
-          <CardTitle as="h2">Share</CardTitle>
-          {url ? (
-            <>
-              <CopyField
-                label="Payment link"
-                value={url}
-                defaultRevealed
-                copyLabel="Copy link"
-                copiedLabel="Link copied"
-              />
-              {"share" in navigator && (
-                <div>
-                  <Button variant="secondary" size="sm" onClick={() => void share()}>
-                    Share…
-                  </Button>
-                </div>
-              )}
-            </>
-          ) : (
-            <Callout tone="warning" title="No shareable URL">
-              The API returned an unexpected link URL. Contact support.
-            </Callout>
-          )}
-          {app.mode === "test" && <p className="np-text-caption np-text-secondary">Test mode · no real funds move</p>}
-        </div>
-      </Card>
+      {url ? (
+        <ShareCard
+          url={url}
+          title={link.description}
+          price={priceText(link, app.assets)}
+          onShare={"share" in navigator ? () => void share() : undefined}
+        />
+      ) : (
+        <Callout tone="warning" title="No shareable URL">
+          The API returned an unexpected link URL. Contact support.
+        </Callout>
+      )}
       <StatGroup>
         <Stat label="Price" value={priceText(link, app.assets)} sub="Fixed after creation" />
         <Stat label="Payments" value={usesText(link)} sub={link.max_uses === null ? "No limit" : "Limit"} />
