@@ -137,7 +137,7 @@ describe("feature registry", () => {
           routes: [r("new", "/settlement/new")],
           nav: [
             { slot: "overview", label: "Overview", href: "/" },
-            { slot: "billing", label: "Billing", href: "/billing", stage: 3 },
+            { slot: "invoices", label: "Invoices", href: "/billing", stage: 3 },
           ],
           settingsCards: [
             { id: "z", title: "Z", description: "", href: "/z" },

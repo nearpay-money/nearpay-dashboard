@@ -55,7 +55,8 @@ export interface AppState {
   readonly requirements: Requirements | undefined;
   refreshAccount(): void;
   readonly assets: ReadonlyMap<string, AssetInfo>;
-  signOut(): Promise<void>;
+  /** Ends the session, then opens `next` (default `/signin`). */
+  signOut(next?: string): Promise<void>;
   /** null = allowed; otherwise why the session user cannot call the route now. */
   gate(route: AnyRoute): string | null;
   /** Pending step-up request (rendered by the StepUp dialog). */
@@ -215,14 +216,14 @@ export function AppProvider({ children, registry = EMPTY_REGISTRY }: { children:
     requirements,
     refreshAccount: () => setAccountTick((t) => t + 1),
     assets,
-    signOut: async () => {
+    signOut: async (next = "/signin") => {
       try {
         await api.call(logout, { body: {} });
       } catch {
         // the session may already be gone; sign out locally anyway
       }
       setSession(null);
-      navigate("/signin");
+      navigate(next);
     },
     gate: (route) => blockedReason(route, { role: session?.role, mode, liveEnabled: requirements?.live_enabled }),
     stepUp,

@@ -6,14 +6,21 @@ test.describe("home and settlement destinations", () => {
     await signIn(page, api);
     await expect(page.getByRole("heading", { name: /^Good (morning|afternoon|evening), Acme Coffee$/ })).toBeVisible();
     await expect(page.getByTestId("payments-table")).toContainText("$2.00");
-    // design v2 Home: KPIs from real payments, chart by origin chain, payout wallet, paid-with column
+    // landing-showcase Home: three KPIs from real payments, recent payments with paid-with, chart by origin chain
+    await expect(page.getByTestId("kpi-volume")).toContainText("Settled volume");
     await expect(page.getByTestId("kpi-succeeded")).toContainText(/of \d+ started/);
-    await expect(page.getByTestId("kpi-average")).toContainText("Average payment");
-    await expect(page.getByRole("img", { name: /Volume by where customers paid from/ })).toContainText("");
+    await expect(page.getByTestId("kpi-median")).toContainText("Median time to paid");
+    await expect(page.getByRole("img", { name: /Volume by source chain/ })).toContainText("");
     await expect(page.getByRole("list", { name: "Chains" })).toContainText("Base");
-    await expect(page.getByTestId("payout-wallet-card")).toContainText("1 block on each chain");
     await expect(page.getByTestId("payments-table")).toContainText("USDC on Base");
-    await expect(page.getByRole("link", { name: "Create payment link" })).toHaveAttribute("href", "/payment-links/new");
+    await expect(page.getByRole("table", { name: "Recent payments" }).getByRole("columnheader")).toHaveText([
+      "Amount",
+      "Status",
+      "Paid with",
+      "Time",
+    ]);
+    await expect(page.getByText("Last 7 days, in USD. Funds settle straight to your payout wallet.")).toBeVisible();
+    await expect(page.getByTestId("mode-switch").getByRole("radio", { name: "Test" })).toBeChecked();
     await expect(page.getByTestId("test-banner")).toBeVisible();
     await page.getByRole("link", { name: "View the checklist" }).click();
     const list = page.getByTestId("requirements");

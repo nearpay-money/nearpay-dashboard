@@ -1,7 +1,8 @@
 /**
- * Billing hub (Figma b02 "Billing"): title, the three stats (collected this month, outstanding,
- * active subscriptions), the tab row (Invoices · Subscriptions · Auto-debit [Stage 4] · Products · Tax rates) and the
- * "Invoice-based renewals" note. Every tab is its own route, so tabs are links (`aria-current`).
+ * Billing hubs (landing showcase nav: "Subscriptions" and "Invoices" are separate sidebar items): the
+ * Invoices hub (tabs Invoices · Products · Tax rates) and the Subscriptions hub (tabs Subscriptions ·
+ * Auto-debit [Stage 4]) share the three stats (collected this month, outstanding, active subscriptions)
+ * and the "Invoice-based renewals" note. Every tab is its own route, so tabs are links (`aria-current`).
  * Stats come from list routes (no analytics endpoint in v1): the first 100 paid / open invoices and
  * active subscriptions, summed per currency with bigint arithmetic; other currencies are counted, not
  * converted, and "+" marks a capped count.
@@ -19,14 +20,31 @@ import "./billing.css";
 
 export type BillingTab = "invoices" | "subscriptions" | "mandates" | "products" | "tax-rates";
 
-const TABS: readonly [BillingTab, string, string][] = [
+const INVOICE_TABS: readonly [BillingTab, string, string][] = [
   ["invoices", "Invoices", "/billing"],
-  ["subscriptions", "Subscriptions", "/billing/subscriptions"],
-  // stage 4 — auto-debit mandates (lld/billing.md §14)
-  ...(FEATURE_STAGE >= 4 ? [["mandates", "Auto-debit", "/billing/mandates"] as [BillingTab, string, string]] : []),
   ["products", "Products", "/billing/products"],
   ["tax-rates", "Tax rates", "/billing/tax-rates"],
 ];
+const SUBSCRIPTION_TABS: readonly [BillingTab, string, string][] = [
+  ["subscriptions", "Subscriptions", "/billing/subscriptions"],
+  // stage 4 — auto-debit mandates (lld/billing.md §14)
+  ...(FEATURE_STAGE >= 4 ? [["mandates", "Auto-debit", "/billing/mandates"] as [BillingTab, string, string]] : []),
+];
+
+/** Which hub a tab belongs to: its page title, subtitle and tab row. */
+export function hubOf(tab: BillingTab): {
+  title: string;
+  subtitle: string;
+  tabs: readonly [BillingTab, string, string][];
+} {
+  return tab === "subscriptions" || tab === "mandates"
+    ? {
+        title: "Subscriptions",
+        subtitle: "Recurring plans, billed by emailed invoice or auto-debit.",
+        tabs: SUBSCRIPTION_TABS,
+      }
+    : { title: "Invoices", subtitle: "Bill customers by email. They pay in the token they hold.", tabs: INVOICE_TABS };
+}
 
 function monthStart(now = new Date()): number {
   return Math.floor(new Date(now.getFullYear(), now.getMonth(), 1).getTime() / 1000);
@@ -74,8 +92,9 @@ export function BillingHub({
 }) {
   const stats = useBillingStats();
   const s = stats.data;
+  const hub = hubOf(tab);
   return (
-    <Page title="Billing" subtitle="Invoices and recurring payments, in one place." actions={actions}>
+    <Page title={hub.title} subtitle={hub.subtitle} actions={actions}>
       {stats.error ? null : (
         <StatRow
           loading={stats.loading && !s}
@@ -96,8 +115,8 @@ export function BillingHub({
           ]}
         />
       )}
-      <nav className="dash-tabs" aria-label="Billing">
-        {TABS.map(([id, label, href]) => (
+      <nav className="dash-tabs" aria-label={hub.title}>
+        {hub.tabs.map(([id, label, href]) => (
           <Link
             key={id}
             to={href}

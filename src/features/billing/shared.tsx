@@ -23,9 +23,23 @@ import { shortId } from "../../lib/format";
 import { useAsync } from "../../lib/hooks";
 import { statusOf } from "../../lib/status";
 
-export function InvoiceStatus({ invoice, now }: { invoice: Pick<Invoice, "status" | "due_date">; now?: number }) {
+/**
+ * Invoice status pill, in the landing `InvoiceCard` vocabulary: Draft, Sent (finalized and emailed), Paid;
+ * plus Open (finalized, not emailed yet), Past due, Void and Uncollectible.
+ */
+export function InvoiceStatus({
+  invoice,
+  now,
+}: {
+  invoice: Pick<Invoice, "status" | "due_date"> & {
+    status_transitions?: Pick<Invoice["status_transitions"], "sent_at">;
+  };
+  now?: number;
+}) {
   if (isPastDue(invoice, now ?? Math.floor(Date.now() / 1000)))
     return <StatusBadge tone="warning">Past due</StatusBadge>;
+  if (invoice.status === "open" && invoice.status_transitions?.sent_at)
+    return <StatusBadge tone="progress">Sent</StatusBadge>;
   const s = statusOf("invoice", invoice.status);
   return <StatusBadge tone={s.tone}>{s.label}</StatusBadge>;
 }

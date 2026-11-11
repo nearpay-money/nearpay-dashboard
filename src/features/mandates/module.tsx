@@ -17,7 +17,7 @@ export default defineFeature({
     {
       name: "mandates",
       pattern: "/billing/mandates",
-      section: "billing",
+      section: "subscriptions",
       title: "Auto-debit",
       stage: 4,
       roles: listMandates.roles,
@@ -26,7 +26,7 @@ export default defineFeature({
     {
       name: "mandate",
       pattern: "/billing/mandates/:id",
-      section: "billing",
+      section: "subscriptions",
       title: "Mandate",
       stage: 4,
       roles: getMandate.roles,

@@ -143,7 +143,7 @@ export const AREA_ROUTES: readonly AreaRoute[] = [
     name: "settings-team",
     pattern: "/settings/team",
     title: "Team & approvals",
-    section: "settings",
+    section: "team",
     roles: listMembers.roles,
   },
   {
@@ -151,7 +151,7 @@ export const AREA_ROUTES: readonly AreaRoute[] = [
     name: "settings-business",
     pattern: "/settings/business",
     title: "Business details",
-    section: "settings",
+    section: "business",
     roles: getKyb.roles,
   },
   {
@@ -175,6 +175,9 @@ export const AREA_ROUTES: readonly AreaRoute[] = [
 export const AREA_NAV: readonly { slot: NavSlot; label: string; href: string }[] = [
   { slot: "payment-links", label: "Payment links", href: "/payment-links" },
   { slot: "customers", label: "Customers", href: "/customers" },
+  // landing showcase: business details and team are sidebar items of their own (also Settings cards)
+  { slot: "business", label: "Business details", href: "/settings/business" },
+  { slot: "team", label: "Team", href: "/settings/team" },
 ];
 
 export const AREA_CARDS = [

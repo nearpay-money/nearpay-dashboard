@@ -16,8 +16,8 @@ export default defineFeature({
     {
       name: "billing",
       pattern: "/billing",
-      section: "billing",
-      title: "Billing",
+      section: "invoices",
+      title: "Invoices",
       stage: 3,
       roles: listInvoices.roles,
       render: () => <InvoicesTab />,
@@ -25,7 +25,7 @@ export default defineFeature({
     {
       name: "invoice-new",
       pattern: "/billing/invoices/new",
-      section: "billing",
+      section: "invoices",
       title: "Create invoice",
       stage: 3,
       roles: createInvoice.roles,
@@ -34,7 +34,7 @@ export default defineFeature({
     {
       name: "invoice-edit",
       pattern: "/billing/invoices/:id/edit",
-      section: "billing",
+      section: "invoices",
       title: "Edit draft invoice",
       stage: 3,
       roles: updateInvoice.roles,
@@ -43,7 +43,7 @@ export default defineFeature({
     {
       name: "invoice",
       pattern: "/billing/invoices/:id",
-      section: "billing",
+      section: "invoices",
       title: "Invoice",
       stage: 3,
       roles: getInvoice.roles,

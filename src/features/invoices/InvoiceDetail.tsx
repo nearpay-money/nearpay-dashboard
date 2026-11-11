@@ -218,7 +218,7 @@ function InvoiceView({ initial }: { initial: Invoice }) {
       title={inv.number ? `Invoice ${inv.number}` : "Draft invoice"}
       subtitle={`Billed to ${customer} · Created ${formatDate(inv.created)}`}
       status={<InvoiceStatus invoice={inv} now={now} />}
-      back={{ label: "Billing", to: "/billing" }}
+      back={{ label: "Invoices", to: "/billing" }}
       actions={actions}
       data-testid="invoice-detail"
     >
@@ -253,6 +253,94 @@ function InvoiceView({ initial }: { initial: Invoice }) {
           nothing is emailed until you send it.
         </Callout>
       ) : null}
+      <section className="npf-invoice-doc" aria-labelledby="npf-invoice-doc-title" data-testid="invoice-document">
+        <div className="npf-invoice-doc__head">
+          {/* not a heading: the page heading already names the invoice; this is the document's own title */}
+          <p id="npf-invoice-doc-title" className="npf-invoice-doc__title">
+            Invoice <span>{inv.number ?? "draft"}</span>
+          </p>
+          <InvoiceStatus invoice={inv} now={now} />
+        </div>
+        <div className="npf-invoice-doc__meta">
+          <p>
+            <span>Billed to</span>
+            <b>{customer}</b>
+          </p>
+          <p>
+            <span>Due</span>
+            <b>
+              {inv.due_date
+                ? formatDate(inv.due_date)
+                : inv.days_until_due !== null
+                  ? `${inv.days_until_due} days after finalize`
+                  : "On finalize"}
+            </b>
+          </p>
+        </div>
+        <Table
+          caption="Invoice items"
+          rows={inv.lines}
+          rowKey={(l) => l.id}
+          empty="No items yet. Edit the draft to add one."
+          columns={[
+            {
+              key: "d",
+              header: "Item",
+              primary: true,
+              cell: (l) => (
+                <span className="npf-billing__line">
+                  <span>{l.description}</span>
+                  {l.period ? (
+                    <span className="np-text-small np-text-secondary">
+                      {formatDate(l.period.start)} – {formatDate(l.period.end)}
+                    </span>
+                  ) : null}
+                  {l.tax_amounts.length ? (
+                    <span className="np-text-small np-text-secondary">
+                      {l.tax_amounts
+                        .map((t) => `${t.display_name} ${percentText(t.percentage)}${t.inclusive ? " incl." : ""}`)
+                        .join(" · ")}
+                    </span>
+                  ) : null}
+                </span>
+              ),
+            },
+            { key: "q", header: "Qty", numeric: true, cell: (l) => String(l.quantity) },
+            { key: "u", header: "Unit price", numeric: true, hideOnNarrow: true, cell: (l) => money(l.unit_amount) },
+            { key: "a", header: "Amount", numeric: true, cell: (l) => money(l.amount) },
+          ]}
+        />
+        <div className="npf-billing__totals">
+          <KeyValueList
+            items={[
+              { label: "Subtotal", value: money(inv.subtotal) },
+              ...inv.total_tax_amounts.map((t) => ({
+                label: `${t.display_name} ${percentText(t.percentage)}${t.inclusive ? " (included)" : ""}`,
+                value: money(t.amount),
+              })),
+              ...(inv.total_tax_amounts.length === 0 ? [{ label: "Tax", value: money(0) }] : []),
+              { label: "Total due", value: money(inv.amount_due), total: true },
+              ...(inv.status !== "draft"
+                ? [
+                    { label: "Paid", value: money(inv.amount_paid) },
+                    { label: "Remaining", value: money(inv.amount_remaining) },
+                  ]
+                : []),
+            ]}
+          />
+        </div>
+        <p className={`npf-invoice-doc__foot npf-invoice-doc__foot--${inv.status}`}>
+          {inv.status === "paid" && inv.status_transitions.paid_at
+            ? `Paid ${formatWhen(inv.status_transitions.paid_at)}, settled to your payout wallet`
+            : inv.status === "draft"
+              ? "Draft: nobody can see or pay it yet"
+              : inv.status_transitions.sent_at
+                ? `Emailed to ${customer} ${formatWhen(inv.status_transitions.sent_at)}`
+                : inv.status === "open"
+                  ? "Finalized. Not emailed yet"
+                  : statusOf("invoice", inv.status).label}
+        </p>
+      </section>
       {acts.link && inv.hosted_invoice_url ? (
         <Section title="Payment page" data-testid="payment-page">
           <div className="npf-billing__link-row">
@@ -296,60 +384,6 @@ function InvoiceView({ initial }: { initial: Invoice }) {
           Reminders stopped, but the payment page still accepts payment; a late payment marks it paid.
         </Callout>
       ) : null}
-      <Section title="Items">
-        <Table
-          caption="Invoice items"
-          rows={inv.lines}
-          rowKey={(l) => l.id}
-          empty="No items yet. Edit the draft to add one."
-          columns={[
-            {
-              key: "d",
-              header: "Item",
-              primary: true,
-              cell: (l) => (
-                <span className="npf-billing__line">
-                  <span>{l.description}</span>
-                  {l.period ? (
-                    <span className="np-text-small np-text-secondary">
-                      {formatDate(l.period.start)} – {formatDate(l.period.end)}
-                    </span>
-                  ) : null}
-                  {l.tax_amounts.length ? (
-                    <span className="np-text-small np-text-secondary">
-                      {l.tax_amounts
-                        .map((t) => `${t.display_name} ${percentText(t.percentage)}${t.inclusive ? " incl." : ""}`)
-                        .join(" · ")}
-                    </span>
-                  ) : null}
-                </span>
-              ),
-            },
-            { key: "q", header: "Qty", numeric: true, cell: (l) => String(l.quantity) },
-            { key: "u", header: "Unit price", numeric: true, hideOnNarrow: true, cell: (l) => money(l.unit_amount) },
-            { key: "a", header: "Amount", numeric: true, cell: (l) => money(l.amount) },
-          ]}
-        />
-        <div className="npf-billing__totals">
-          <KeyValueList
-            items={[
-              { label: "Subtotal", value: money(inv.subtotal) },
-              ...inv.total_tax_amounts.map((t) => ({
-                label: `${t.display_name} ${percentText(t.percentage)}${t.inclusive ? " (included)" : ""}`,
-                value: money(t.amount),
-              })),
-              ...(inv.total_tax_amounts.length === 0 ? [{ label: "Tax", value: money(0) }] : []),
-              { label: "Amount due", value: money(inv.amount_due), total: true },
-              ...(inv.status !== "draft"
-                ? [
-                    { label: "Paid", value: money(inv.amount_paid) },
-                    { label: "Remaining", value: money(inv.amount_remaining) },
-                  ]
-                : []),
-            ]}
-          />
-        </div>
-      </Section>
       <div className="npf-billing__columns">
         <Section title="Details">
           <KeyValueList

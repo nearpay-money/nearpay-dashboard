@@ -149,3 +149,119 @@
   font-size: var(--np-text-caption);
   color: var(--np-color-text-secondary);
 }
+
+/* Share card (landing LinksCard): product row, link + Copy, scannable QR */
+.npf-share {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 520px;
+  padding: 18px;
+  border-radius: 14px;
+  background: var(--np-color-surface);
+}
+.npf-share__prod {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.npf-share__thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #ffd7a8, #f9a8c6);
+  color: var(--np-navy);
+  font-size: 17px;
+  font-weight: var(--np-weight-bold);
+}
+.npf-share__thumb img {
+  border-radius: 6px;
+}
+.npf-share__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.npf-share__text b {
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  line-height: 20px;
+}
+.npf-share__text small {
+  color: var(--np-color-text-tertiary);
+  font-size: 13px;
+  line-height: 18px;
+}
+.npf-share__price {
+  margin-left: auto;
+  font-size: 18px;
+  font-weight: var(--np-weight-strong);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.npf-share__linkrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.npf-share__url {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  overflow: hidden;
+  border: 1px solid var(--np-border-outline);
+  border-radius: 8px;
+  color: var(--np-color-text);
+  font-size: 13.5px;
+  line-height: 34px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-sizing: border-box;
+  user-select: all;
+}
+.npf-share__linkrow .np-button {
+  min-height: 36px;
+  min-width: 84px;
+}
+.npf-share__qrrow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.npf-share__qr {
+  flex: none;
+  width: 112px;
+  height: 112px;
+  padding: 6px;
+  border: 1px solid var(--np-color-border);
+  border-radius: 12px;
+  background: #ffffff;
+  box-sizing: border-box;
+}
+.npf-share__qrtext {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.npf-share__qrtext b {
+  font-size: 14.5px;
+}
+.npf-share__qrtext small {
+  color: var(--np-color-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+.npf-share__qrtext .np-button {
+  margin-top: 4px;
+}
+.npf-share__note {
+  margin: 0;
+  color: var(--np-color-text-secondary);
+  font-size: 12.5px;
+}

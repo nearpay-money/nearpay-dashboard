@@ -185,14 +185,6 @@ body {
   margin: 0 0 var(--np-space-6);
   max-width: 1160px;
 }
-.dash-banner--test {
-  padding: var(--np-space-2) var(--np-space-4);
-  border-radius: var(--np-radius-control);
-  background: var(--np-color-warning-subtle);
-  color: var(--np-color-warning-fg);
-  font-size: var(--np-text-small);
-  line-height: 20px;
-}
 .dash-account-list,
 .dash-notifications,
 .dash-link-cards,
@@ -628,51 +620,6 @@ body {
   font-size: var(--np-text-small);
 }
 
-/* ---- auth (sign in, sign up, magic link): centred card on the canvas, logo above ------------- */
-.dash-auth {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--np-space-8);
-  min-height: 100vh;
-  padding: var(--np-space-12) var(--np-size-gutter-mobile);
-  box-sizing: border-box;
-  background: var(--np-color-bg);
-}
-.dash-auth__brand {
-  display: flex;
-  justify-content: center;
-}
-.dash-auth__card {
-  width: 100%;
-  max-width: 440px;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: var(--np-space-4);
-  padding: var(--np-space-8);
-  border: 0;
-  border-radius: var(--np-radius-panel);
-  background: var(--np-color-surface);
-  box-shadow:
-    0 1px 2px rgb(18 38 63 / 0.06),
-    0 24px 48px -28px rgb(18 38 63 / 0.28);
-}
-.dash-auth__card form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--np-space-4);
-}
-.dash-auth__card h1 {
-  margin: 0;
-  font-size: var(--np-text-h3);
-  font-weight: var(--np-weight-strong);
-  letter-spacing: -0.03em;
-}
-.dash-auth__card > p {
-  margin: 0;
-}
 /* Continue with Google (ADR-0026): Google's standard light button — white, #747775 outline, #1f1f1f text,
    18 px "G" mark, 40 px tall; the rest of the card keeps the design-v2 look. */
 .dash-google-btn {
@@ -732,21 +679,6 @@ body {
   flex: 1;
   border-top: 1px solid var(--np-color-border);
 }
-.dash-auth__footer {
-  max-width: 440px;
-  margin: 0;
-  text-align: center;
-}
-@media (max-width: 480px) {
-  .dash-auth {
-    justify-content: flex-start;
-    padding-top: var(--np-space-10, 40px);
-  }
-  .dash-auth__card {
-    padding: var(--np-space-6) var(--np-space-5);
-  }
-}
-
 /* ---- responsive ------------------------------------------------------------------------------- */
 @media (max-width: 959px) {
   .dash-detail {
@@ -813,9 +745,6 @@ body {
   }
   .dash-chart__axis span:nth-child(even) {
     visibility: hidden;
-  }
-  .dash-shell .np-shell__topbar-actions {
-    gap: var(--np-space-2);
   }
 }
 fieldset.dash-filters {
@@ -1055,154 +984,6 @@ fieldset.dash-filters {
   align-items: center;
 }
 
-/* ---- shell: search jumper, mode switch, sidebar footer ---------------------------------------- */
-.dash-shell .np-shell__topbar {
-  position: sticky;
-}
-.dash-jump {
-  position: absolute;
-  z-index: 30;
-  top: calc(100% - var(--np-space-2));
-  left: var(--np-size-gutter-workspace);
-  width: min(420px, calc(100% - 2 * var(--np-size-gutter-workspace)));
-  box-sizing: border-box;
-  padding: var(--np-space-1);
-  border: 1px solid var(--np-color-border);
-  border-radius: var(--np-radius-control);
-  background: var(--np-color-surface);
-  box-shadow: var(--np-shadow-overlay);
-}
-.dash-jump[hidden] {
-  display: none;
-}
-.dash-jump__list {
-  display: flex;
-  flex-direction: column;
-}
-.dash-jump__option {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--np-space-2) var(--np-space-3);
-  border-radius: calc(var(--np-radius-control) - 4px);
-  cursor: pointer;
-}
-.dash-jump__option[aria-selected="true"] {
-  background: var(--np-color-accent-subtle);
-}
-.dash-jump__label {
-  font-size: var(--np-text-small);
-  font-weight: var(--np-weight-semibold);
-  color: var(--np-color-text);
-  overflow-wrap: anywhere;
-}
-.dash-jump__hint {
-  font-size: var(--np-text-caption);
-  color: var(--np-color-text-secondary);
-}
-.dash-jump__option[aria-selected="true"] .dash-jump__hint {
-  color: var(--np-color-accent-subtle-text);
-}
-.dash-jump__empty {
-  margin: 0;
-  padding: var(--np-space-3);
-  font-size: var(--np-text-small);
-  color: var(--np-color-text-secondary);
-}
-.dash-mode {
-  display: inline-flex;
-}
-.dash-signout {
-  align-self: flex-start;
-}
-
-/* ---- Home ---------------------------------------------------------------------------------------- */
-.dash-home .np-page-header {
-  margin-top: var(--np-space-4);
-}
-.dash-home .np-page-header__actions {
-  display: flex;
-  gap: var(--np-space-3);
-  flex-wrap: wrap;
-}
-.dash-kpis {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
-}
-.dash-kpi-links {
-  display: inline;
-}
-.dash-kpi-link {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.dash-home__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--np-space-4);
-}
-.dash-home__chart {
-  flex: 2 1 520px;
-}
-.dash-payout {
-  flex: 1 1 280px;
-  gap: 14px;
-}
-.dash-payout__wallet {
-  display: flex;
-  flex-direction: column;
-  gap: var(--np-space-1);
-  padding: 14px;
-  border-radius: var(--np-radius-control);
-  background: var(--np-color-bg);
-}
-.dash-payout__wallet p {
-  margin: 0;
-}
-.dash-payout__asset {
-  font-size: var(--np-text-body);
-  font-weight: var(--np-weight-semibold);
-}
-.dash-payout__address {
-  font-size: var(--np-text-small);
-  color: var(--np-color-text-secondary);
-  overflow-wrap: anywhere;
-}
-.dash-payout__wallet .dash-payout__status {
-  margin-top: var(--np-space-1);
-  font-size: var(--np-text-caption);
-  color: var(--np-color-text-secondary);
-}
-.dash-payout__status--ok {
-  color: var(--np-color-success-fg);
-}
-.dash-payout__status--wait {
-  color: var(--np-color-warning-fg);
-}
-.dash-payout__facts {
-  display: flex;
-  flex-direction: column;
-  gap: var(--np-space-3);
-  margin: 0;
-}
-.dash-payout__facts > div {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--np-space-3);
-  font-size: var(--np-text-small);
-}
-.dash-payout__facts dt {
-  color: var(--np-color-text-secondary);
-}
-.dash-payout__facts dd {
-  margin: 0;
-  text-align: right;
-}
-.dash-payout__link {
-  margin-top: auto;
-  font-weight: var(--np-weight-semibold);
-}
-
 /* ---- chart: volume by where customers paid from ------------------------------------------------- */
 .dash-series--1 {
   fill: #007a68;
@@ -1398,32 +1179,12 @@ fieldset.dash-filters {
   margin-top: var(--np-space-2);
 }
 
-@media (max-width: 959px) {
-  .dash-shell .np-shell__topbar {
-    position: relative;
-  }
-  .dash-jump {
-    top: 100%;
-    left: var(--np-size-gutter-mobile);
-    width: calc(100% - 2 * var(--np-size-gutter-mobile));
-  }
-}
 @media (max-width: 719px) {
   .dash-narrow-only.dash-list-panel {
     display: block;
   }
   .dash-src__axis span:nth-child(even) {
     visibility: hidden;
-  }
-  .dash-home .np-page-header__actions > * {
-    flex: 1 1 140px;
-  }
-  .dash-kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--np-space-3);
-  }
-  .dash-kpis .np-kpi {
-    padding: var(--np-space-4);
   }
   .dash-card {
     padding: var(--np-space-4);

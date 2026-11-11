@@ -169,7 +169,7 @@ function InvoiceFormView({ title, invoice, prices, taxRates, customers, moreCust
     <Page
       title={title}
       subtitle="Prepare an invoice and share its payment page."
-      back={{ label: "Billing", to: "/billing" }}
+      back={{ label: "Invoices", to: "/billing" }}
     >
       <form
         className="npf-billing__form-grid"

@@ -101,6 +101,64 @@ function sumByAsset(ps: readonly AgentPayment[], assets: ReadonlyMap<string, Ass
   return [...sums.entries()].map(([a, v]) => formatAsset(v.toString(), a, assets)).join(" + ");
 }
 
+/**
+ * The latest paid request, drawn after the landing `AgentCard`: the agent (payer account), the resource it
+ * asked for, the 402 Payment Required price, then the signed NEAR Intents payment and where it went. Only
+ * what the agent payment records is shown (no HTTP method or response the API doesn't know).
+ */
+export function RequestCard({ p, assets }: { p: AgentPayment; assets: ReadonlyMap<string, AssetInfo> }) {
+  const app = useApp();
+  const amount = formatAsset(p.amount, p.asset_id, assets);
+  const s = statusOf("agent_payment", p.status);
+  const path = (() => {
+    try {
+      const u = new URL(p.resource_url ?? "");
+      return `${u.host}${u.pathname}`;
+    } catch {
+      return p.resource_url ?? "";
+    }
+  })();
+  return (
+    <section className="dash-agent" aria-labelledby="dash-agent-title" data-testid="agent-request-card">
+      <div className="dash-agent__head">
+        <h2 id="dash-agent-title" className="dash-agent__title">
+          <span className="dash-agent__bot" aria-hidden="true" />
+          Latest paid request
+        </h2>
+        <span className="dash-agent__wallet">
+          Agent <Mono>{shorten(p.payer, 14)}</Mono>
+        </span>
+      </div>
+      <p className="dash-agent__req">
+        <span className="dash-agent__url">{path}</span>
+      </p>
+      <p className="dash-agent__resp">
+        <span className="dash-agent__code dash-agent__code--402">402</span>
+        <span className="dash-agent__resp-text">Payment Required</span>
+        <span className="dash-agent__price np-tabular">{amount}</span>
+      </p>
+      <div className={`dash-agent__sign dash-agent__sign--${p.status}`}>
+        <p className="dash-agent__sign-title">Signed {amount} from NEAR Intents</p>
+        <p className="dash-agent__sign-result">
+          <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+          <span>
+            {p.status === "settled"
+              ? "Paid to your wallet"
+              : p.status === "failed"
+                ? "Nothing reached your wallet"
+                : "Settling to your wallet"}
+          </span>
+        </p>
+      </div>
+      <p className="dash-agent__foot">
+        <span>{formatWhen(p.created)}</span>
+        <Link to={`/agent-payments/${p.id}`}>View payment</Link>
+      </p>
+      {app.mode === "test" ? <span className="np-sr-only">Test mode</span> : null}
+    </section>
+  );
+}
+
 export function AgentPayments() {
   const app = useApp();
   const now = Math.floor(Date.now() / 1000);
@@ -117,6 +175,7 @@ export function AgentPayments() {
   const ps = win.data ?? [];
   const resources = useMemo(() => groupResources(ps), [ps]);
   const failed = ps.filter((p) => p.status === "failed").length;
+  const latestX402 = ps.find((p) => p.kind === "x402" && p.resource_url);
   const rows = page.data?.data ?? [];
   const nothing = !page.loading && !kind && rows.length === 0 && !page.hasPrevious && !page.error;
 
@@ -147,51 +206,54 @@ export function AgentPayments() {
           },
         ]}
       />
-      <div data-testid="resources-table">
-        <Table
-          caption="Paid resources"
-          loading={win.loading && !win.data}
-          rows={resources}
-          rowKey={(r) => `${r.url}|${r.asset}`}
-          empty={`No paid resources were used in the last ${WINDOW_DAYS} days.`}
-          columns={[
-            {
-              key: "res",
-              header: "Resource",
-              primary: true,
-              cell: (r) => <span className="dash-break">{resourceName(r.url)}</span>,
-            },
-            {
-              key: "price",
-              header: "Price per use",
-              numeric: true,
-              cell: (r) => formatAsset(r.price, r.asset, app.assets),
-            },
-            {
-              key: "req",
-              header: "Requests",
-              numeric: true,
-              cell: (r) => r.requests.toLocaleString("en"),
-              hideOnNarrow: true,
-            },
-            {
-              key: "rev",
-              header: "Revenue",
-              numeric: true,
-              cell: (r) => formatAsset(r.revenue.toString(), r.asset, app.assets),
-            },
-            {
-              key: "status",
-              header: "Status",
-              hideOnNarrow: true,
-              cell: (r) => (
-                <StatusBadge tone={now - r.last < 86_400 ? "success" : "neutral"}>
-                  {now - r.last < 86_400 ? "Active" : "Idle"}
-                </StatusBadge>
-              ),
-            },
-          ]}
-        />
+      <div className={latestX402 ? "dash-agent-row" : undefined}>
+        <div data-testid="resources-table">
+          <Table
+            caption="Paid resources"
+            loading={win.loading && !win.data}
+            rows={resources}
+            rowKey={(r) => `${r.url}|${r.asset}`}
+            empty={`No paid resources were used in the last ${WINDOW_DAYS} days.`}
+            columns={[
+              {
+                key: "res",
+                header: "Resource",
+                primary: true,
+                cell: (r) => <span className="dash-break">{resourceName(r.url)}</span>,
+              },
+              {
+                key: "price",
+                header: "Price per use",
+                numeric: true,
+                cell: (r) => formatAsset(r.price, r.asset, app.assets),
+              },
+              {
+                key: "req",
+                header: "Requests",
+                numeric: true,
+                cell: (r) => r.requests.toLocaleString("en"),
+                hideOnNarrow: true,
+              },
+              {
+                key: "rev",
+                header: "Revenue",
+                numeric: true,
+                cell: (r) => formatAsset(r.revenue.toString(), r.asset, app.assets),
+              },
+              {
+                key: "status",
+                header: "Status",
+                hideOnNarrow: true,
+                cell: (r) => (
+                  <StatusBadge tone={now - r.last < 86_400 ? "success" : "neutral"}>
+                    {now - r.last < 86_400 ? "Active" : "Idle"}
+                  </StatusBadge>
+                ),
+              },
+            ]}
+          />
+        </div>
+        {latestX402 ? <RequestCard p={latestX402} assets={app.assets} /> : null}
       </div>
       <Section
         title="Recent activity"

@@ -1,4 +1,13 @@
 /** Review screenshots (NP_SHOTS=<dir>): every main screen at 1440 and 390 px. Skipped in normal runs. */
+
+import { BillingMock } from "../../src/features/billing/billing.mock";
+import { installFeatureMock as installKyb, KybMock } from "../../src/features/kyb/kyb.mock";
+import { MandatesMock } from "../../src/features/mandates/mandates.mock";
+import {
+  installFeatureMock as installLinks,
+  PaymentLinksMock,
+} from "../../src/features/payment-links/payment-links.mock";
+import { installFeatureMock as installTeam, TeamMock } from "../../src/features/team/team.mock";
 import { agentPayment, apiKey, destination, endpoint, intent, NOW, SOL_SOLANA, USDC_NEAR } from "./fixtures";
 import { expect, signIn, test } from "./harness";
 
@@ -144,4 +153,124 @@ test.describe("screenshots", () => {
       }
     });
   }
+
+  // The landing-look review set (owner brief 2026-11-12): every main page at 1440, Home and sign-up at 390.
+  test("landing-look review set", async ({ page, api }) => {
+    test.setTimeout(240_000);
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    const day = 86_400;
+    api.intents.test.push(
+      ...Array.from({ length: 12 }, (_, i) => {
+        const pi = intent({
+          created: NOW - i * day * 0.55 - 600,
+          succeeded_at: NOW - i * day * 0.55 - 596 + (i % 4) * 3,
+          amount: 4900 + ((i * 3700) % 12000),
+          description: ["Acme Pro", "Team plan", "Consultation"][i % 3] ?? "Acme Pro",
+        });
+        const a = pi.attempts[0];
+        if (a) {
+          a.created = (pi.created as number) + 2;
+          if (i % 3 === 1)
+            Object.assign(a, { origin_chain: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", origin_asset_id: SOL_SOLANA });
+          if (i % 4 === 2) Object.assign(a, { origin_chain: "near:mainnet", origin_asset_id: USDC_NEAR });
+        }
+        return pi;
+      }),
+    );
+    api.destinations.test.push(destination({ label: "Treasury" }));
+    api.keys.test.push(apiKey({ name: "Acme checkout", last_used_at: NOW - 120 }));
+    api.endpoints.test.push(endpoint({ url: "https://acme.studio/payments/webhooks" }));
+    api.agentPayments.test.push(
+      agentPayment({ resource_url: "https://api.acme.studio/market-data" }),
+      agentPayment({ status: "failed", tx_hash: null, error_reason: "settlement_failed" }),
+    );
+    // payment links, billing, business details
+    const links = new PaymentLinksMock();
+    installLinks(api, links);
+    const link = links.seed("test", { description: "Founder's pack", amount: 2400, uses: 12 });
+    links.seed("test", { description: "Team onboarding", amount: 24900, uses: 3 });
+    installKyb(api, new KybMock());
+    installTeam(api, new TeamMock("usr_01jbz9k3m4n5p6q7r8s9t0v1w2"));
+    const b = new BillingMock(api);
+    new MandatesMock(api, b);
+    const nova = b.customers.seed("test", { name: "Nova Arcade Ltd.", email: "ap@nova-arcade.example", wallets: [] });
+    const pro = b.product("test", { name: "Pro plan" });
+    const proMonthly = b.price("test", pro.id as string, {
+      unit_amount: 2900,
+      recurring: { interval: "month", interval_count: 1 },
+    });
+    const inv = b.invoice("test", {
+      customer: nova.id as string,
+      lines: [
+        { unit_amount: 120000, description: "Server hosting, November" },
+        { unit_amount: 30000, description: "Priority support" },
+      ],
+    });
+    (b as unknown as { finalize(i: unknown): void }).finalize(inv);
+    b.invoice("test", { customer: nova.id as string, lines: [{ unit_amount: 5000, description: "Workshop" }] });
+    b.subscription("test", {
+      customer: nova.id,
+      items: [
+        {
+          id: "si_01jbz9k3m4n5p6q7r8s9t0aaaa",
+          object: "subscription_item",
+          price: proMonthly,
+          quantity: 1,
+          tax_rates: null,
+        },
+      ],
+      latest_invoice: inv.id,
+    });
+
+    const shot = async (name: string, width = 1440) => {
+      await page.waitForLoadState("networkidle");
+      await page.mouse.move(1, 1);
+      await page.waitForTimeout(200);
+      await page.screenshot({ path: `${DIR}/${name}-${width}.png`, fullPage: true });
+    };
+    const both = async (name: string) => {
+      await shot(name);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.waitForTimeout(300);
+      await shot(name, 390);
+      await page.setViewportSize({ width: 1440, height: 1000 });
+    };
+    await page.goto("/signin");
+    await expect(page.getByRole("button", { name: "Sign in with passkey" })).toBeVisible();
+    await shot("sign-in");
+    await page.goto("/signup");
+    await expect(page.getByLabel("Work email")).toBeVisible();
+    await both("sign-up");
+    await signIn(page, api);
+    await expect(page.getByTestId("volume-chart")).toBeVisible();
+    await both("home");
+    await page.goto("/signup");
+    await expect(page.getByTestId("signed-in-choices")).toBeVisible();
+    await both("sign-up-signed-in");
+    const pages: [string, string][] = [
+      ["payments", "/payments"],
+      ["payment-detail", `/payments/${api.intents.test[0]?.id}`],
+      ["payment-links", "/payment-links"],
+      ["payment-link-detail", `/payment-links/${link.id}`],
+      ["payment-link-create", "/payment-links/new"],
+      ["invoices", "/billing"],
+      ["invoice-detail", `/billing/invoices/${inv.id}`],
+      ["subscriptions", "/billing/subscriptions"],
+      ["subscription-detail", `/billing/subscriptions/${b.subscriptions.test[0]?.id}`],
+      ["customers", "/customers"],
+      ["agent-payments", "/agent-payments"],
+      ["developers", "/developers"],
+      ["developers-events", "/developers/events"],
+      ["payout-wallets", "/settlement"],
+      ["business-details", "/settings/business"],
+      ["team", "/settings/team"],
+      ["settings", "/settings"],
+      ["onboarding", "/setup"],
+    ];
+    for (const [name, path] of pages) {
+      await page.goto(path);
+      await expect(page.locator("h1").first()).toBeVisible();
+      await shot(name);
+    }
+  });
 });

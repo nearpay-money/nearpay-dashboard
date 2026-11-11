@@ -6,7 +6,9 @@
  */
 import type { PaymentIntent } from "@nearpay-money/spec";
 
-type Attempt = Pick<PaymentIntent["attempts"][number], "status" | "origin_chain" | "is_overpayment">;
+type Attempt = Pick<PaymentIntent["attempts"][number], "status" | "origin_chain" | "is_overpayment"> & {
+  readonly created?: number;
+};
 type Intent = Pick<PaymentIntent, "status" | "amount" | "currency" | "created" | "succeeded_at"> & {
   readonly attempts?: readonly Attempt[];
 };
@@ -44,6 +46,29 @@ export interface OverviewSummary {
   readonly chains: readonly { readonly chain: string; readonly value: bigint }[];
   /** Latest `succeeded_at` among the intents (unix seconds), or null. */
   readonly lastPaidAt: number | null;
+  /**
+   * Median seconds from the customer choosing how to pay (the paying attempt's `created`, when the quote is
+   * made) to the payment succeeding, over the period's succeeded payments; null with none. The API has no
+   * deposit timestamp, so this is the closest honest "time to paid".
+   */
+  readonly medianToPaid: number | null;
+}
+
+/** Median of whole seconds (lower middle for an even count, so it is always an observed value). */
+export function median(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  const v = [...values].sort((a, b) => a - b);
+  return v[Math.floor((v.length - 1) / 2)] as number;
+}
+
+/** `4` → `"4 s"`, `95` → `"1 min 35 s"`, `720` → `"12 min"`, `4000` → `"1 h 7 min"`. */
+export function formatDuration(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return `${s} s`;
+  if (s < 600) return s % 60 ? `${Math.floor(s / 60)} min ${s % 60} s` : `${s / 60} min`;
+  if (s < 3600) return `${Math.round(s / 60)} min`;
+  const m = Math.round((s % 3600) / 60);
+  return m ? `${Math.floor(s / 3600)} h ${m} min` : `${Math.floor(s / 3600)} h`;
 }
 
 /** The chain the customer paid from: the attempt that paid the intent (not an overpayment), else the newest. */
@@ -96,6 +121,7 @@ export function summarize(intents: readonly Intent[], nowSec: number, days = PER
   let otherCurrency = 0;
   let paidInCurrency = 0;
   let lastPaidAt: number | null = null;
+  const toPaid: number[] = [];
   const buckets = starts.map(() => 0n);
   const chainBuckets = starts.map(() => new Map<string, bigint>());
   const chainTotals = new Map<string, bigint>();
@@ -107,7 +133,14 @@ export function summarize(intents: readonly Intent[], nowSec: number, days = PER
     if (inPeriod) total++;
     if (pi.status !== "succeeded") continue;
     if (pi.succeeded_at != null && (lastPaidAt === null || pi.succeeded_at > lastPaidAt)) lastPaidAt = pi.succeeded_at;
-    if (inPeriod) succeeded++;
+    if (inPeriod) {
+      succeeded++;
+      const a =
+        pi.attempts?.find((x) => x.status === "succeeded" && !x.is_overpayment) ??
+        pi.attempts?.find((x) => x.status === "succeeded");
+      if (a?.created !== undefined && pi.succeeded_at != null && pi.succeeded_at >= a.created)
+        toPaid.push(pi.succeeded_at - a.created);
+    }
     if (pi.currency !== currency) {
       if (inPeriod) otherCurrency++;
       continue;
@@ -149,6 +182,7 @@ export function summarize(intents: readonly Intent[], nowSec: number, days = PER
       .map(([chain, value]) => ({ chain, value }))
       .sort((a, b) => (b.value > a.value ? 1 : b.value < a.value ? -1 : a.chain.localeCompare(b.chain))),
     lastPaidAt,
+    medianToPaid: median(toPaid),
   };
 }
 

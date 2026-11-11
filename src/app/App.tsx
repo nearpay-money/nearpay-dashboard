@@ -58,7 +58,9 @@ function Page_() {
   const isPublic = m !== null && PUBLIC.has(m.name);
   // wait for the session recovery (GET /v1/auth/session) before deciding where to go
   const needsSignIn = !app.restoring && !app.session && !isPublic;
-  const signedInOnAuthPage = !app.restoring && app.session && (m?.name === "signin" || m?.name === "signup");
+  // signed in on /signin: straight to the dashboard. On /signup the page itself offers the choices
+  // (owner decision 2026-11-12: no silent redirect — dashboard, another business, or a different email).
+  const signedInOnAuthPage = !app.restoring && app.session && m?.name === "signin";
   const route: RouteDef | undefined = m ? routes.find((r) => r.name === m.name) : undefined;
   const params = m?.params ?? {};
   const title = route ? (typeof route.title === "function" ? route.title(params) : route.title) : undefined;
@@ -77,7 +79,7 @@ function Page_() {
     document.title = t ? `${t} · NearPay` : "NearPay Dashboard";
   }, [title, m?.name]);
 
-  if (app.restoring && !isPublic) return <Loading what="Restoring your session" />;
+  if (app.restoring && (!isPublic || m?.name === "signup")) return <Loading what="Restoring your session" />;
   if (needsSignIn || signedInOnAuthPage) return null;
   if (m?.name === "signin") return <SignIn />;
   if (m?.name === "signup") return <SignUp />;

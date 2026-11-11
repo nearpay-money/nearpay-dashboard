@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { jumpPages, jumpResults } from "../../src/app/jump-search";
 import { buildRegistry, NAV_SLOTS, type RouteDef } from "../../src/app/registry";
 import { chartSeries, greeting } from "../../src/features/home/Overview";
-import { paidFromChain, summarize } from "../../src/features/home/summary";
+import { formatDuration, median, paidFromChain, summarize } from "../../src/features/home/summary";
 import { paidWithText, payingAttempt } from "../../src/features/payments/shared";
 import { statusOf } from "../../src/lib/status";
 import { segmentHeights } from "../../src/ui/SourceChart";
@@ -111,7 +111,34 @@ describe("Home numbers", () => {
     expect(summarize([], now).average).toBeNull();
   });
 
-  it("charts up to three chains, else the top two and Other chains", () => {
+  it("median time to paid: from the paying attempt's quote to succeeded_at, over the period", () => {
+    const paid = (created: number, took: number, extra: Record<string, unknown> = {}) => ({
+      status: "succeeded" as const,
+      amount: 100,
+      currency: "usd",
+      created: now - created,
+      succeeded_at: now - created + took,
+      attempts: [
+        { status: "succeeded" as const, origin_chain: "eip155:8453", is_overpayment: false, created: now - created },
+      ],
+      ...extra,
+    });
+    const s = summarize([paid(600, 4), paid(500, 9), paid(400, 6), paid(30 * 86_400, 1)], now);
+    expect(s.medianToPaid).toBe(6); // the old payment (previous period window) is not counted
+    expect(summarize([], now).medianToPaid).toBeNull();
+    // no attempt timestamp (older servers): no median rather than a guess
+    expect(summarize([{ ...paid(60, 5), attempts: [] }], now).medianToPaid).toBeNull();
+    expect(median([5, 1, 3, 2])).toBe(2);
+    expect(median([])).toBeNull();
+    expect(formatDuration(4)).toBe("4 s");
+    expect(formatDuration(95)).toBe("1 min 35 s");
+    expect(formatDuration(120)).toBe("2 min");
+    expect(formatDuration(720)).toBe("12 min");
+    expect(formatDuration(3600)).toBe("1 h");
+    expect(formatDuration(4000)).toBe("1 h 7 min");
+  });
+
+  it("charts up to three chains, else the top two and Other", () => {
     const base = summarize([], 0);
     const three = chartSeries({
       ...base,
@@ -131,7 +158,7 @@ describe("Home numbers", () => {
         { chain: "eip155:42161", value: 1n },
       ],
     });
-    expect(four.series.map((x) => x.label)).toEqual(["Base", "Solana", "Other chains"]);
+    expect(four.series.map((x) => x.label)).toEqual(["Base", "Solana", "Other"]);
     expect(four.keyOf("eip155:42161")).toBe("other");
     expect(four.keyOf("near:mainnet")).toBe("other");
     expect(four.keyOf("eip155:8453")).toBe("eip155:8453");
@@ -177,16 +204,19 @@ describe("design v2 vocabulary", () => {
     expect(statusOf("attempt", "deposit_detected").tone).toBe("progress");
     expect(statusOf("kyb", "not_started").tone).toBe("neutral");
   });
-  it("orders the sidebar like the v2 artboard (Billing before Customers, build group last)", () => {
+  it("orders the sidebar like the landing showcase (its seven items first, then the rest)", () => {
     expect(NAV_SLOTS).toEqual([
       "overview",
       "payments",
       "payment-links",
-      "billing",
+      "subscriptions",
       "customers",
       "agent-payments",
       "settlement",
+      "invoices",
       "developers",
+      "business",
+      "team",
       "settings",
     ]);
   });

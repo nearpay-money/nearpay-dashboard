@@ -16,7 +16,7 @@ export default defineFeature({
     {
       name: "subscriptions",
       pattern: "/billing/subscriptions",
-      section: "billing",
+      section: "subscriptions",
       title: "Subscriptions",
       stage: 3,
       roles: listSubscriptions.roles,
@@ -25,7 +25,7 @@ export default defineFeature({
     {
       name: "subscription-new",
       pattern: "/billing/subscriptions/new",
-      section: "billing",
+      section: "subscriptions",
       title: "New subscription",
       stage: 3,
       roles: createSubscription.roles,
@@ -34,7 +34,7 @@ export default defineFeature({
     {
       name: "subscription",
       pattern: "/billing/subscriptions/:id",
-      section: "billing",
+      section: "subscriptions",
       title: "Subscription",
       stage: 3,
       roles: getSubscription.roles,

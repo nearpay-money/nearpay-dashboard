@@ -12,7 +12,7 @@ export default defineFeature({
     {
       name: "products",
       pattern: "/billing/products",
-      section: "billing",
+      section: "invoices",
       title: "Products",
       stage: 3,
       roles: listProducts.roles,
@@ -21,7 +21,7 @@ export default defineFeature({
     {
       name: "product",
       pattern: "/billing/products/:id",
-      section: "billing",
+      section: "invoices",
       title: "Product",
       stage: 3,
       roles: getProduct.roles,

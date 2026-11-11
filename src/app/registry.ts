@@ -46,11 +46,14 @@ export const NAV_SLOTS = [
   "overview",
   "payments",
   "payment-links",
-  "billing",
+  "subscriptions",
   "customers",
   "agent-payments",
   "settlement",
+  "invoices",
   "developers",
+  "business",
+  "team",
   "settings",
 ] as const;
 export type NavSlot = (typeof NAV_SLOTS)[number];
