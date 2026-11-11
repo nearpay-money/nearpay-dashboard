@@ -7,7 +7,7 @@
 import type { AppShellSearch } from "@nearpay-internal/ui";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useApp } from "./context";
-import { type JumpTarget, jumpPages, jumpResults } from "./jump";
+import { type JumpTarget, jumpPages, jumpResults } from "./jump-search";
 
 const INPUT = ".np-shell__search-input";
 

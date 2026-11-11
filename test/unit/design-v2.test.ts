@@ -1,6 +1,6 @@
 /** Design v2 logic: top-bar jumper, Home numbers (chains, average), chart geometry, status tones, nav order. */
 import { describe, expect, it } from "vitest";
-import { jumpPages, jumpResults } from "../../src/app/jump";
+import { jumpPages, jumpResults } from "../../src/app/jump-search";
 import { buildRegistry, NAV_SLOTS, type RouteDef } from "../../src/app/registry";
 import { chartSeries, greeting } from "../../src/features/home/Overview";
 import { paidFromChain, summarize } from "../../src/features/home/summary";
