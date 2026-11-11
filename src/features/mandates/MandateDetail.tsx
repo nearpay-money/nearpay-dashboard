@@ -5,9 +5,10 @@
  * next, cancel/refund details, merchant cancel (`CancelMandateDialog`) and, in test mode, the simulated
  * customer's actions (`simulateMandatePayerAction` on the sandbox vault).
  */
-import type { Invoice } from "@nearpay/spec";
-import { getMandate, type Mandate, prepareMandateCancel, simulateMandatePayerAction } from "@nearpay/spec";
+
 import { Callout, KeyValueList, LiveRegion, Table, useToast } from "@nearpay-internal/ui";
+import type { Invoice } from "@nearpay-money/spec";
+import { getMandate, type Mandate, prepareMandateCancel, simulateMandatePayerAction } from "@nearpay-money/spec";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatDate, formatWhen } from "../../lib/format";

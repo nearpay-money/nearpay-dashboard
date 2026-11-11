@@ -4,16 +4,7 @@
  * (one email per 10 minutes), void, mark uncollectible, delete draft, PDF download. There is no
  * "mark paid": an invoice is paid only by a verified payment (INV-2).
  */
-import {
-  deleteInvoice,
-  finalizeInvoice,
-  getInvoicePdf,
-  type Invoice,
-  markInvoiceUncollectible,
-  type PaymentIntent,
-  sendInvoice,
-  voidInvoice,
-} from "@nearpay/spec";
+
 import {
   Button,
   Callout,
@@ -26,6 +17,16 @@ import {
   Timeline,
   useToast,
 } from "@nearpay-internal/ui";
+import {
+  deleteInvoice,
+  finalizeInvoice,
+  getInvoicePdf,
+  type Invoice,
+  markInvoiceUncollectible,
+  type PaymentIntent,
+  sendInvoice,
+  voidInvoice,
+} from "@nearpay-money/spec";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import {

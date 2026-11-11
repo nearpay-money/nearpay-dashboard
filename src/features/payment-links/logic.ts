@@ -2,8 +2,9 @@
  * Payment-link logic (lld/payments.md §17.11): price parsing into the spec's pricing shape (fiat =
  * integer minor units, asset = base-unit string; INV-5), price display, status labels.
  */
-import type { PaymentLink } from "@nearpay/spec";
+
 import { formatMoney } from "@nearpay-internal/ui";
+import type { PaymentLink } from "@nearpay-money/spec";
 import { currencyDigits } from "../../lib/money";
 
 export interface AssetMeta {

@@ -5,7 +5,7 @@
  * route schemas. Mandates come from "the chain" only (seeded or simulated, billing §14 d1). Test-only.
  */
 import { randomBytes } from "node:crypto";
-import { API_VERSION, Event, MANDATE_FUNDING_PAYER_NOTICE } from "@nearpay/spec";
+import { API_VERSION, Event, MANDATE_FUNDING_PAYER_NOTICE } from "@nearpay-money/spec";
 import { NOW, newId, USDC_NEAR } from "../../../test/e2e/fixtures";
 import type { BillingMock } from "../billing/billing.mock";
 import { installFeatureMock, type MockCtx, type Reply } from "../customers/customers.mock";

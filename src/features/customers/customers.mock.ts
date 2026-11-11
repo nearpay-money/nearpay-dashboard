@@ -1,5 +1,5 @@
 /** E2E mock of the customer routes (feature extension of test/e2e/mock-api.ts). Test-only. */
-import type { Role } from "@nearpay/spec";
+import type { Role } from "@nearpay-money/spec";
 import { NOW, newId, USDC_NEAR } from "../../../test/e2e/fixtures";
 
 export interface MockCtx {

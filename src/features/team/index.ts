@@ -2,7 +2,7 @@
  * Team & approvals feature module (lld/dashboard-and-console.md §1 Stage 2 "Team"; Figma b04):
  * routes + nav metadata for the core route registry.
  */
-import { listMembers, type Role } from "@nearpay/spec";
+import { listMembers, type Role } from "@nearpay-money/spec";
 import { createElement, type ReactElement } from "react";
 import { Team } from "./Team";
 

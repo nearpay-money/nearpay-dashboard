@@ -2,7 +2,7 @@
  * Payment link detail: share URL (copy / native share), price and usage, settings, payments made through
  * the link, edit of texts and limits (pricing is immutable), activate / deactivate (links are never deleted).
  */
-import { type PaymentIntent, type PaymentLink, updatePaymentLink } from "@nearpay/spec";
+
 import {
   Button,
   Callout,
@@ -22,6 +22,7 @@ import {
   StatusBadge,
   Table,
 } from "@nearpay-internal/ui";
+import { type PaymentIntent, type PaymentLink, updatePaymentLink } from "@nearpay-money/spec";
 import { useRef, useState } from "react";
 import { useApp } from "../../app/context";
 import { useLink, useLinkCalls, useLinkPayments } from "./api";

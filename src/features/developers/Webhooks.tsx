@@ -4,6 +4,8 @@
  * (`rotateWebhookEndpointSecret`, spec 0.2.0), enable/disable, delete, and the delivery log (20 per page,
  * cursor pager) with resend of a delivery's event to this endpoint (`resendEvent`, spec 0.2.0).
  */
+
+import { Callout, Checkbox, Input, Select, StatusBadge, Table, useToast } from "@nearpay-internal/ui";
 import {
   createWebhookEndpoint,
   deleteWebhookEndpoint,
@@ -18,8 +20,7 @@ import {
   type WebhookDelivery as WebhookDeliverySchema,
   type WebhookEndpoint as WebhookEndpointSchema,
   type z,
-} from "@nearpay/spec";
-import { Callout, Checkbox, Input, Select, StatusBadge, Table, useToast } from "@nearpay-internal/ui";
+} from "@nearpay-money/spec";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatTime, formatWhen, relative } from "../../lib/format";
@@ -137,7 +138,7 @@ export function Webhooks({ summary = false }: { summary?: boolean }) {
       {!summary ? (
         <p className="np-text-secondary">
           Deliveries are signed (<code>NearPay-Signature</code>: HMAC <code>v1</code> + Ed25519 <code>v1a</code>) and
-          retried for 72 h. Verify them with <code>webhooks.constructEvent</code> from <code>@nearpay/node</code>.
+          retried for 72 h. Verify them with <code>webhooks.constructEvent</code> from <code>@nearpay-money/node</code>.
         </p>
       ) : null}
       {secret ? <SecretOnce label="Signing secret" value={secret} onDone={() => setSecret(undefined)} /> : null}

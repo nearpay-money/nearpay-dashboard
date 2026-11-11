@@ -2,7 +2,7 @@
  * Team & approvals logic (lld/identity.md §5 invitations and roles, two-approver rule): role copy, who
  * may grant which role, the merged members + pending-invitations table, and destination approval rows.
  */
-import type { Role, SettlementDestination } from "@nearpay/spec";
+import type { Role, SettlementDestination } from "@nearpay-money/spec";
 
 export const ROLE_INFO: Readonly<Record<Role, { label: string; description: string }>> = {
   owner: { label: "Owner", description: "Everything, including business details and owner changes" },

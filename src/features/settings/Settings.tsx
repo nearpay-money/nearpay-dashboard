@@ -3,8 +3,9 @@
  * cards come from the feature registry) plus the core pages Account & payments (`updateAccount`; money
  * settings need a step-up, which the API asks for) and Notifications.
  */
-import { updateAccount } from "@nearpay/spec";
+
 import { Card, Checkbox, ChevronRightIcon, Input, Select, useToast } from "@nearpay-internal/ui";
+import { updateAccount } from "@nearpay-money/spec";
 import { useEffect, useState } from "react";
 import { type Account, Link, useApp } from "../../app/context";
 import type { SettingsCard } from "../../app/registry";

@@ -1,12 +1,5 @@
 /** Customer detail: contact, wallets, paid totals and the customer's payments; edit and delete. */
-import {
-  type Customer,
-  createInvoice,
-  createSubscription,
-  deleteCustomer,
-  type PaymentIntent,
-  updateCustomer,
-} from "@nearpay/spec";
+
 import {
   Button,
   Card,
@@ -22,6 +15,14 @@ import {
   Table,
   Tabs,
 } from "@nearpay-internal/ui";
+import {
+  type Customer,
+  createInvoice,
+  createSubscription,
+  deleteCustomer,
+  type PaymentIntent,
+  updateCustomer,
+} from "@nearpay-money/spec";
 import { useRef, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { FEATURE_STAGE } from "../../app/registry";

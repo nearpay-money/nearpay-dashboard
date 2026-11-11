@@ -1,5 +1,5 @@
 /** Products & prices module (lld/billing.md §5, spec `billing-catalog`): Billing → Products, product detail. */
-import { getProduct, listProducts } from "@nearpay/spec";
+import { getProduct, listProducts } from "@nearpay-money/spec";
 import { lazyPage } from "../../app/lazy";
 import { defineFeature } from "../../app/registry";
 

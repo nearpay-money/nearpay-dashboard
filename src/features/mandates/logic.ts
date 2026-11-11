@@ -5,7 +5,7 @@
  * prepared cancel transaction is exactly `cancel({mandate_id})` on the mandate's vault before any wallet
  * prompt (lld/dashboard §1 "wallet signing builds exactly the API payload").
  */
-import type { Invoice, Mandate, NearTransactionRequest } from "@nearpay/spec";
+import type { Invoice, Mandate, NearTransactionRequest } from "@nearpay-money/spec";
 import { formatUnits } from "../../lib/money";
 import type { MandateCollection, MandateFundingInstructions } from "./types";
 

@@ -2,7 +2,7 @@
  * Audit log feature module (lld/dashboard-and-console.md §1 Stage 2 "audit log + CSV export"):
  * routes + nav metadata for the core route registry.
  */
-import { listAccountAuditEvents, type Role } from "@nearpay/spec";
+import { listAccountAuditEvents, type Role } from "@nearpay-money/spec";
 import { createElement, type ReactElement } from "react";
 import { AuditLog } from "./AuditLog";
 

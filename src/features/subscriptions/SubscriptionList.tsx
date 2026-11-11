@@ -3,8 +3,9 @@
  * Next invoice · Collection · Status, "No surprise charges" note. `SubscriptionTable` is reused on the
  * customer page.
  */
-import { createSubscription, type Subscription } from "@nearpay/spec";
+
 import { buttonClassName, Callout, FilterBar, FilterPill, Pager, Table } from "@nearpay-internal/ui";
+import { createSubscription, type Subscription } from "@nearpay-money/spec";
 import type { ReactNode } from "react";
 import { Link, useApp } from "../../app/context";
 import { priceSummary } from "../../lib/billing";

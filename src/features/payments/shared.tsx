@@ -1,6 +1,7 @@
 /** Payment display pieces shared by Overview, the payments list and detail. */
-import type { PaymentIntent } from "@nearpay/spec";
+
 import { Money, StatusBadge, Table, type TableColumn } from "@nearpay-internal/ui";
+import type { PaymentIntent } from "@nearpay-money/spec";
 import type { ReactNode } from "react";
 import { Link, useApp } from "../../app/context";
 import { networkName } from "../../lib/chains";

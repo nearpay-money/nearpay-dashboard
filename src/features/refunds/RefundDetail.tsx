@@ -4,7 +4,7 @@
  * prepare a new route (expired / failed), cancel (nothing submitted), and the owner-only recipient
  * override with step-up (INV-7). Open refunds are polled until they settle.
  */
-import { cancelRefund, prepareRefund, type Refund, updateRefundRecipient } from "@nearpay/spec";
+
 import {
   Button,
   buttonClassName,
@@ -22,6 +22,7 @@ import {
   Table,
   truncateMiddle,
 } from "@nearpay-internal/ui";
+import { cancelRefund, prepareRefund, type Refund, updateRefundRecipient } from "@nearpay-money/spec";
 import { useEffect, useRef, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { explorerTxUrl } from "../../lib/explorer";

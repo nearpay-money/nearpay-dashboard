@@ -7,7 +7,7 @@ import {
   listSettlementDestinations,
   type PaymentLink,
   updatePaymentLink,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import { useCallback, useEffect, useState } from "react";
 import { useApp } from "../../app/context";
 import { useAsync } from "../../lib/hooks";

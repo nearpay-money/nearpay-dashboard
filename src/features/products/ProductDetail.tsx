@@ -2,8 +2,9 @@
  * Product detail: name, description, status (archive / restore), and its prices — add a price,
  * deactivate or reactivate one. Pricing is immutable (INV-6); a price change is a new price.
  */
-import { getProduct, listPrices, type Price, type Product, updatePrice, updateProduct } from "@nearpay/spec";
+
 import { Button, Callout, KeyValueList, LiveRegion, MenuButton, MoreIcon, Table, useToast } from "@nearpay-internal/ui";
+import { getProduct, listPrices, type Price, type Product, updatePrice, updateProduct } from "@nearpay-money/spec";
 import { useState } from "react";
 import { useApp } from "../../app/context";
 import { intervalText, priceSummary } from "../../lib/billing";

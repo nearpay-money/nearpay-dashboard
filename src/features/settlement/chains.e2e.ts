@@ -143,7 +143,7 @@ test("live Bitcoin destination: P2WPKH/P2TR only, lower-cased, BIP-322 simple pa
   api,
 }) => {
   const vec = JSON.parse(
-    readFileSync(require.resolve("@nearpay/spec/test-vectors/destination-attestation.json"), "utf8"),
+    readFileSync(require.resolve("@nearpay-money/spec/test-vectors/destination-attestation.json"), "utf8"),
   ) as {
     bip322: { nearpay: { type: string; cases: { signature: string; valid: boolean; name: string }[] }[] };
   };

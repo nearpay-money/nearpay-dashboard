@@ -4,7 +4,7 @@
  * complete details turns live mode on at once (no NearPay review). Copy rule: business details are
  * self-declared — never "verified" or "reviewed".
  */
-import type { KybCase as KybCaseSchema, KybProfile as KybProfileSchema, z } from "@nearpay/spec";
+import type { KybCase as KybCaseSchema, KybProfile as KybProfileSchema, z } from "@nearpay-money/spec";
 
 export type KybProfile = z.output<typeof KybProfileSchema>;
 export type KybCase = z.output<typeof KybCaseSchema>;

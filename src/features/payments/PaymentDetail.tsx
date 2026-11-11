@@ -4,13 +4,7 @@
  * Settlement card (destination, fingerprint computed client-side, "View transaction") and the Customer
  * card. "Refund payment" opens the refund flow of the refunds module (`/payments/:id/refund`).
  */
-import {
-  createRefund,
-  getCheckoutSession,
-  getPaymentIntent,
-  listBalanceTransactions,
-  type PaymentIntent,
-} from "@nearpay/spec";
+
 import {
   Callout,
   Card,
@@ -22,6 +16,13 @@ import {
   Timeline,
   type TimelineItem,
 } from "@nearpay-internal/ui";
+import {
+  createRefund,
+  getCheckoutSession,
+  getPaymentIntent,
+  listBalanceTransactions,
+  type PaymentIntent,
+} from "@nearpay-money/spec";
 import { type ComponentType, type ReactNode, Suspense, use, useEffect, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { loadArea } from "../../app/features";

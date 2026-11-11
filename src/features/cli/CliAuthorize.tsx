@@ -6,8 +6,9 @@
  * Approval mints a restricted **test-mode** key for the signed-in account — never live access.
  * 404 = unknown, expired more than a day ago, or another account's request; 409 = already decided.
  */
-import { approveCliLogin, type CliLoginRequest, denyCliLogin, getCliLogin, type z } from "@nearpay/spec";
+
 import { Button, Callout, Field, Input, KeyValueList, LiveRegion, StatusBadge } from "@nearpay-internal/ui";
+import { approveCliLogin, type CliLoginRequest, denyCliLogin, getCliLogin, type z } from "@nearpay-money/spec";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { ApiError, StepUpCanceled } from "../../lib/errors";

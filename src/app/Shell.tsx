@@ -6,8 +6,9 @@
  * notifications; the test/live banners. Below 960 px the kit shows its navy mobile bar and the sidebar
  * opens as a drawer, closed again after every navigation.
  */
-import { listMemberships, listPaymentIntents, listSettlementDestinations } from "@nearpay/spec";
+
 import { AppShell, Breadcrumb, Button, Callout, ModeSwitch, type NavGroup } from "@nearpay-internal/ui";
+import { listMemberships, listPaymentIntents, listSettlementDestinations } from "@nearpay-money/spec";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useAsync } from "../lib/hooks";
 import { humanStatus } from "../lib/status";

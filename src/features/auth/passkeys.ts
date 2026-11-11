@@ -8,7 +8,7 @@ import {
   type RouteResponse,
   stepUpOptions,
   stepUpVerify,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import { startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import type { ApiClient } from "../../lib/api";
 import type { DashboardSession } from "../../lib/session";

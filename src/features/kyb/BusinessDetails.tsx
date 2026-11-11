@@ -5,7 +5,7 @@
  * not submitted, submitted (manual review only), needs more info (with `requested_info`), live
  * (approved), not accepted (rejected). Admins see the details read-only. Never "verified"/"reviewed".
  */
-import { submitKyb, updateKybProfile } from "@nearpay/spec";
+
 import {
   Button,
   Callout,
@@ -20,6 +20,7 @@ import {
   Select,
   StatusBadge,
 } from "@nearpay-internal/ui";
+import { submitKyb, updateKybProfile } from "@nearpay-money/spec";
 import { type ReactNode, useMemo, useState } from "react";
 import { useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";

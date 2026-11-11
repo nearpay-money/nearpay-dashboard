@@ -3,7 +3,7 @@
  * per-period totals, the upcoming renewal invoice (estimated client-side from the items, current tax
  * rates and `periodBoundary`; billing reprices at renewal, §12 d6), allowed actions and dunning copy.
  */
-import type { Price, Subscription, TaxRate, TaxRateInput } from "@nearpay/spec";
+import type { Price, Subscription, TaxRate, TaxRateInput } from "@nearpay-money/spec";
 import {
   intervalText,
   nextPeriod,

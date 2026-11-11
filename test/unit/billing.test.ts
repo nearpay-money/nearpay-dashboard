@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { taxPercentageToPpm } from "@nearpay/spec";
+import { taxPercentageToPpm } from "@nearpay-money/spec";
 import { describe, expect, it } from "vitest";
 import {
   amountText,
@@ -138,7 +138,7 @@ describe("tax percentages are exact strings", () => {
 });
 
 describe("previewTotals matches the spec vectors", () => {
-  const v = JSON.parse(readFileSync(require.resolve("@nearpay/spec/test-vectors/billing-tax.json"), "utf8")) as {
+  const v = JSON.parse(readFileSync(require.resolve("@nearpay-money/spec/test-vectors/billing-tax.json"), "utf8")) as {
     tax_cases: {
       name: string;
       lines: { unit_amount: string; quantity: number; rates: string[] }[];

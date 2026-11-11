@@ -7,7 +7,7 @@ import {
   listCustomers,
   listPaymentIntents,
   updateCustomer,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useApp } from "../../app/context";
 import { useAsync } from "../../lib/hooks";

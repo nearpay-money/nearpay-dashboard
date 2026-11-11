@@ -3,6 +3,8 @@
  * badges, name lookups for ids the billing objects carry (customers are owned by payments, products by
  * the catalogue), catalogue loaders for the forms, and the download helper for invoice PDFs.
  */
+
+import { StatusBadge } from "@nearpay-internal/ui";
 import {
   getCustomer,
   getProduct,
@@ -13,8 +15,7 @@ import {
   type Price,
   type Subscription,
   type TaxRate,
-} from "@nearpay/spec";
-import { StatusBadge } from "@nearpay-internal/ui";
+} from "@nearpay-money/spec";
 import { useEffect, useRef, useState } from "react";
 import { type AppState, useApp } from "../../app/context";
 import { isPastDue } from "../../lib/billing";

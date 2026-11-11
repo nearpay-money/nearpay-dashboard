@@ -7,7 +7,7 @@
  * Test mode never opens a wallet or broadcasts (test legs point at sandbox deposit addresses): the merchant
  * simulates the signed transfer with `simulateRefundDeposit` instead.
  */
-import { type Refund, simulateRefundDeposit, submitRefundTx } from "@nearpay/spec";
+
 import {
   Button,
   Callout,
@@ -19,6 +19,7 @@ import {
   Money,
   truncateMiddle,
 } from "@nearpay-internal/ui";
+import { type Refund, simulateRefundDeposit, submitRefundTx } from "@nearpay-money/spec";
 import { useMemo, useState } from "react";
 import { useApp } from "../../app/context";
 import { WalletPicker } from "../../ui/WalletPicker";

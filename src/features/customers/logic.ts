@@ -2,8 +2,9 @@
  * Customer logic (lld/payments.md §17, spec `customers`): display names, form validation, wallet rows,
  * and paid totals computed from the customer's succeeded payments (integer money per currency; INV-5).
  */
-import type { Customer, PaymentIntent } from "@nearpay/spec";
+
 import { formatMoney } from "@nearpay-internal/ui";
+import type { Customer, PaymentIntent } from "@nearpay-money/spec";
 import { currencyDigits } from "../../lib/money";
 
 export const customerName = (c: Pick<Customer, "name" | "email">): string => c.name ?? c.email ?? "Unnamed customer";

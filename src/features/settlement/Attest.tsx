@@ -7,14 +7,15 @@
  * over the raw message bytes, base58) and Bitcoin (`standard: bip322`, BIP-322 "simple", base64) — from a
  * detected wallet, or by pasting a signature made elsewhere (shape-checked before it is sent).
  */
+
+import { CopyText, Textarea } from "@nearpay-internal/ui";
 import {
   attestSettlementDestination,
   challengeSettlementDestination,
   type DESTINATION_SIGNING_STANDARDS,
   getSettlementDestination,
   type SettlementDestination,
-} from "@nearpay/spec";
-import { CopyText, Textarea } from "@nearpay-internal/ui";
+} from "@nearpay-money/spec";
 import { useEffect, useRef, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { checkBip322Signature, checkBitcoinAddress, checkSolanaSignature, networkName } from "../../lib/chains";

@@ -8,7 +8,7 @@ import {
   listPaymentIntents,
   revokeApiKey,
   startKyb,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import { describe, expect, it, vi } from "vitest";
 import { cspNonce } from "../../src/lib/config";
 import { ApiError } from "../../src/lib/errors";
@@ -51,7 +51,7 @@ describe("money (integer formatting)", () => {
 
 describe("fingerprint", () => {
   const v = JSON.parse(
-    readFileSync(require.resolve("@nearpay/spec/test-vectors/destination-fingerprint.json"), "utf8"),
+    readFileSync(require.resolve("@nearpay-money/spec/test-vectors/destination-fingerprint.json"), "utf8"),
   ) as {
     cases: { chain: string; address_norm: string; asset_id: string; fingerprint: string }[];
   };

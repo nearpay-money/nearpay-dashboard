@@ -1,5 +1,5 @@
 /** Account audit log (spec 0.2.0 `listAccountAuditEvents`; owner/admin) and the CSV export walk. */
-import { listAccountAuditEvents, listMembers } from "@nearpay/spec";
+import { listAccountAuditEvents, listMembers } from "@nearpay-money/spec";
 import { useCallback, useEffect, useState } from "react";
 import { useApp } from "../../app/context";
 import type { ApiClient } from "../../lib/api";

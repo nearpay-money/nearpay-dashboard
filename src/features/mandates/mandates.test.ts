@@ -1,6 +1,6 @@
 /** Auto-debit logic (billing §6, §7.1, §14): eligibility, copy, periods, collections, transaction guards. */
-import type { Invoice } from "@nearpay/spec";
-import { type Mandate, Mandate as MandateSchema } from "@nearpay/spec";
+import type { Invoice } from "@nearpay-money/spec";
+import { type Mandate, Mandate as MandateSchema } from "@nearpay-money/spec";
 import { describe, expect, it } from "vitest";
 import {
   autoDebitEligibility,

@@ -6,8 +6,7 @@
  * auto-debit from a vault mandate the customer funds and can cancel — with the eligibility of the chosen
  * prices explained (USD at par in USDC/USDT or an allowed NEP-141 token; an active NEAR Intents account).
  */
-import type { Price, TaxRate } from "@nearpay/spec";
-import { createSubscription } from "@nearpay/spec";
+
 import {
   Button,
   Callout,
@@ -25,6 +24,8 @@ import {
   Select,
   Textarea,
 } from "@nearpay-internal/ui";
+import type { Price, TaxRate } from "@nearpay-money/spec";
+import { createSubscription } from "@nearpay-money/spec";
 import { useMemo, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { FEATURE_STAGE } from "../../app/registry";

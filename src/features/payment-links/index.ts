@@ -3,7 +3,7 @@
  * Figma b01): routes + nav metadata for the core route registry.
  * Route order matters for first-match routers: `/payment-links/new` precedes `/payment-links/:id`.
  */
-import { createPaymentLink, getPaymentLink, listPaymentLinks, type Role } from "@nearpay/spec";
+import { createPaymentLink, getPaymentLink, listPaymentLinks, type Role } from "@nearpay-money/spec";
 import { createElement, type ReactElement } from "react";
 import { CreatePaymentLink } from "./CreatePaymentLink";
 import { PaymentLinkDetail } from "./PaymentLinkDetail";

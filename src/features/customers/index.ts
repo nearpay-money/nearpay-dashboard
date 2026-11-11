@@ -2,7 +2,7 @@
  * Customers feature module (lld/dashboard-and-console.md §1 Stage 2; spec `customers`; Figma b03):
  * routes + nav metadata for the core route registry.
  */
-import { getCustomer, listCustomers, type Role } from "@nearpay/spec";
+import { getCustomer, listCustomers, type Role } from "@nearpay-money/spec";
 import { createElement, type ReactElement } from "react";
 import { CustomerDetail } from "./CustomerDetail";
 import { Customers } from "./Customers";

@@ -2,8 +2,9 @@
  * Payments list (Figma "Payments"): typed list filters (ADR-0018, spec 0.2.0 `listPaymentIntents`) kept in
  * the URL, cursor pager, client-side CSV export of the filtered list, and the first-payment empty state.
  */
-import { IntentStatus, listPaymentIntents, type PaymentIntent } from "@nearpay/spec";
+
 import { Button, CardIcon, useToast } from "@nearpay-internal/ui";
+import { IntentStatus, listPaymentIntents, type PaymentIntent } from "@nearpay-money/spec";
 import { type FormEvent, useId, useMemo, useState } from "react";
 import { useApp } from "../../app/context";
 import { networkName } from "../../lib/chains";

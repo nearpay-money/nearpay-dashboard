@@ -2,7 +2,7 @@
  * Checkout appearance feature module (lld/dashboard-and-console.md §1 "Settings … branding"; Figma b04):
  * routes + nav metadata for the core route registry.
  */
-import { type Role, updateAccount } from "@nearpay/spec";
+import { type Role, updateAccount } from "@nearpay-money/spec";
 import { createElement, type ReactElement } from "react";
 import { Appearance } from "./Appearance";
 

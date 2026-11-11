@@ -18,7 +18,7 @@ import {
   listRefunds,
   type Role,
   updateAccount,
-} from "@nearpay/spec";
+} from "@nearpay-money/spec";
 import { type ReactElement, Suspense, use } from "react";
 import { LoadingState, Page } from "../ui/page";
 import { ErrorNote } from "../ui/ui";

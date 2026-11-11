@@ -5,8 +5,6 @@
  * the customer's funding transaction landed.
  */
 
-import type { Mandate } from "@nearpay/spec";
-import { NearAccountId } from "@nearpay/spec";
 import {
   Button,
   buttonClassName,
@@ -17,6 +15,8 @@ import {
   SearchInput,
   Table,
 } from "@nearpay-internal/ui";
+import type { Mandate } from "@nearpay-money/spec";
+import { NearAccountId } from "@nearpay-money/spec";
 import { useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { formatDate } from "../../lib/format";

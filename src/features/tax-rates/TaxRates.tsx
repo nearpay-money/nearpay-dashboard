@@ -4,14 +4,7 @@
  * immutable; labels can change, and a rate is archived (`active: false`) instead of deleted. The form
  * shows a worked example computed with the spec's `computeLineTax` (round half-up per line).
  */
-import {
-  computeLineTax,
-  createTaxRate,
-  listTaxRates,
-  type TaxRate,
-  taxPercentageToPpm,
-  updateTaxRate,
-} from "@nearpay/spec";
+
 import {
   Button,
   Field,
@@ -29,6 +22,14 @@ import {
   Table,
   useToast,
 } from "@nearpay-internal/ui";
+import {
+  computeLineTax,
+  createTaxRate,
+  listTaxRates,
+  type TaxRate,
+  taxPercentageToPpm,
+  updateTaxRate,
+} from "@nearpay-money/spec";
 import { useState } from "react";
 import { useApp } from "../../app/context";
 import { amountText, parseTaxPercentage, percentText } from "../../lib/billing";

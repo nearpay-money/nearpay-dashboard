@@ -3,10 +3,11 @@
  * failures, paid resources (x402 resources grouped from real agent payments by `resource_url`), recent
  * activity with a kind filter and cursor pager, and the payment page. v1 has no resource registry in the
  * API: "Add paid resource" validates the inputs and produces the server code that issues the single-use
- * x402 requirements (`x402Requirements` via `@nearpay/node`) and settles before serving.
+ * x402 requirements (`x402Requirements` via `@nearpay-money/node`) and settles before serving.
  */
-import { type AgentPayment, getAgentPayment, listAgentPayments, listSettlementDestinations } from "@nearpay/spec";
+
 import { buttonClassName, Callout, Input, Select, StatusBadge, Table } from "@nearpay-internal/ui";
+import { type AgentPayment, getAgentPayment, listAgentPayments, listSettlementDestinations } from "@nearpay-money/spec";
 import { type FormEvent, useMemo, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import type { ApiClient } from "../../lib/api";
@@ -321,7 +322,7 @@ export function resourceSnippet(o: {
   payTo: string;
   display: string;
 }): string {
-  return `import { NearPay } from "@nearpay/node";
+  return `import { NearPay } from "@nearpay-money/node";
 
 const nearpay = new NearPay(process.env.NEARPAY_SECRET_KEY!); // or a restricted key with agentpay.facilitate
 

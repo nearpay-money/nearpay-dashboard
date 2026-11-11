@@ -1,6 +1,7 @@
 /** Add / edit customer dialog: name, receipt email, internal note and known wallets (≤ 20). */
-import type { Customer } from "@nearpay/spec";
+
 import { Button, CloseIcon, Field, IconButton, Input, Modal, Select } from "@nearpay-internal/ui";
+import type { Customer } from "@nearpay-money/spec";
 import { useEffect, useState } from "react";
 import { useCustomerCalls } from "./api";
 import { CHAINS, type CustomerForm, formOf, validateCustomer, type WalletRow } from "./logic";

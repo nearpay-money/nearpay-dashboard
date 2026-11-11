@@ -1,5 +1,5 @@
 /** KYB case calls (spec 0.2.0 `compliance`: getKyb, updateKybProfile, submitKyb with step-up). */
-import { getKyb, submitKyb, updateKybProfile } from "@nearpay/spec";
+import { getKyb, submitKyb, updateKybProfile } from "@nearpay-money/spec";
 import { useApp } from "../../app/context";
 import { useAsync } from "../../lib/hooks";
 import { type KybCase, type KybForm, updateBody } from "./logic";

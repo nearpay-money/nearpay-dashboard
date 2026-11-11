@@ -4,7 +4,7 @@
  *
  * Route order matters for first-match routers: list fixed paths before parameterised ones.
  */
-import { getRefund, listRefunds, type Role } from "@nearpay/spec";
+import { getRefund, listRefunds, type Role } from "@nearpay-money/spec";
 import { createElement, type ReactElement } from "react";
 import { RefundDetail } from "./RefundDetail";
 import { RefundsPage } from "./RefundsList";

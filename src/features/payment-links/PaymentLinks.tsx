@@ -1,5 +1,5 @@
 /** Payment links list (Figma b01): Link · Price · Payments · Status, the reuse callout, filter and pager. */
-import { createPaymentLink, listPaymentLinks, type PaymentLink } from "@nearpay/spec";
+
 import {
   buttonClassName,
   Callout,
@@ -11,6 +11,7 @@ import {
   Table,
   type TableColumn,
 } from "@nearpay-internal/ui";
+import { createPaymentLink, listPaymentLinks, type PaymentLink } from "@nearpay-money/spec";
 import { useRef, useState } from "react";
 import { useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";

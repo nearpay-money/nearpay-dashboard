@@ -10,7 +10,7 @@
  *
  * The shared wallet modules (`src/wallets/*`) are used read-only for discovery and message signing.
  */
-import type { MultiPayload } from "@nearpay/spec";
+import type { MultiPayload } from "@nearpay-money/spec";
 import type { Eip1193Provider } from "../../wallets/evm";
 import { WalletMismatchError } from "../../wallets/evm";
 import type { SignAndSend, SignIntent } from "./logic";

@@ -4,7 +4,7 @@
  * the chain the customer paid from (the paying attempt's `origin_chain`) for the chart. Amounts are summed as
  * bigint minor units of one fiat currency (INV-5); percentages are display-only ratios.
  */
-import type { PaymentIntent } from "@nearpay/spec";
+import type { PaymentIntent } from "@nearpay-money/spec";
 
 type Attempt = Pick<PaymentIntent["attempts"][number], "status" | "origin_chain" | "is_overpayment">;
 type Intent = Pick<PaymentIntent, "status" | "amount" | "currency" | "created" | "succeeded_at"> & {
