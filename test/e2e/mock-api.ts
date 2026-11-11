@@ -107,6 +107,13 @@ export class MockApi {
   role: Role = "owner";
   csrf = b64u(32);
   stepUpUntil = 0;
+  /** Continue with Google (spec 0.5.1, ADR-0026): identity has a Google client. */
+  googleEnabled = false;
+  /** How the current session signed in and what the user can confirm with. */
+  signInMethod: "passkey" | "google" | "recovery" = "passkey";
+  passkeys = 1;
+  passkeySetupUntil: number | null = null;
+  linked: { object: "linked_identity"; provider: "google"; email: string; created: number }[] = [];
   /** Account state (KYB, live). */
   account: AccountT = account();
   liveEnabled = false;
@@ -277,6 +284,12 @@ export class MockApi {
       role: this.role,
       csrf_token: this.csrf,
       expires_at: NOW + 7 * 86_400,
+      sign_in: {
+        method: this.signInMethod,
+        passkeys: this.passkeys,
+        google_linked: this.linked.length > 0,
+        passkey_setup_until: this.passkeys === 0 ? this.passkeySetupUntil : null,
+      },
     };
   }
 
@@ -354,9 +367,39 @@ export class MockApi {
         });
       case "passkeyRegistrationVerify":
         if (body.display_name) this.account = { ...this.account, display_name: body.display_name };
+        if (!body.registration_token) this.passkeys += 1;
         return ok(this.sessionBody());
-      case "passkeyAuthenticationOptions":
+      // Continue with Google (spec 0.5.1): the flow itself happens at Google and identity's callback;
+      // tests play that part by intercepting https://accounts.google.test/** (see google.e2e.ts)
+      case "getAuthMethods":
+        return ok({ object: "auth_methods", passkey: true, google: this.googleEnabled });
+      case "startGoogleSignIn":
+      case "startGoogleLink":
+        if (!this.googleEnabled) return err(404, "invalid_request_error", "google_signin_disabled");
+        if (route.id === "startGoogleLink" && this.linked.length)
+          return err(409, "state_conflict", "google_already_linked");
+        return ok({
+          object: "google_authorization",
+          authorization_url: `https://accounts.google.test/o/oauth2/v2/auth?purpose=${route.id === "startGoogleLink" ? "link" : "signin"}&state=${b64u(32)}`,
+          expires_at: Math.floor(Date.now() / 1000) + 600,
+        });
+      case "listLinkedIdentities":
+        return ok(list("/v1/auth/linked_identities", this.linked));
+      case "unlinkIdentity":
+        if (this.passkeys === 0) return err(403, "permission_error", "passkey_required");
+        if (!this.linked.length) return err(404, "invalid_request_error", "resource_missing");
+        this.linked = [];
+        return { status: 204 };
       case "stepUpOptions":
+        if (this.passkeys === 0) return err(403, "permission_error", "passkey_required");
+        return ok({
+          challenge: b64u(32),
+          rpId: "localhost",
+          timeout: 60_000,
+          userVerification: "required",
+          allowCredentials: [],
+        });
+      case "passkeyAuthenticationOptions":
         return ok({
           challenge: b64u(32),
           rpId: "localhost",

@@ -12,7 +12,7 @@ import type { SettingsCard } from "../../app/registry";
 import { useMutation } from "../../lib/hooks";
 import { ErrorState, LoadingState, Page, Section } from "../../ui/page";
 import { Badge, Button, ErrorNote, Field, KeyValue, Mono } from "../../ui/ui";
-import { registerPasskey } from "../auth/passkeys";
+import { SignInMethods } from "../auth/SignInMethods";
 
 interface Form {
   display_name: string;
@@ -91,7 +91,7 @@ export const CORE_CARDS: readonly SettingsCard[] = [
   {
     id: "core:account",
     title: "Account & payments",
-    description: "Display name, who pays fees, late payments and passkeys.",
+    description: "Display name, who pays fees, late payments, passkeys and Google sign-in.",
     href: "/settings/account",
     order: 50,
   },
@@ -137,7 +137,6 @@ export function AccountSettings() {
   const a = app.account;
   const [form, setForm] = useState<Form>();
   const [saved, setSaved] = useState(false);
-  const [pkMsg, setPkMsg] = useState<string>();
 
   useEffect(() => {
     if (a) setForm(toForm(a));
@@ -149,10 +148,6 @@ export function AccountSettings() {
     setSaved(true);
     app.refreshAccount();
     toast.show({ tone: "success", title: "Settings saved" });
-  });
-  const passkey = useMutation(async () => {
-    await registerPasskey(app.api, { passkeyName: "Additional passkey" });
-    setPkMsg("Passkey added.");
   });
 
   if (!a && app.accountError)
@@ -287,18 +282,7 @@ export function AccountSettings() {
           <ErrorNote error={save.error} />
         </form>
       </Section>
-      <Section title="Passkeys" level={3}>
-        <p className="np-text-secondary">Add a passkey on another device so you can always sign in.</p>
-        <div className="np-row">
-          <Button variant="secondary" busy={passkey.busy} onClick={() => void passkey.run()}>
-            Add a passkey
-          </Button>
-          <span role="status" className="np-text-secondary">
-            {pkMsg ?? ""}
-          </span>
-        </div>
-        <ErrorNote error={passkey.error} />
-      </Section>
+      <SignInMethods />
     </Page>
   );
 }

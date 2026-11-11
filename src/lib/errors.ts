@@ -75,6 +75,11 @@ const FRIENDLY: Readonly<Record<string, string>> = {
   scope_unknown: "One of the selected permissions isn't recognised. Refresh and try again.",
   invalid_setting: "One of the settings isn't valid.",
   link_expired: "This link has expired. Request a new one.",
+  // Continue with Google (spec 0.5.1, ADR-0026)
+  google_signin_disabled: "Continue with Google isn't available right now. Use your passkey.",
+  google_already_linked: "Your user is already connected to a Google account. Disconnect it first.",
+  passkey_required: "Add a passkey first. Sensitive actions are confirmed with a passkey.",
+  reauthentication_required: "Continue with Google again, then add your passkey within 10 minutes.",
   // billing (spec 0.3.0)
   currency_mismatch: "Every line must use the invoice currency. Pick prices in the same currency.",
   currency_unsupported: "NearPay can't take payments in this currency yet. Choose another currency.",

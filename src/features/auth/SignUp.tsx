@@ -4,6 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { AuthLayout } from "../../ui/auth";
 import { Button, ErrorNote, Field, Note } from "../../ui/ui";
+import {
+  AuthDivider,
+  continueWithGoogle,
+  GoogleButton,
+  googleErrorMessage,
+  googleErrorOf,
+  useAuthMethods,
+} from "./google";
 import { mountTurnstile } from "./turnstile";
 
 export function SignUp() {
@@ -15,6 +23,10 @@ export function SignUp() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<unknown>();
   const box = useRef<HTMLDivElement>(null);
+  const methods = useAuthMethods(app.api);
+  const [googleBusy, setGoogleBusy] = useState(false);
+  const [googleError, setGoogleError] = useState<unknown>();
+  const googleMessage = googleErrorMessage(googleErrorOf(app.location.search));
 
   useEffect(() => {
     if (box.current) void mountTurnstile(box.current, setToken, setWidgetError);
@@ -36,7 +48,35 @@ export function SignUp() {
   return (
     <AuthLayout>
       <h1 className="np-text-h3">Create your NearPay account</h1>
-      <p className="np-text-secondary">We email you a link; then you create a passkey on this device.</p>
+      <p className="np-text-secondary">
+        {methods?.google
+          ? "Continue with Google, or we email you a link and you create a passkey on this device."
+          : "We email you a link; then you create a passkey on this device."}
+      </p>
+      {googleMessage ? (
+        <div data-testid="google-error">
+          <Note tone="error">{googleMessage}</Note>
+        </div>
+      ) : null}
+      {methods?.google ? (
+        <>
+          <GoogleButton
+            busy={googleBusy}
+            onClick={async () => {
+              setGoogleBusy(true);
+              setGoogleError(undefined);
+              try {
+                await continueWithGoogle(app.api, { intent: "signup" });
+              } catch (err) {
+                setGoogleError(err);
+                setGoogleBusy(false);
+              }
+            }}
+          />
+          <ErrorNote error={googleError} />
+          <AuthDivider />
+        </>
+      ) : null}
       <form
         className="dash-form"
         onSubmit={async (e) => {
