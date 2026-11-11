@@ -11,7 +11,7 @@ export default defineFeature({
     {
       name: "tax-rates",
       pattern: "/billing/tax-rates",
-      section: "billing",
+      section: "invoices",
       title: "Tax rates",
       stage: 3,
       roles: listTaxRates.roles,

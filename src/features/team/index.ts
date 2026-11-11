@@ -31,7 +31,7 @@ export const routes: readonly FeatureRoute[] = [
     pattern: "/settings/team",
     title: "Team & approvals",
     crumb: "Settings",
-    nav: "settings",
+    nav: "team",
     roles: listMembers.roles,
     render: () => createElement(Team),
   },

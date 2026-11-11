@@ -89,7 +89,7 @@ export function PaymentsTable({
   empty?: ReactNode;
   caption?: string;
   footer?: ReactNode;
-  /** Home variant: Amount, Status, Description, Paid with, Date. */
+  /** Home variant (landing showcase): Amount, Status, Paid with, Time. */
   compact?: boolean;
   /** Visible panel title ("Recent payments") and its actions ("View all"). */
   title?: ReactNode;
@@ -111,13 +111,22 @@ export function PaymentsTable({
       ),
     },
     { key: "status", header: "Status", cell: (pi) => <PaymentStatus intent={pi} /> },
-    { key: "description", header: "Description", cell: (pi) => paymentName(pi), className: "dash-cell-desc" },
-    ...(compact ? [] : [{ key: "customer", header: "Customer", cell: customerText, hideOnNarrow: true, muted: true }]),
+    ...(compact
+      ? []
+      : [
+          {
+            key: "description",
+            header: "Description",
+            cell: (pi: PaymentIntent) => paymentName(pi),
+            className: "dash-cell-desc",
+          },
+          { key: "customer", header: "Customer", cell: customerText, hideOnNarrow: true, muted: true },
+        ]),
     {
       key: "paid-with",
       header: "Paid with",
       muted: true,
-      hideOnNarrow: true,
+      hideOnNarrow: !compact,
       cell: (pi) => paidWithText(pi, app.assets),
     },
     ...(compact
@@ -130,7 +139,13 @@ export function PaymentsTable({
             cell: (pi: PaymentIntent) => settlementText(pi, app.assets),
           },
         ]),
-    { key: "date", header: "Date", muted: true, align: "end", cell: (pi) => formatWhen(pi.created, now) },
+    {
+      key: "date",
+      header: compact ? "Time" : "Date",
+      muted: true,
+      align: "end",
+      cell: (pi) => formatWhen(pi.created, now),
+    },
   ];
   return (
     <div data-testid="payments-table">

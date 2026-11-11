@@ -111,7 +111,7 @@ describe("Home numbers", () => {
     expect(summarize([], now).average).toBeNull();
   });
 
-  it("charts up to three chains, else the top two and Other chains", () => {
+  it("charts up to three chains, else the top two and Other", () => {
     const base = summarize([], 0);
     const three = chartSeries({
       ...base,
@@ -131,7 +131,7 @@ describe("Home numbers", () => {
         { chain: "eip155:42161", value: 1n },
       ],
     });
-    expect(four.series.map((x) => x.label)).toEqual(["Base", "Solana", "Other chains"]);
+    expect(four.series.map((x) => x.label)).toEqual(["Base", "Solana", "Other"]);
     expect(four.keyOf("eip155:42161")).toBe("other");
     expect(four.keyOf("near:mainnet")).toBe("other");
     expect(four.keyOf("eip155:8453")).toBe("eip155:8453");
@@ -177,16 +177,19 @@ describe("design v2 vocabulary", () => {
     expect(statusOf("attempt", "deposit_detected").tone).toBe("progress");
     expect(statusOf("kyb", "not_started").tone).toBe("neutral");
   });
-  it("orders the sidebar like the v2 artboard (Billing before Customers, build group last)", () => {
+  it("orders the sidebar like the landing showcase (its seven items first, then the rest)", () => {
     expect(NAV_SLOTS).toEqual([
       "overview",
       "payments",
       "payment-links",
-      "billing",
+      "subscriptions",
       "customers",
       "agent-payments",
       "settlement",
+      "invoices",
       "developers",
+      "business",
+      "team",
       "settings",
     ]);
   });

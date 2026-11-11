@@ -218,7 +218,7 @@ function InvoiceView({ initial }: { initial: Invoice }) {
       title={inv.number ? `Invoice ${inv.number}` : "Draft invoice"}
       subtitle={`Billed to ${customer} · Created ${formatDate(inv.created)}`}
       status={<InvoiceStatus invoice={inv} now={now} />}
-      back={{ label: "Billing", to: "/billing" }}
+      back={{ label: "Invoices", to: "/billing" }}
       actions={actions}
       data-testid="invoice-detail"
     >

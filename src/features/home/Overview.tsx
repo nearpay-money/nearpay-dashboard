@@ -1,33 +1,27 @@
 /**
- * Home (design v2 artboard "Dashboard-proposed"): greeting, the two create actions, four KPI cards
- * (settled volume vs the previous week, successful payments of those started, average payment, needs
- * attention → the filtered payments list), daily volume stacked by the chain customers paid from (the
- * paying attempt's `origin_chain`), the payout wallet card and recent payments — all from real data:
- * `listPaymentIntents` (no analytics endpoint in v1) and `listSettlementDestinations`. Before the first
- * payment, while live mode is off, the onboarding checklist takes its place.
+ * Home, exactly as the landing page's dashboard showcase (nearpay-site `showcase/DashboardCard.astro`):
+ * "Good morning, <business>" with the period line, three KPI cards (settled volume vs last week, successful
+ * payments of those started, median time to paid), then "Recent payments" (Amount, Status, Paid with,
+ * Time) beside "Volume by source chain" (daily volume stacked by the paying attempt's `origin_chain`). All
+ * from real data: `listPaymentIntents` (no analytics endpoint in v1). Payments that need the merchant
+ * (review, delayed) show as one line above the KPIs, linking to the filtered list. Before the first payment,
+ * while live mode is off, the onboarding checklist takes its place.
  */
 
-import { buttonClassName, Callout, KpiCard, KpiGrid, Skeleton, truncateMiddle } from "@nearpay-internal/ui";
-import {
-  listPaymentIntents,
-  listSettlementDestinations,
-  type PaymentIntent,
-  type SettlementDestination,
-} from "@nearpay-money/spec";
+import { KpiCard, KpiGrid, Skeleton, WarningIcon } from "@nearpay-internal/ui";
+import { listPaymentIntents, type PaymentIntent } from "@nearpay-money/spec";
 import type { ReactNode } from "react";
 import { Link, useApp } from "../../app/context";
 import type { ApiClient } from "../../lib/api";
 import { networkName } from "../../lib/chains";
-import { formatDate, formatWhen, relative } from "../../lib/format";
 import { useAsync } from "../../lib/hooks";
-import { assetLabel, formatFiat } from "../../lib/money";
-import { statusOf } from "../../lib/status";
+import { formatFiat } from "../../lib/money";
 import { ErrorState, LoadingState, Page } from "../../ui/page";
 import { SourceChart, type SourceDay, type SourceSeries } from "../../ui/SourceChart";
 import { ErrorNote } from "../../ui/ui";
 import { PaymentsTable } from "../payments/shared";
 import { Setup } from "./Setup";
-import { type OverviewSummary, PERIOD_DAYS, startOfDay, summarize } from "./summary";
+import { formatDuration, type OverviewSummary, PERIOD_DAYS, startOfDay, summarize } from "./summary";
 
 const MAX_PAGES = 5;
 
@@ -65,14 +59,14 @@ export function greeting(date: Date = new Date()): string {
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
 
-/** Chart series: up to three chains by volume; with more, the top two and "Other chains". */
+/** Chart series: up to three chains by volume; with more, the top two and "Other". */
 export function chartSeries(s: OverviewSummary): { series: SourceSeries[]; keyOf: (chain: string) => string } {
   const named = s.chains.length > 3 ? s.chains.slice(0, 2) : s.chains;
   const keep = new Set(named.map((c) => c.chain).filter(Boolean));
   const series: SourceSeries[] = named
     .filter((c) => c.chain)
     .map((c) => ({ key: c.chain, label: networkName(c.chain) }));
-  if (s.chains.some((c) => !keep.has(c.chain))) series.push({ key: "other", label: "Other chains" });
+  if (s.chains.some((c) => !keep.has(c.chain))) series.push({ key: "other", label: "Other" });
   return { series, keyOf: (chain) => (keep.has(chain) ? chain : "other") };
 }
 
@@ -86,81 +80,18 @@ function settledSub(
   return { text: "Same as last week", trend: "neutral" };
 }
 
-function PayoutWalletCard({ lastPaidAt }: { lastPaidAt: number | null }) {
-  const app = useApp();
-  const dests = useAsync(
-    () => app.api.call(listSettlementDestinations, { query: { limit: 100 } }),
-    [app.api, app.mode],
-  );
-  const list = dests.data?.data ?? [];
-  const active = list.filter((d) => d.status === "active");
-  const d: SettlementDestination | undefined = active.find((x) => x.is_default) ?? active[0] ?? list[0];
-  const now = Math.floor(Date.now() / 1000);
-  const verification = (x: SettlementDestination) =>
-    x.verification === "signature" ? "Verified" : x.verification === "test" ? "Test wallet" : "Not verified";
-  const where = (x: SettlementDestination) =>
-    `${assetLabel(x.asset_id, app.assets)} on ${x.type === "intents_account" ? "NEAR Intents" : networkName(x.chain)}`;
-  const last =
-    lastPaidAt === null
-      ? "No payment yet"
-      : now - lastPaidAt < 3600
-        ? relative(lastPaidAt, now)
-        : formatWhen(lastPaidAt, now);
-  return (
-    <section className="dash-card dash-payout" aria-labelledby="dash-payout-title" data-testid="payout-wallet-card">
-      <h2 id="dash-payout-title" className="dash-card-title">
-        Payout wallet
-      </h2>
-      {dests.loading && !dests.data ? (
-        <div className="dash-payout__wallet">
-          <Skeleton width="75" />
-          <Skeleton width="50" />
-        </div>
-      ) : dests.error ? (
-        <ErrorNote error={dests.error} onRetry={dests.reload} />
-      ) : d ? (
-        <div className="dash-payout__wallet">
-          <p className="dash-payout__asset">{where(d)}</p>
-          <p className="dash-payout__address np-tabular" title={d.address}>
-            {truncateMiddle(d.address, 6, 6)}
-          </p>
-          <p className={`dash-payout__status dash-payout__status--${d.status === "active" ? "ok" : "wait"}`}>
-            {verification(d)} · {statusOf("destination", d.status).label.toLowerCase()}
-          </p>
-        </div>
-      ) : (
-        <div className="dash-payout__wallet">
-          <p className="dash-payout__asset">No payout wallet yet</p>
-          <p className="np-text-small np-text-secondary">Add the wallet where payments settle.</p>
-        </div>
-      )}
-      <dl className="dash-payout__facts">
-        <div>
-          <dt>Last payment arrived</dt>
-          <dd>{last}</dd>
-        </div>
-        <div>
-          <dt>Confirmations</dt>
-          <dd>1 block on each chain</dd>
-        </div>
-      </dl>
-      <Link to={d ? "/settlement" : "/settlement/new"} className="dash-payout__link">
-        {d ? "Manage payout wallets" : "Add payout wallet"}
-      </Link>
-    </section>
-  );
-}
+const WEEKDAY = new Intl.DateTimeFormat("en", { weekday: "short" });
 
 export function Overview() {
   const app = useApp();
   const now = Math.floor(Date.now() / 1000);
   const periodStart = startOfDay(now) - (PERIOD_DAYS - 1) * 86_400;
   const since = periodStart - PERIOD_DAYS * 86_400 - 3600; // previous week too (DST-safe margin)
-  const recent = useAsync(() => app.api.call(listPaymentIntents, { query: { limit: 5 } }), [app.api, app.mode]);
+  const recent = useAsync(() => app.api.call(listPaymentIntents, { query: { limit: 6 } }), [app.api, app.mode]);
   const period = useAsync(() => loadSince(app.api, since), [app.api, app.mode]);
   const req = app.requirements;
 
-  if (recent.loading && !recent.data) return <LoadingState what="Loading Home" stats={4} />;
+  if (recent.loading && !recent.data) return <LoadingState what="Loading Home" stats={3} />;
   if (recent.error) return <ErrorState title="Home" error={recent.error} onRetry={recent.reload} />;
   const hasPayments = (recent.data?.data.length ?? 0) > 0;
   if (!hasPayments && req && !req.live_enabled) return <Setup hasTestPayment={false} />;
@@ -168,24 +99,19 @@ export function Overview() {
   const s = period.data ? summarize(period.data.data, now) : undefined;
   const cur = s?.currency ?? "usd";
   const money = (v: bigint) => formatFiat(v, cur);
-  const canOpen = (path: string) => {
-    const r = app.registry.routes.find((x) => x.pattern === path);
-    const role = app.session?.role;
-    return Boolean(r) && (!r?.roles || (role !== undefined && r.roles.includes(role)));
-  };
   const name = app.account?.display_name ?? app.session?.account.display_name ?? "";
 
   const attention = s ? s.reviews + s.delayed : 0;
   const attentionLinks: ReactNode[] = [];
   if (s?.reviews)
     attentionLinks.push(
-      <Link key="r" to="/payments?status=requires_review" className="dash-kpi-link">
+      <Link key="r" to="/payments?status=requires_review" className="dash-attention__link">
         {s.reviews} to review
       </Link>,
     );
   if (s?.delayed)
     attentionLinks.push(
-      <Link key="d" to="/payments?status=processing" className="dash-kpi-link">
+      <Link key="d" to="/payments?status=processing" className="dash-attention__link">
         {s.delayed} delayed
       </Link>,
     );
@@ -198,7 +124,7 @@ export function Overview() {
       for (const [chain, v] of d.byChain) values.set(keyOf(chain), (values.get(keyOf(chain)) ?? 0n) + v);
       const displays = new Map([...values].map(([k, v]) => [k, money(v)]));
       return {
-        label: formatDate(d.start).replace(/ \d{4}$/, ""),
+        label: WEEKDAY.format(new Date(d.start * 1000)),
         total: d.value,
         totalDisplay: money(d.value),
         values,
@@ -207,7 +133,7 @@ export function Overview() {
     });
     chart = (
       <SourceChart
-        title="Volume by where customers paid from"
+        title="Volume by source chain"
         summary={`last ${PERIOD_DAYS} days, ${cur.toUpperCase()}`}
         days={days}
         series={series}
@@ -221,29 +147,18 @@ export function Overview() {
       className="dash-home"
       title={name ? `${greeting()}, ${name}` : greeting()}
       subtitle={`Last ${PERIOD_DAYS} days, in ${cur.toUpperCase()}. Funds settle straight to your payout wallet.`}
-      actions={
-        <>
-          {canOpen("/billing/invoices/new") ? (
-            <a href={app.href("/billing/invoices/new")} className={buttonClassName({ variant: "secondary" })}>
-              <span>Create invoice</span>
-            </a>
-          ) : null}
-          {canOpen("/payment-links/new") ? (
-            <a href={app.href("/payment-links/new")} className={buttonClassName({ variant: "primary" })}>
-              <span>Create payment link</span>
-            </a>
-          ) : null}
-        </>
-      }
     >
-      {req && !req.live_enabled ? (
-        <Callout tone="neutral" title="Live payments are not active yet">
-          <p>
-            Finish setup to accept real payments. <a href={app.href("/setup")}>View the checklist</a>
-          </p>
-        </Callout>
-      ) : null}
       {period.error ? <ErrorNote error={period.error} onRetry={period.reload} /> : null}
+      {attention > 0 ? (
+        <p className="dash-attention" data-testid="kpi-attention">
+          <WarningIcon size={16} className="dash-attention__icon" />
+          <span>
+            {attention === 1 ? "1 payment needs" : `${attention} payments need`} your attention: {attentionLinks[0]}
+            {attentionLinks.length > 1 ? ", " : null}
+            {attentionLinks[1]}
+          </span>
+        </p>
+      ) : null}
       <KpiGrid className="dash-kpis">
         <KpiCard
           label="Settled volume"
@@ -259,38 +174,25 @@ export function Overview() {
           data-testid="kpi-succeeded"
         />
         <KpiCard
-          label="Average payment"
-          value={s ? s.average === null ? "—" : money(s.average) : <Skeleton shape="stat" width="50" />}
-          sub={
-            s
-              ? s.paidInCurrency
-                ? `across ${s.paidInCurrency} paid in ${cur.toUpperCase()}`
-                : "No paid payments yet"
-              : undefined
+          label="Median time to paid"
+          value={
+            s ? s.medianToPaid === null ? "—" : formatDuration(s.medianToPaid) : <Skeleton shape="stat" width="50" />
           }
-          data-testid="kpi-average"
-        />
-        <KpiCard
-          label="Needs attention"
-          tone={attention > 0 ? "warning" : "default"}
-          value={s ? String(attention) : <Skeleton shape="stat" width="25" />}
           sub={
-            s ? (
-              attention > 0 ? (
-                <span className="dash-kpi-links">
-                  {attentionLinks[0]}
-                  {attentionLinks.length > 1 ? ", " : null}
-                  {attentionLinks[1]}
-                </span>
-              ) : (
-                "Nothing needs you right now"
-              )
-            ) : undefined
+            s ? (s.medianToPaid === null ? "No paid payments yet" : "from the customer choosing a token") : undefined
           }
-          data-testid="kpi-attention"
+          data-testid="kpi-median"
         />
       </KpiGrid>
       <div className="dash-home__row">
+        <PaymentsTable
+          compact
+          title="Recent payments"
+          actions={<Link to="/payments">View all</Link>}
+          caption="Recent payments"
+          intents={(recent.data?.data ?? []).slice(0, 6)}
+          empty={`No ${app.mode} payments yet.`}
+        />
         <div className="dash-card dash-home__chart">
           {chart}
           {s && s.otherCurrency > 0 ? (
@@ -303,16 +205,7 @@ export function Overview() {
             <p className="np-text-caption np-text-secondary">Based on your 500 most recent payments.</p>
           ) : null}
         </div>
-        <PayoutWalletCard lastPaidAt={s?.lastPaidAt ?? null} />
       </div>
-      <PaymentsTable
-        compact
-        title="Recent payments"
-        actions={<Link to="/payments">View all</Link>}
-        caption="Recent payments"
-        intents={(recent.data?.data ?? []).slice(0, 5)}
-        empty={`No ${app.mode} payments yet.`}
-      />
     </Page>
   );
 }

@@ -25,8 +25,8 @@ export function SignIn() {
   const next = new URLSearchParams(app.location.search).get("next");
   return (
     <AuthLayout>
-      <h1 className="np-text-h3">Sign in to NearPay</h1>
-      <p className="np-text-secondary">
+      <h1 className="dash-auth__title">Sign in to NearPay</h1>
+      <p className="dash-auth__lede">
         {methods?.google
           ? "Continue with Google or use your passkey. No passwords."
           : "Use the passkey you created at sign-up. No passwords."}
@@ -88,7 +88,7 @@ export function SignIn() {
         </Button>
       </form>
       <ErrorNote error={error} />
-      <p>
+      <p className="dash-auth__alt">
         New to NearPay? <Link to="/signup">Create an account</Link>
       </p>
     </AuthLayout>

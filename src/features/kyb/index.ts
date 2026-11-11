@@ -30,7 +30,7 @@ export const routes: readonly FeatureRoute[] = [
     pattern: "/settings/business",
     title: "Business details",
     crumb: "Settings",
-    nav: "settings",
+    nav: "business",
     roles: getKyb.roles,
     render: () => createElement(BusinessDetails),
   },

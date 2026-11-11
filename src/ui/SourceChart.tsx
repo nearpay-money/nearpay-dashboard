@@ -28,7 +28,7 @@ export interface SourceDay {
   readonly displays: ReadonlyMap<string, string>;
 }
 
-const H = 220;
+const H = 200;
 const TOP = 8;
 const GAP = 3;
 const MIN = 4;
@@ -107,7 +107,7 @@ export function SourceChart({
                       width={`${barW}%`}
                       y={top}
                       height={h}
-                      rx="6"
+                      rx="4"
                     />
                   );
                 })}

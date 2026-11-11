@@ -30,7 +30,7 @@ export function VerifyMagicLink() {
 
   return (
     <AuthLayout>
-      <h1 className="np-text-h3">Create your passkey</h1>
+      <h1 className="dash-auth__title">Create your passkey</h1>
       {!reg && !error && <Loading what="Checking your link" />}
       {reg && (
         <form

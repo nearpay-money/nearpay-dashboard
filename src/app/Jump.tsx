@@ -1,17 +1,16 @@
 /**
- * The top-bar search as a combobox (WAI-ARIA 1.2 combobox + listbox): typing lists matching pages and a
+ * The sidebar search as a combobox (WAI-ARIA 1.2 combobox + listbox): typing lists matching pages and a
  * pasted object ID; ↑/↓ move, Enter opens, Escape closes; ⌘K / Ctrl+K focuses the field from anywhere.
- * The field itself is the kit AppShell `search` (form role="search"); the combobox attributes are set on
- * its input here, and the listbox renders in the top bar (positioned by `dash-jump` CSS, no inline styles).
+ * The listbox opens under the field, wider than the sidebar (positioned by `dash-jump` CSS, no inline styles).
  */
-import type { AppShellSearch } from "@nearpay-internal/ui";
+import { SearchIcon } from "@nearpay-internal/ui";
 import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useApp } from "./context";
 import { type JumpTarget, jumpPages, jumpResults } from "./jump-search";
 
-const INPUT = ".np-shell__search-input";
+const INPUT = ".dash-search__input";
 
-export function useJump(): { search: AppShellSearch; panel: ReactNode } {
+export function useJump(): { field: ReactNode } {
   const app = useApp();
   const listId = `dash-jump${useId().replace(/:/g, "")}`;
   const [query, setQuery] = useState("");
@@ -37,10 +36,6 @@ export function useJump(): { search: AppShellSearch; panel: ReactNode } {
   useEffect(() => {
     const input = document.querySelector<HTMLInputElement>(INPUT);
     if (!input) return;
-    input.setAttribute("role", "combobox");
-    input.setAttribute("aria-autocomplete", "list");
-    input.setAttribute("aria-controls", listId);
-    input.setAttribute("aria-keyshortcuts", "Meta+K Control+K");
     const onKey = (e: KeyboardEvent) => {
       const s = state.current;
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -67,16 +62,7 @@ export function useJump(): { search: AppShellSearch; panel: ReactNode } {
       input.removeEventListener("focus", onFocus);
       input.removeEventListener("blur", onBlur);
     };
-  }, [listId]);
-
-  useEffect(() => {
-    const input = document.querySelector<HTMLInputElement>(INPUT);
-    if (!input) return;
-    input.setAttribute("aria-expanded", String(shown));
-    const id = shown && results[active] ? `${listId}-${active}` : "";
-    if (id) input.setAttribute("aria-activedescendant", id);
-    else input.removeAttribute("aria-activedescendant");
-  }, [shown, results, active, listId]);
+  }, []);
 
   // ⌘K / Ctrl+K from anywhere
   useEffect(() => {
@@ -92,19 +78,6 @@ export function useJump(): { search: AppShellSearch; panel: ReactNode } {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
-
-  const search: AppShellSearch = {
-    label: "Search pages, or paste an ID",
-    placeholder: "Search pages, or paste an ID",
-    value: query,
-    onChange: (v) => {
-      setQuery(v);
-      setActive(0);
-      setOpen(true);
-    },
-    onSubmit: () => goRef.current(state.current.results[state.current.active]),
-    "data-testid": "jump-search",
-  };
 
   const panel = (
     <div className="dash-jump" hidden={!shown}>
@@ -140,5 +113,44 @@ export function useJump(): { search: AppShellSearch; panel: ReactNode } {
       ) : null}
     </div>
   );
-  return { search, panel };
+  const activeId = shown && results[active] ? `${listId}-${active}` : undefined;
+  const field = (
+    <search className="dash-search">
+      <form
+        className="dash-search__form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          goRef.current(state.current.results[state.current.active]);
+        }}
+      >
+        <SearchIcon size={16} className="dash-search__icon" />
+        <input
+          className="dash-search__input"
+          type="search"
+          role="combobox"
+          aria-label="Search pages, or paste an ID"
+          placeholder="Search"
+          aria-autocomplete="list"
+          aria-controls={listId}
+          aria-expanded={shown}
+          aria-activedescendant={activeId}
+          aria-keyshortcuts="Meta+K Control+K"
+          autoComplete="off"
+          spellCheck={false}
+          value={query}
+          data-testid="jump-search"
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setActive(0);
+            setOpen(true);
+          }}
+        />
+        <span className="dash-search__key" aria-hidden="true">
+          ⌘K
+        </span>
+        {panel}
+      </form>
+    </search>
+  );
+  return { field };
 }
