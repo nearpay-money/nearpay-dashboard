@@ -673,6 +673,65 @@ body {
 .dash-auth__card > p {
   margin: 0;
 }
+/* Continue with Google (ADR-0026): Google's standard light button — white, #747775 outline, #1f1f1f text,
+   18 px "G" mark, 40 px tall; the rest of the card keeps the design-v2 look. */
+.dash-google-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid #747775;
+  border-radius: var(--np-radius-control, 8px);
+  background: #ffffff;
+  color: #1f1f1f;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0.25px;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.dash-google-btn:hover:not(:disabled) {
+  background: #f8f9fa;
+  box-shadow:
+    0 1px 2px rgb(60 64 67 / 0.3),
+    0 1px 3px 1px rgb(60 64 67 / 0.15);
+}
+.dash-google-btn:focus-visible {
+  outline: 2px solid var(--np-color-focus, #1a73e8);
+  outline-offset: 2px;
+}
+.dash-google-btn:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+.dash-google-btn--inline {
+  width: auto;
+}
+.dash-google-btn__icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+}
+.dash-auth__or {
+  display: flex;
+  align-items: center;
+  gap: var(--np-space-3);
+  color: var(--np-color-text-secondary);
+  font-size: var(--np-text-small);
+}
+.dash-auth__or::before,
+.dash-auth__or::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--np-color-border);
+}
 .dash-auth__footer {
   max-width: 440px;
   margin: 0;

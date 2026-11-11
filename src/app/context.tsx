@@ -67,6 +67,8 @@ export interface AppState {
 }
 
 const Ctx = createContext<AppState | null>(null);
+/** The app context itself: component tests render pages with a stub `AppState` (production uses AppProvider). */
+export const AppContext = Ctx;
 
 export function useApp(): AppState {
   const v = useContext(Ctx);
