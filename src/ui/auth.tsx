@@ -45,7 +45,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
       <aside className="dash-auth__art" aria-hidden="true">
         <div className="dash-auth__aurora" />
         <div className="dash-auth__panel">
-          <p className="dash-auth__pitch">Get paid from any chain. Settle where you choose.</p>
+          <p className="dash-auth__pitch">Accept crypto payments. Hassle-free.</p>
           <ConvergenceHero labels={LABELS} card={<ReceivedCard />} className="dash-auth__hero" />
         </div>
       </aside>
