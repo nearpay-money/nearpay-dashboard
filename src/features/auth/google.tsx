@@ -5,6 +5,8 @@
  * redirects to `/setup`, `next`, `/signin?google_error=…` or `/settings/account?google=linked`. No Google
  * script is loaded (CSP, ADR-0010): the button is drawn from a bundled SVG per Google's branding guidelines.
  */
+
+import { Callout } from "@nearpay-internal/ui";
 import {
   type AuthMethods as AuthMethodsSchema,
   type GOOGLE_SIGNIN_ERRORS,
@@ -13,8 +15,11 @@ import {
   startGoogleSignIn,
   type z,
 } from "@nearpay-money/spec";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { type AppState, useApp } from "../../app/context";
 import type { ApiClient } from "../../lib/api";
+import { restoreSession } from "../../lib/session";
+import { Button } from "../../ui/ui";
 
 export type AuthMethods = z.output<typeof AuthMethodsSchema>;
 type GoogleError = (typeof GOOGLE_SIGNIN_ERRORS)[number];
@@ -46,6 +51,47 @@ export function googleErrorMessage(code: string | null | undefined): string | nu
 
 /** `?google_error=` of a search string. */
 export const googleErrorOf = (search: string): string | null => new URLSearchParams(search).get("google_error");
+
+/** A same-origin dashboard path (`/x?y`), never `//host`, `/\host`, a scheme or whitespace. */
+export const safeNext = (next: string | null | undefined): string | null =>
+  typeof next === "string" && next.length <= 512 && /^\/(?![/\\])[^\s\\]*$/.test(next) ? next : null;
+
+/**
+ * One-shot query parameters (`google_error`, `google`, `add_passkey`, `passkey`): their values and the
+ * search string without them (other parameters such as `next` and `mode` stay, in order).
+ */
+export function takeParams(
+  search: string,
+  names: readonly string[],
+): { readonly values: Readonly<Record<string, string | null>>; readonly rest: string; readonly found: boolean } {
+  const q = new URLSearchParams(search);
+  const values: Record<string, string | null> = {};
+  let found = false;
+  for (const n of names) {
+    values[n] = q.get(n);
+    if (q.has(n)) found = true;
+    q.delete(n);
+  }
+  const rest = q.toString();
+  return { values, rest: rest ? `?${rest}` : "", found };
+}
+
+/**
+ * Reads one-shot parameters once, when the page mounts, then removes them from the address bar
+ * (`history.replaceState` through `navigate`), so a reload or a shared link never shows a stale banner.
+ */
+export function useOneShotParams(names: readonly string[]): Readonly<Record<string, string | null>> {
+  const app = useApp();
+  const [taken] = useState(() => takeParams(app.location.search, names));
+  const cleaned = useRef(false);
+  useEffect(() => {
+    if (cleaned.current || !taken.found) return;
+    cleaned.current = true;
+    const now = takeParams(app.location.search, names);
+    if (now.found) app.navigate(`${app.location.pathname}${now.rest}`, { replace: true });
+  }, [app, names, taken.found]);
+  return taken.values;
+}
 
 let cached: AuthMethods | undefined;
 
@@ -89,15 +135,118 @@ export function safeAuthorizationUrl(url: string): string {
 type Assign = (url: string) => void;
 const browserAssign: Assign = (url) => window.location.assign(url);
 
-/** Sign-in / sign-up: start the flow, then leave for Google. `next` must be a same-origin path. */
+/**
+ * Sign-in / sign-up: start a new flow (every click: a fresh state, nonce and flow cookie; nothing of a
+ * failed flow is reused), then leave for Google, which shows its account chooser. `next` must be a
+ * same-origin path.
+ */
 export async function continueWithGoogle(
   api: Pick<ApiClient, "call">,
   o: { intent: "signin" | "signup"; next?: string | null },
   assign: Assign = browserAssign,
 ): Promise<void> {
-  const next = o.next && /^\/(?![/\\])[^\s\\]*$/.test(o.next) && o.next.length <= 512 ? o.next : undefined;
+  const next = safeNext(o.next);
   const r = await api.call(startGoogleSignIn, { body: { intent: o.intent, ...(next ? { next } : {}) } });
   assign(safeAuthorizationUrl(r.authorization_url));
+}
+
+/**
+ * State of a button that leaves for Google: busy while the flow starts, the error if starting failed.
+ * Busy is cleared when the browser restores the page from the back/forward cache (the user pressed Back
+ * at Google), so the button never stays stuck.
+ */
+export function useGoogleStart(fn: () => Promise<void>): {
+  readonly busy: boolean;
+  readonly error: unknown;
+  start(): Promise<void>;
+} {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<unknown>();
+  const fnRef = useRef(fn);
+  fnRef.current = fn;
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setBusy(false);
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, []);
+  const start = useCallback(async () => {
+    setBusy(true);
+    setError(undefined);
+    try {
+      await fnRef.current();
+    } catch (e) {
+      setError(e);
+      setBusy(false);
+    }
+  }, []);
+  return { busy, error, start };
+}
+
+/**
+ * Sign-in / sign-up "Continue with Google": a user who is in fact already signed in (another tab, a
+ * session restored after the page drew) is not sent to Google: the session is picked up instead, and the
+ * app shows what it shows any signed-in user on that page (sign-in: the dashboard or `next`; sign-up: the
+ * signed-in choice page).
+ */
+export async function continueWithGoogleFromAuthPage(
+  app: Pick<AppState, "api" | "setSession">,
+  o: { intent: "signin" | "signup"; next?: string | null },
+  assign: Assign = browserAssign,
+): Promise<"signed_in" | "google"> {
+  const s = await restoreSession(app.api).catch(() => null);
+  if (s) {
+    app.setSession(s);
+    return "signed_in";
+  }
+  await continueWithGoogle(app.api, o, assign);
+  return "google";
+}
+
+/** Errors that ask the user to pick another Google account rather than repeat the same attempt. */
+const OTHER_ACCOUNT = new Set<string>(["email_exists"]);
+
+/**
+ * The callout for a `google_error` on the sign-in and sign-up pages, with the next steps:
+ * `email_exists` → "Sign in with passkey" (primary) and "Use a different Google account"; `disabled` →
+ * no Google action (the button is hidden); anything else → "Try again".
+ */
+export function GoogleErrorCallout({
+  code,
+  googleOn,
+  busy = false,
+  onPasskey,
+  onGoogle,
+}: {
+  code: string | null | undefined;
+  googleOn: boolean;
+  busy?: boolean;
+  onPasskey(): void;
+  onGoogle(): void;
+}) {
+  const message = googleErrorMessage(code);
+  if (!code || !message) return null;
+  const retry = googleOn && code !== "disabled";
+  const passkeyFirst = OTHER_ACCOUNT.has(code);
+  return (
+    <Callout tone="danger" role="alert" title={message} className="dash-google-error" data-testid="google-error">
+      {passkeyFirst || retry ? (
+        <div className="dash-google-error__actions">
+          {passkeyFirst ? (
+            <Button size="sm" onClick={onPasskey} data-testid="google-error-passkey">
+              Sign in with passkey
+            </Button>
+          ) : null}
+          {retry ? (
+            <Button size="sm" variant="secondary" busy={busy} onClick={onGoogle} data-testid="google-error-retry">
+              {passkeyFirst ? "Use a different Google account" : "Try again"}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </Callout>
+  );
 }
 
 /** Settings → Connect Google (the API asks for a step-up first; the client replays after it). */

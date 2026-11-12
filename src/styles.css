@@ -666,6 +666,21 @@ body {
   width: 18px;
   height: 18px;
 }
+/* the callback's error on the auth pages, with its next steps (passkey first for email_exists) */
+.dash-google-error__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.dash-auth__card .dash-google-error__actions .np-button {
+  min-height: 36px;
+}
+@media (max-width: 479px) {
+  .dash-google-error__actions .np-button {
+    flex: 1 1 100%;
+  }
+}
 .dash-auth__or {
   display: flex;
   align-items: center;

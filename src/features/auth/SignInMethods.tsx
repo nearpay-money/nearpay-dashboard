@@ -15,7 +15,7 @@ import {
   unlinkIdentity,
   type z,
 } from "@nearpay-money/spec";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useApp } from "../../app/context";
 import { ApiError } from "../../lib/errors";
 import { useAsync, useMutation } from "../../lib/hooks";
@@ -27,8 +27,9 @@ import {
   GoogleButton,
   GoogleG,
   googleErrorMessage,
-  googleErrorOf,
   useAuthMethods,
+  useGoogleStart,
+  useOneShotParams,
 } from "./google";
 import { registerPasskey } from "./passkeys";
 
@@ -48,7 +49,12 @@ export interface SignInMethodsViewProps {
   readonly nowSec: number;
   readonly notice?: { readonly tone: "ok" | "error"; readonly text: string } | null;
   readonly needsGoogleAgain?: boolean;
-  readonly busy?: { readonly passkey?: boolean; readonly connect?: boolean; readonly disconnect?: boolean };
+  readonly busy?: {
+    readonly passkey?: boolean;
+    readonly connect?: boolean;
+    readonly disconnect?: boolean;
+    readonly googleAgain?: boolean;
+  };
   onAddPasskey(): void;
   onConnect(): void;
   onDisconnect(): void;
@@ -77,7 +83,7 @@ export function SignInMethodsView(p: SignInMethodsViewProps) {
         <p className="np-text-secondary">{passkeyText}</p>
         <div className="np-row">
           {googleOnly && !canAddFirst ? (
-            <Button variant="secondary" onClick={p.onGoogleAgain}>
+            <Button variant="secondary" busy={p.busy?.googleAgain} onClick={p.onGoogleAgain}>
               Continue with Google to add a passkey
             </Button>
           ) : (
@@ -133,13 +139,26 @@ export function SignInMethodsView(p: SignInMethodsViewProps) {
   );
 }
 
-/** The notice for `?google=linked` / `?google_error=` on the settings page. */
+/** One-shot parameters of the settings page (read once, then removed from the address bar). */
+const ONE_SHOT = ["google", "google_error", "add_passkey"] as const;
+
+/** The notice for `?google=linked` / `?google_error=` / `?add_passkey=1` on the settings page. */
 export function settingsNotice(search: string): SignInMethodsViewProps["notice"] {
-  if (new URLSearchParams(search).get("google") === "linked")
+  const q = new URLSearchParams(search);
+  if (q.get("google") === "linked")
     return { tone: "ok", text: "Google connected. You can now continue with Google to sign in." };
-  const e = googleErrorMessage(googleErrorOf(search));
-  return e ? { tone: "error", text: e } : null;
+  const e = googleErrorMessage(q.get("google_error"));
+  if (e) return { tone: "error", text: e };
+  if (q.get("add_passkey") === "1")
+    return { tone: "ok", text: "Signed in with Google again. Add your passkey within the next 10 minutes." };
+  return null;
 }
+
+/** `settingsNotice` from already-taken parameter values. */
+const noticeOf = (v: Readonly<Record<string, string | null>>) =>
+  settingsNotice(
+    `?${new URLSearchParams(Object.entries(v).filter((e): e is [string, string] => e[1] !== null)).toString()}`,
+  );
 
 export function SignInMethods() {
   const app = useApp();
@@ -148,8 +167,8 @@ export function SignInMethods() {
   const linked = useAsync(() => app.api.call(listLinkedIdentities), [app.api]);
   const [confirm, setConfirm] = useState(false);
   const [needsGoogleAgain, setNeedsGoogleAgain] = useState(false);
-  const [notice, setNotice] = useState(() => settingsNotice(app.location.search));
-  useEffect(() => setNotice(settingsNotice(app.location.search)), [app.location.search]);
+  const params = useOneShotParams(ONE_SHOT);
+  const [notice, setNotice] = useState(() => noticeOf(params));
 
   const refreshSession = async () => {
     try {
@@ -172,7 +191,21 @@ export function SignInMethods() {
       throw e;
     }
   });
-  const connect = useMutation(() => connectGoogle(app.api));
+  const connect = useGoogleStart(async () => {
+    setNotice(null);
+    try {
+      await connectGoogle(app.api);
+    } catch (e) {
+      // connected meanwhile (another tab): show the current state instead of an error
+      if (e instanceof ApiError && e.code === "google_already_linked") {
+        linked.reload();
+        setNotice({ tone: "ok", text: "Google is already connected to your user." });
+        return;
+      }
+      throw e;
+    }
+  });
+  const googleAgain = useGoogleStart(() => continueWithGoogle(app.api, { intent: "signin", next: ADD_PASSKEY_PATH }));
   const disconnect = useMutation(async () => {
     await app.api.call(unlinkIdentity, { params: { provider: "google" } });
     setConfirm(false);
@@ -180,7 +213,6 @@ export function SignInMethods() {
     await refreshSession();
     setNotice({ tone: "ok", text: "Google disconnected. Sign in with your passkey." });
   });
-  const googleAgain = () => void continueWithGoogle(app.api, { intent: "signin", next: ADD_PASSKEY_PATH });
 
   const google = linked.data
     ? (linked.data.data.find((l) => l.provider === "google") ?? null)
@@ -197,13 +229,20 @@ export function SignInMethods() {
         nowSec={Math.floor(Date.now() / 1000)}
         notice={notice}
         needsGoogleAgain={needsGoogleAgain}
-        busy={{ passkey: passkey.busy, connect: connect.busy, disconnect: disconnect.busy }}
+        busy={{
+          passkey: passkey.busy,
+          connect: connect.busy,
+          disconnect: disconnect.busy,
+          googleAgain: googleAgain.busy,
+        }}
         onAddPasskey={() => void passkey.run()}
-        onConnect={() => void connect.run()}
+        onConnect={() => void connect.start()}
         onDisconnect={() => setConfirm(true)}
-        onGoogleAgain={googleAgain}
+        onGoogleAgain={() => void googleAgain.start()}
       />
-      <ErrorNote error={passkey.error ?? connect.error ?? (confirm ? undefined : disconnect.error)} />
+      <ErrorNote
+        error={passkey.error ?? connect.error ?? googleAgain.error ?? (confirm ? undefined : disconnect.error)}
+      />
       {confirm ? (
         <Modal
           title="Disconnect Google?"
