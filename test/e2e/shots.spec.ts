@@ -16,6 +16,19 @@ const DIR = process.env.NP_SHOTS;
 test.describe("screenshots", () => {
   test.skip(!DIR, "set NP_SHOTS to a directory to take review screenshots");
   for (const width of [1440, 390]) {
+    test(`Google sign-in errors at ${width}px`, async ({ page, api }) => {
+      api.googleEnabled = true;
+      await page.setViewportSize({ width, height: width > 900 ? 1000 : 844 });
+      await page.goto("/signup?google_error=email_exists");
+      await expect(page.getByTestId("google-error")).toBeVisible();
+      await expect(page).toHaveURL(/\/signup$/);
+      await page.screenshot({ path: `${DIR}/signup-email-exists-${width}.png`, fullPage: true });
+      await page.goto("/signin?google_error=unavailable");
+      await expect(page.getByTestId("google-error")).toBeVisible();
+      await page.screenshot({ path: `${DIR}/signin-google-error-${width}.png`, fullPage: true });
+    });
+  }
+  for (const width of [1440, 390]) {
     test(`main screens at ${width}px`, async ({ page, api }) => {
       test.setTimeout(180_000);
       await page.setViewportSize({ width, height: width > 900 ? 1000 : 844 });

@@ -7,13 +7,18 @@ import { AuthLayout } from "../../ui/auth";
 import { Button, ErrorNote, Field, Note } from "../../ui/ui";
 import {
   AuthDivider,
-  continueWithGoogle,
+  continueWithGoogleFromAuthPage,
   GoogleButton,
+  GoogleErrorCallout,
   googleErrorMessage,
-  googleErrorOf,
   useAuthMethods,
+  useGoogleStart,
+  useOneShotParams,
 } from "./google";
+import { PASSKEY_PARAM } from "./SignIn";
 import { mountTurnstile } from "./turnstile";
+
+const ONE_SHOT = ["google_error"] as const;
 
 /**
  * `/signup` while signed in (owner decision 2026-11-12): no silent redirect. The page says who is signed in
@@ -26,6 +31,8 @@ export function SignedInSignUp() {
   const app = useApp();
   const [busy, setBusy] = useState(false);
   const email = app.session?.user.email ?? "";
+  // a Google attempt that failed while this browser was still signed in: say so once, the session is unchanged
+  const googleMessage = googleErrorMessage(useOneShotParams(ONE_SHOT).google_error);
   return (
     <AuthLayout>
       <div className="dash-auth__head">
@@ -36,6 +43,13 @@ export function SignedInSignUp() {
           do?
         </p>
       </div>
+      {googleMessage ? (
+        <div data-testid="google-error">
+          <Note tone="error" title="Google sign-in didn't change anything">
+            {googleMessage} You're still signed in as {email}.
+          </Note>
+        </div>
+      ) : null}
       <div className="dash-choices" data-testid="signed-in-choices">
         <a href={app.href("/")} className={buttonClassName({ variant: "primary", fullWidth: true })}>
           <span>Go to dashboard</span>
@@ -82,9 +96,15 @@ function SignUpForm() {
   const [error, setError] = useState<unknown>();
   const box = useRef<HTMLDivElement>(null);
   const methods = useAuthMethods(app.api);
-  const [googleBusy, setGoogleBusy] = useState(false);
-  const [googleError, setGoogleError] = useState<unknown>();
-  const googleMessage = googleErrorMessage(googleErrorOf(app.location.search));
+  // read once, then removed from the address bar: a reload never shows a stale Google error
+  const [googleCode, setGoogleCode] = useState(useOneShotParams(ONE_SHOT).google_error);
+  const google = useGoogleStart(async () => {
+    await continueWithGoogleFromAuthPage(app, { intent: "signup" });
+  });
+  const retryGoogle = () => {
+    setGoogleCode(null);
+    void google.start();
+  };
 
   useEffect(() => {
     if (box.current) void mountTurnstile(box.current, setToken, setWidgetError);
@@ -111,27 +131,17 @@ function SignUpForm() {
           ? "Continue with Google, or we email you a link and you create a passkey on this device."
           : "We email you a link; then you create a passkey on this device."}
       </p>
-      {googleMessage ? (
-        <div data-testid="google-error">
-          <Note tone="error">{googleMessage}</Note>
-        </div>
-      ) : null}
+      <GoogleErrorCallout
+        code={googleCode}
+        googleOn={methods?.google === true}
+        busy={google.busy}
+        onPasskey={() => app.navigate(`/signin?${PASSKEY_PARAM}=1`)}
+        onGoogle={retryGoogle}
+      />
       {methods?.google ? (
         <>
-          <GoogleButton
-            busy={googleBusy}
-            onClick={async () => {
-              setGoogleBusy(true);
-              setGoogleError(undefined);
-              try {
-                await continueWithGoogle(app.api, { intent: "signup" });
-              } catch (err) {
-                setGoogleError(err);
-                setGoogleBusy(false);
-              }
-            }}
-          />
-          <ErrorNote error={googleError} />
+          <GoogleButton busy={google.busy} onClick={retryGoogle} />
+          <ErrorNote error={google.error} />
           <AuthDivider />
         </>
       ) : null}

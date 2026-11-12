@@ -1,17 +1,23 @@
 import { Input } from "@nearpay-internal/ui";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useApp } from "../../app/context";
 import { AuthLayout } from "../../ui/auth";
 import { Button, ErrorNote, Field, Note } from "../../ui/ui";
 import {
   AuthDivider,
-  continueWithGoogle,
+  continueWithGoogleFromAuthPage,
   GoogleButton,
-  googleErrorMessage,
-  googleErrorOf,
+  GoogleErrorCallout,
+  safeNext,
   useAuthMethods,
+  useGoogleStart,
+  useOneShotParams,
 } from "./google";
 import { signInWithPasskey } from "./passkeys";
+
+/** `?passkey=1`: sent here to sign in with a passkey (e.g. after `email_exists` on the sign-up page). */
+export const PASSKEY_PARAM = "passkey";
+const ONE_SHOT = ["google_error", PASSKEY_PARAM] as const;
 
 export function SignIn() {
   const app = useApp();
@@ -19,10 +25,29 @@ export function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>();
   const methods = useAuthMethods(app.api);
-  const [googleBusy, setGoogleBusy] = useState(false);
-  const [googleError, setGoogleError] = useState<unknown>();
-  const googleMessage = googleErrorMessage(googleErrorOf(app.location.search));
-  const next = new URLSearchParams(app.location.search).get("next");
+  // read once, then removed from the address bar: a reload never shows a stale Google error
+  const params = useOneShotParams(ONE_SHOT);
+  const [googleCode, setGoogleCode] = useState(params.google_error);
+  const [passkeyHint, setPasskeyHint] = useState(params[PASSKEY_PARAM] === "1");
+  const next = safeNext(new URLSearchParams(app.location.search).get("next"));
+  const form = useRef<HTMLFormElement>(null);
+  const google = useGoogleStart(async () => {
+    await continueWithGoogleFromAuthPage(app, { intent: "signin", next });
+  });
+  const focusPasskey = () => {
+    const b = form.current?.querySelector<HTMLButtonElement>("button[type=submit]");
+    b?.scrollIntoView?.({ block: "center" });
+    b?.focus();
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once, when sent here for the passkey option
+  useEffect(() => {
+    if (passkeyHint) focusPasskey();
+  }, []);
+  const retryGoogle = () => {
+    setGoogleCode(null);
+    setPasskeyHint(false);
+    void google.start();
+  };
   return (
     <AuthLayout>
       <h1 className="dash-auth__title">Sign in to NearPay</h1>
@@ -31,31 +56,31 @@ export function SignIn() {
           ? "Continue with Google or use your passkey. No passwords."
           : "Use the passkey you created at sign-up. No passwords."}
       </p>
-      {googleMessage ? (
-        <div data-testid="google-error">
-          <Note tone="error">{googleMessage}</Note>
+      <GoogleErrorCallout
+        code={googleCode}
+        googleOn={methods?.google === true}
+        busy={google.busy}
+        onPasskey={() => {
+          setGoogleCode(null);
+          setPasskeyHint(true);
+          focusPasskey();
+        }}
+        onGoogle={retryGoogle}
+      />
+      {passkeyHint ? (
+        <div data-testid="passkey-hint">
+          <Note tone="info">Sign in with your passkey. Then connect Google in Settings, under Sign-in methods.</Note>
         </div>
       ) : null}
       {methods?.google ? (
         <>
-          <GoogleButton
-            busy={googleBusy}
-            onClick={async () => {
-              setGoogleBusy(true);
-              setGoogleError(undefined);
-              try {
-                await continueWithGoogle(app.api, { intent: "signin", next });
-              } catch (err) {
-                setGoogleError(err);
-                setGoogleBusy(false);
-              }
-            }}
-          />
-          <ErrorNote error={googleError} />
+          <GoogleButton busy={google.busy} onClick={retryGoogle} />
+          <ErrorNote error={google.error} />
           <AuthDivider />
         </>
       ) : null}
       <form
+        ref={form}
         className="dash-form"
         onSubmit={async (e) => {
           e.preventDefault();
@@ -64,7 +89,7 @@ export function SignIn() {
           try {
             const s = await signInWithPasskey(app.api, email.trim() || undefined);
             app.setSession(s);
-            app.navigate(next?.startsWith("/") && !next.startsWith("//") ? next : "/", { replace: true });
+            app.navigate(next ?? "/", { replace: true });
           } catch (err) {
             setError(err);
           } finally {
@@ -83,7 +108,7 @@ export function SignIn() {
             />
           )}
         </Field>
-        <Button type="submit" busy={busy}>
+        <Button type="submit" busy={busy} data-testid="passkey-submit">
           Sign in with passkey
         </Button>
       </form>

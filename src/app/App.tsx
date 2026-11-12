@@ -1,5 +1,6 @@
-import { Callout, ToastProvider } from "@nearpay-internal/ui";
-import { type MouseEvent, useEffect, useMemo } from "react";
+import { Callout, ToastProvider, useToast } from "@nearpay-internal/ui";
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { googleErrorMessage, googleErrorOf, safeNext } from "../features/auth/google";
 import { SignIn } from "../features/auth/SignIn";
 import { SignUp } from "../features/auth/SignUp";
 import { VerifyMagicLink } from "../features/auth/VerifyMagicLink";
@@ -58,21 +59,41 @@ function Page_() {
   const isPublic = m !== null && PUBLIC.has(m.name);
   // wait for the session recovery (GET /v1/auth/session) before deciding where to go
   const needsSignIn = !app.restoring && !app.session && !isPublic;
-  // signed in on /signin: straight to the dashboard. On /signup the page itself offers the choices
+  // signed in on /signin: straight to the dashboard (or `next`). On /signup the page itself offers the choices
   // (owner decision 2026-11-12: no silent redirect — dashboard, another business, or a different email).
   const signedInOnAuthPage = !app.restoring && app.session && m?.name === "signin";
   const route: RouteDef | undefined = m ? routes.find((r) => r.name === m.name) : undefined;
   const params = m?.params ?? {};
   const title = route ? (typeof route.title === "function" ? route.title(params) : route.title) : undefined;
 
+  const toast = useToast();
+  const toasted = useRef(false);
+  // the sign-in page removes `google_error` from the address bar as it draws, which can be before the
+  // session restore answers: keep the value the app was opened with
+  const [landingGoogleError] = useState(() =>
+    app.location.pathname === "/signin" ? googleErrorOf(app.location.search) : null,
+  );
   useEffect(() => {
     if (needsSignIn) {
       const next = `${app.location.pathname}${app.location.search}`;
       app.navigate(next === "/" ? "/signin" : `/signin?next=${encodeURIComponent(next)}`, { replace: true });
     } else if (signedInOnAuthPage) {
-      app.navigate("/", { replace: true });
+      // still signed in (e.g. a Google attempt from the step-up dialog was refused): go where the user was
+      // going, and say once why Google didn't switch the session
+      const q = new URLSearchParams(app.location.search);
+      const message = googleErrorMessage(googleErrorOf(app.location.search) ?? landingGoogleError);
+      if (message && !toasted.current) {
+        toasted.current = true;
+        toast.show({
+          title: "Google sign-in didn't change anything",
+          body: `${message} You're still signed in as ${app.session?.user.email ?? "before"}.`,
+          tone: "warning",
+          duration: 0,
+        });
+      }
+      app.navigate(safeNext(q.get("next")) ?? "/", { replace: true });
     }
-  }, [needsSignIn, signedInOnAuthPage, app]);
+  }, [needsSignIn, signedInOnAuthPage, app, toast, landingGoogleError]);
 
   useEffect(() => {
     const t = m?.name === "signin" ? "Sign in" : m?.name === "signup" ? "Create account" : title;
