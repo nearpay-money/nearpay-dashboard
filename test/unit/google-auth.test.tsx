@@ -3,7 +3,7 @@
  * step-up dialog's choice for Google-only users, and the flow helpers (component tests render to static
  * markup in Node, like test/unit/wallet-picker.test.tsx; real clicks are in src/features/auth/google.e2e.ts).
  */
-import { getAuthMethods, startGoogleLink, startGoogleSignIn } from "@nearpay-money/spec";
+import { getAuthMethods, getDashboardSession, startGoogleLink, startGoogleSignIn } from "@nearpay-money/spec";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { AppContext, type AppState } from "../../src/app/context";
@@ -11,16 +11,21 @@ import { stepUpMode } from "../../src/app/StepUp";
 import {
   connectGoogle,
   continueWithGoogle,
+  continueWithGoogleFromAuthPage,
   EMAIL_EXISTS_COPY,
+  GoogleErrorCallout,
   googleErrorMessage,
   googleErrorOf,
   loadAuthMethods,
   safeAuthorizationUrl,
+  safeNext,
   setCachedAuthMethods,
+  takeParams,
 } from "../../src/features/auth/google";
 import { SignIn } from "../../src/features/auth/SignIn";
 import { SignInMethodsView, type SignInMethodsViewProps, settingsNotice } from "../../src/features/auth/SignInMethods";
 import { SignUp } from "../../src/features/auth/SignUp";
+import { ApiError } from "../../src/lib/errors";
 
 const GOOGLE_URL = "https://accounts.google.com/o/oauth2/v2/auth?client_id=x&state=s";
 
@@ -64,6 +69,125 @@ describe("sign-in page", () => {
     setCachedAuthMethods({ object: "auth_methods", passkey: true, google: true });
     const html = render(<SignIn />, stubApp("?google_error=email_exists"));
     expect(html).toContain(EMAIL_EXISTS_COPY.replace(/'/g, "&#x27;"));
+  });
+});
+
+describe("callback errors: shown once, with next steps", () => {
+  const on = () => setCachedAuthMethods({ object: "auth_methods", passkey: true, google: true });
+  const ESC = EMAIL_EXISTS_COPY.replace(/'/g, "&#x27;");
+
+  it("sign-up email_exists: passkey first, then a different Google account", () => {
+    on();
+    const html = render(<SignUp />, stubApp("?google_error=email_exists"));
+    expect(html).toContain(ESC);
+    expect(html).toContain('role="alert"');
+    const pk = html.indexOf("Sign in with passkey");
+    const other = html.indexOf("Use a different Google account");
+    expect(pk).toBeGreaterThan(0);
+    expect(other).toBeGreaterThan(pk);
+    expect(html).not.toContain(">Try again<");
+    // the Google button itself stays usable (never disabled by the error)
+    expect(html).toMatch(/<button type="button" class="dash-google-btn" data-testid="google-button">/);
+  });
+
+  it("sign-in email_exists has the same next steps; other errors offer Try again", () => {
+    on();
+    expect(render(<SignIn />, stubApp("?google_error=email_exists"))).toContain("Use a different Google account");
+    for (const code of ["cancelled", "state_invalid", "token_invalid", "unavailable", "email_unverified", "x_new"]) {
+      const html = render(<SignIn />, stubApp(`?google_error=${code}`));
+      expect(html, code).toContain('data-testid="google-error"');
+      expect(html, code).toContain(">Try again<");
+      expect(html, code).not.toContain("google-error-passkey");
+    }
+  });
+
+  it("disabled: no Google retry (the button is hidden)", () => {
+    setCachedAuthMethods({ object: "auth_methods", passkey: true, google: false });
+    const html = render(<SignIn />, stubApp("?google_error=disabled"));
+    expect(html).toContain("isn&#x27;t available right now");
+    expect(html).not.toContain("google-error-retry");
+    expect(html).not.toContain("google-button");
+  });
+
+  it("no error, no callout", () => {
+    on();
+    expect(render(<SignIn />, stubApp("?next=%2Fpayments"))).not.toContain("google-error");
+    expect(
+      renderToStaticMarkup(<GoogleErrorCallout code={null} googleOn onPasskey={() => {}} onGoogle={() => {}} />),
+    ).toBe("");
+  });
+
+  it("sent to sign-in for the passkey option: a hint, no error", () => {
+    on();
+    const html = render(<SignIn />, stubApp("?passkey=1"));
+    expect(html).toContain('data-testid="passkey-hint"');
+    expect(html).toContain("connect Google in Settings");
+    expect(html).not.toContain('data-testid="google-error"');
+  });
+
+  it("one-shot parameters are taken out of the URL; next and mode stay", () => {
+    expect(takeParams("?next=%2Fpayments&google_error=email_exists&mode=test", ["google_error", "passkey"])).toEqual({
+      values: { google_error: "email_exists", passkey: null },
+      rest: "?next=%2Fpayments&mode=test",
+      found: true,
+    });
+    expect(takeParams("?google=linked", ["google", "google_error", "add_passkey"]).rest).toBe("");
+    expect(takeParams("?mode=test", ["google_error"])).toMatchObject({ found: false, rest: "?mode=test" });
+    expect(takeParams("?google_error=", ["google_error"])).toMatchObject({ found: true, rest: "" });
+  });
+
+  it("safe next paths only", () => {
+    expect(safeNext("/payments?x=1")).toBe("/payments?x=1");
+    for (const bad of ["//evil.test", "/\\evil", "https://evil.test", "/a b", null, undefined, `/${"a".repeat(600)}`])
+      expect(safeNext(bad as string | null)).toBeNull();
+  });
+
+  it("signed in already: Continue with Google picks up the session instead of leaving for Google", async () => {
+    const session = { expires_at: Math.floor(Date.now() / 1000) + 600, user: { email: "a@b.test" } };
+    const calls: string[] = [];
+    const set: unknown[] = [];
+    const went: string[] = [];
+    const app = {
+      api: {
+        call: async (r: { id: string }) => {
+          calls.push(r.id);
+          if (r.id === getDashboardSession.id) return session;
+          return { object: "google_authorization", authorization_url: GOOGLE_URL, expires_at: 1 };
+        },
+      },
+      setSession: (s: unknown) => set.push(s),
+    } as never;
+    expect(await continueWithGoogleFromAuthPage(app, { intent: "signup" }, (u) => went.push(u))).toBe("signed_in");
+    expect(set).toEqual([session]);
+    expect(went).toEqual([]);
+    expect(calls).toEqual([getDashboardSession.id]);
+  });
+
+  it("signed out: every click starts a new flow at Google (nothing of a failed flow is reused)", async () => {
+    const calls: string[] = [];
+    const went: string[] = [];
+    let n = 0;
+    const app = {
+      api: {
+        call: async (r: { id: string }) => {
+          calls.push(r.id);
+          if (r.id === getDashboardSession.id)
+            throw new ApiError({
+              status: 401,
+              type: "authentication_error",
+              code: "authentication_required",
+              message: "no",
+            });
+          n += 1;
+          return { object: "google_authorization", authorization_url: `${GOOGLE_URL}${n}`, expires_at: 1 };
+        },
+      },
+      setSession() {},
+    } as never;
+    for (let i = 0; i < 2; i++)
+      expect(await continueWithGoogleFromAuthPage(app, { intent: "signin" }, (u) => went.push(u))).toBe("google");
+    expect(went).toEqual([`${GOOGLE_URL}1`, `${GOOGLE_URL}2`]);
+    expect(calls.filter((c) => c === startGoogleSignIn.id)).toHaveLength(2);
   });
 });
 
@@ -130,6 +254,7 @@ describe("Settings: sign-in methods", () => {
     expect(settingsNotice("?google=linked")).toMatchObject({ tone: "ok" });
     expect(settingsNotice("?google_error=identity_in_use")?.text).toMatch(/another NearPay user/);
     expect(settingsNotice("")).toBeNull();
+    expect(settingsNotice("?add_passkey=1")).toMatchObject({ tone: "ok", text: expect.stringMatching(/10 minutes/) });
   });
 });
 

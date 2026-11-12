@@ -1,6 +1,6 @@
 import { Callout, ToastProvider, useToast } from "@nearpay-internal/ui";
-import { type MouseEvent, useEffect, useMemo, useRef } from "react";
-import { googleErrorMessage, safeNext, takeParams } from "../features/auth/google";
+import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { googleErrorMessage, googleErrorOf, safeNext } from "../features/auth/google";
 import { SignIn } from "../features/auth/SignIn";
 import { SignUp } from "../features/auth/SignUp";
 import { VerifyMagicLink } from "../features/auth/VerifyMagicLink";
@@ -68,6 +68,11 @@ function Page_() {
 
   const toast = useToast();
   const toasted = useRef(false);
+  // the sign-in page removes `google_error` from the address bar as it draws, which can be before the
+  // session restore answers: keep the value the app was opened with
+  const [landingGoogleError] = useState(() =>
+    app.location.pathname === "/signin" ? googleErrorOf(app.location.search) : null,
+  );
   useEffect(() => {
     if (needsSignIn) {
       const next = `${app.location.pathname}${app.location.search}`;
@@ -76,7 +81,7 @@ function Page_() {
       // still signed in (e.g. a Google attempt from the step-up dialog was refused): go where the user was
       // going, and say once why Google didn't switch the session
       const q = new URLSearchParams(app.location.search);
-      const message = googleErrorMessage(takeParams(app.location.search, ["google_error"]).values.google_error);
+      const message = googleErrorMessage(googleErrorOf(app.location.search) ?? landingGoogleError);
       if (message && !toasted.current) {
         toasted.current = true;
         toast.show({
@@ -88,7 +93,7 @@ function Page_() {
       }
       app.navigate(safeNext(q.get("next")) ?? "/", { replace: true });
     }
-  }, [needsSignIn, signedInOnAuthPage, app, toast]);
+  }, [needsSignIn, signedInOnAuthPage, app, toast, landingGoogleError]);
 
   useEffect(() => {
     const t = m?.name === "signin" ? "Sign in" : m?.name === "signup" ? "Create account" : title;
