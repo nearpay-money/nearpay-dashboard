@@ -1,6 +1,11 @@
 # nearpay-dashboard
 
-> Merchant dashboard: payments, refunds (with wallet signing), invoices, subscriptions, customers, developers (keys, webhooks, events, logs), settlement, team.
+The merchant dashboard: payments, refunds (signed with the merchant's wallet), invoices, subscriptions, customers, developer tools (keys, webhooks, events, live tail), payout wallets and team.
+
+Part of [NearPay](https://github.com/nearpay-money/nearpay) — start there for the live demo, the architecture diagram and the full "do X, see Y" walkthrough.
+
+- **Where it sits:** a static single-page app served at https://dashboard.nearpay.money. Every request goes same-origin to `/api/<spec path>`, which the gateway routes to identity, payments, billing, webhooks, agentpay and rails. It holds no state of its own.
+- **Status:** NearPay runs on NEAR mainnet as a closed beta (https://nearpay.money). This app is the dashboard of that deployment. Sign-up is open (no business review; the registration number is optional, ADR-0024), sign-in is by passkey or "Continue with Google" (ADR-0026), and a payout wallet is active as soon as its ownership signature verifies (no cool-off, ADR-0027).
 
 |                                       |                                    |
 | ------------------------------------- | ---------------------------------- |
@@ -13,27 +18,27 @@
 
 ## Documentation
 
-This repo stays surgical: design docs live in [`nearpay-brain`](../nearpay-brain/README.md), not here.
+Design docs live in [`nearpay-brain`](https://github.com/nearpay-money/nearpay-brain), not here.
 
-- `nearpay-brain/lld/dashboard-and-console.md` — **low-level design (dev-ready; implement from this)**
-- `nearpay-brain/lld/audits/dashboard-and-console.md` — audit findings already folded into the LLD
-- `nearpay-brain/roadmap/development-plan.md` — stage and step this repo is built in
-- `nearpay-brain/architecture/hld.md` — system design
-- `nearpay-brain/architecture/repositories.md` — repo topology and dependency rules
-- `nearpay-brain/architecture/api-conventions.md`
-- `nearpay-brain/architecture/flows.md#4-refund-merchant-authorised`
+- [`lld/dashboard-and-console.md`](https://github.com/nearpay-money/nearpay-brain/blob/main/lld/dashboard-and-console.md) — low-level design this repo is implemented from
+- [`lld/audits/dashboard-and-console.md`](https://github.com/nearpay-money/nearpay-brain/blob/main/lld/audits/dashboard-and-console.md) — audit findings already folded into the LLD
+- [`roadmap/development-plan.md`](https://github.com/nearpay-money/nearpay-brain/blob/main/roadmap/development-plan.md) — stage and step this repo is built in
+- [`architecture/hld.md`](https://github.com/nearpay-money/nearpay-brain/blob/main/architecture/hld.md) — system design
+- [`architecture/repositories.md`](https://github.com/nearpay-money/nearpay-brain/blob/main/architecture/repositories.md) — repo topology and dependency rules
+- [`architecture/api-conventions.md`](https://github.com/nearpay-money/nearpay-brain/blob/main/architecture/api-conventions.md)
+- [`architecture/flows.md#4-refund-merchant-authorised`](https://github.com/nearpay-money/nearpay-brain/blob/main/architecture/flows.md#4-refund-merchant-authorised)
 
 ## What is built (Stage 1, `lld/dashboard-and-console.md` §1)
 
 | Area                                                                                 | Routes (spec)                                                                                                                                                                                                                |
 | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sign-up / sign-in (`/signup`, `/auth/verify#token=…`, `/signin`)                     | Turnstile → `signup`; `verifyMagicLink`; passkeys via `@simplewebauthn/browser` (`passkeyRegistration*`, `passkeyAuthentication*`); `logout`                                                                                 |
+| Sign-up / sign-in (`/signup`, `/auth/verify#token=…`, `/signin`)                     | Turnstile → `signup`; `verifyMagicLink`; passkeys via `@simplewebauthn/browser` (`passkeyRegistration*`, `passkeyAuthentication*`); "Continue with Google" (ADR-0026, run by identity; passkeys still confirm sensitive actions); `logout` |
 | Step-up dialog                                                                       | any `401 step_up_required` → `stepUpOptions`/`stepUpVerify`, then the request is replayed once with the same Idempotency-Key                                                                                                 |
 | Test/live switch                                                                     | `?mode=live` in the URL, `NearPay-Mode` on every call; live-only writes (keys, webhooks) disabled until `requirements.live_enabled`                                                                                          |
 | Home (`/`)                                                                           | `getAccountRequirements` checklist, `startKyb`, recent `listPaymentIntents`                                                                                                                                                  |
 | Payments (`/payments`, `/payments/:id`)                                              | `listPaymentIntents`, `getPaymentIntent` (attempts timeline, evidence explorer links), `listBalanceTransactions`, `getCheckoutSession`; destination fingerprint computed client-side (spec vector)                           |
 | Agent payments (`/agent-payments[/:id]`)                                             | `listAgentPayments`, `getAgentPayment`                                                                                                                                                                                       |
-| Settlement (`/settlement`, `/settlement/new`, `/settlement/:id/attest`)              | `list/get/create/attest/challenge/setDefault/disableSettlementDestination`; NEP-413 via NEAR Connect, EIP-191 via EIP-6963/injected wallets; new challenge for a pending destination (step-up); cool-off status, fingerprint |
+| Settlement (`/settlement`, `/settlement/new`, `/settlement/:id/attest`)              | `list/get/create/attest/challenge/setDefault/disableSettlementDestination`; NEP-413 via NEAR Connect, EIP-191 via EIP-6963/injected wallets; new challenge for a pending destination (step-up); active right after verification (no cool-off, ADR-0027); fingerprint |
 | Developers (`/developers`, `/developers/webhooks[/:id]`, `/developers/events[/:id]`) | API keys (create/roll/revoke, secret shown once), webhook endpoints (create/update/test/delete) with the delivery log (`listWebhookEndpointDeliveries`, paginated), events                                                   |
 | Settings (`/settings`)                                                               | `getAccount`/`updateAccount` (money settings trigger step-up), add a passkey                                                                                                                                                 |
 
@@ -52,7 +57,8 @@ only and sent as `X-CSRF-Token` on unsafe methods. A reload or a new tab recover
   `switchSessionAccount`), Live/Test switch, notifications from real data, drawer below 960 px.
 - Pages: Overview (stats and the daily volume chart computed from `listPaymentIntents`), onboarding checklist
   (`/setup`), payments list (ADR-0018 filters kept in the URL, CSV export), payment detail (refunds card + refund
-  flow from the refunds area), settlement (two-approver `approval`, cool-off), developers (restricted keys with the
+  flow from the refunds area), settlement (two-approver `approval` where a second owner or admin must approve; no
+  waiting period afterwards, ADR-0027), developers (restricted keys with the
   `KEY_SCOPES` matrix, secret rotation, resend), developer onboarding (`/developers/start`), agent payments (paid
   resources from real payments; "Add paid resource" generates the x402 server code), settings index + account and
   notification pages; Stage 2 areas: refunds, payment links, customers, team, business details (KYB), audit log,
@@ -88,12 +94,25 @@ only and sent as `X-CSRF-Token` on unsafe methods. A reload or a new tab recover
   events, `standard: solana | bip322`); Solana/Bitcoin checks are tested against its `test-vectors`.
 - Stage 4 pages show by default (`VITE_NP_STAGE` defaults to 4).
 
+## Verify this repo
+
+Needs Node 22 (`.nvmrc`), pnpm 9 and, for step 4, Google Chrome. No Docker. `.npmrc` points the `@nearpay-money` and `@nearpay-internal` scopes at a local package registry, so start that first.
+
+1. Start the local registry (no Docker, Node 22 only):
+   `git clone https://github.com/nearpay-money/nearpay-deploy ../nearpay-deploy && ../nearpay-deploy/scripts/registry.sh start`
+   → `curl http://127.0.0.1:4873/-/ping` answers `{}`.
+2. `pnpm install --frozen-lockfile` → ends with `Done in …`, no registry errors.
+3. `pnpm test` (unit tests: API client, session recovery, money formatting, signing helpers, feature logic) → `Test Files  25 passed (25)`, `Tests  266 passed (266)`.
+4. `pnpm verify` (the full gate: typecheck, lint, unit tests with the coverage gate, build, then Playwright end-to-end tests of the built app against a spec-driven mock of `/api`) → exits 0; the Playwright list ends with `99 passed` and `5 skipped` (about 4 minutes). The browser is the system Chrome at `/usr/bin/google-chrome`; set `NP_CHROME_PATH` to another path if needed.
+
+To use the dashboard for real, follow the walkthrough in the [entry repo](https://github.com/nearpay-money/nearpay).
+
 ## Build and deploy
 
 ```
-pnpm install
+pnpm install --frozen-lockfile
 pnpm build            # → dist/ (index.html + assets/ + favicon.svg), served by nearpay-deploy as the `dashboard` site
-pnpm verify           # typecheck + Biome + unit tests (coverage ≥ 90% branches on src/lib, src/wallets) + build + Playwright
+pnpm verify           # typecheck + Biome + unit tests (coverage ≥ 90% branches and lines on src/lib, src/wallets) + build + Playwright
 ```
 
 - `nearpay-deploy/scripts/up.sh` mounts `nearpay-dashboard/dist` when `dist/index.html` exists; nginx serves
@@ -119,8 +138,10 @@ pnpm verify           # typecheck + Biome + unit tests (coverage ≥ 90% branche
 
 ## Built with
 
-Libraries are listed here as they are added (hackathon rule Q-005). Code and documentation are written with AI assistance (Claude) under human direction and review.
-
-- Runtime: React 19, `@nearpay-money/spec` (contracts) + `zod`, `@simplewebauthn/browser` (passkeys),
-  `@hot-labs/near-connect` (NEAR wallets, NEP-413), Cloudflare Turnstile (sign-up only).
+- Runtime: React 19, `@nearpay-money/spec` 0.5.1 (contracts) + `zod`, `@nearpay-internal/ui` 0.5.0 (NearPay design system),
+  `@simplewebauthn/browser` (passkeys), `@hot-labs/near-connect` (NEAR wallets, NEP-413), `uqr` (QR codes),
+  Cloudflare Turnstile (sign-up only).
 - Development: Vite 5 (esbuild JSX), TypeScript, Vitest (+ coverage-v8), Playwright, Biome.
+- Licence: Apache-2.0 (`LICENSE`).
+
+Code and documentation are written with AI assistance (Claude) under human direction and review. Built for the NEAR Hackathon (Nov 2026).

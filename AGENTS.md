@@ -1,6 +1,6 @@
 # AGENTS.md — nearpay-dashboard
 
-You are working in **nearpay-dashboard**, one of 27 NearPay repositories (`nearpay-brain/architecture/repositories.md`).
+You are working in **nearpay-dashboard**, one of 26 NearPay repositories (`nearpay-brain/architecture/repositories.md`).
 Scope: Merchant dashboard: payments, refunds (with wallet signing), invoices, subscriptions, customers, developers (keys, webhooks, events, logs), settlement, team.
 
 ## Before changing anything
