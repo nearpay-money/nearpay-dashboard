@@ -232,7 +232,9 @@ export function GoogleErrorCallout({
   return (
     <Callout tone="danger" role="alert" title={message} className="dash-google-error" data-testid="google-error">
       {passkeyFirst || retry ? (
-        <div className="dash-google-error__actions">
+        <div
+          className={`dash-google-error__actions${passkeyFirst && retry ? " dash-google-error__actions--pair" : ""}`}
+        >
           {passkeyFirst ? (
             <Button size="sm" onClick={onPasskey} data-testid="google-error-passkey">
               Sign in with passkey
