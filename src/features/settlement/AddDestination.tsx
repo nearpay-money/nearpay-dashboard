@@ -8,6 +8,9 @@
  * "simple"); Bitcoin addresses are sent lower-case. A program-derived Solana address (e.g. a Squads vault)
  * can't sign, and the unverified path has no public route yet, so it is refused in live mode with an
  * explanation.
+ * A NEAR Intents account given as `0x` + 40 hex is sent in lower case (NEAR account ids are lower case; wallets
+ * show the mixed-case checksum form) and the form shows the value that will be saved (`address.ts`). The
+ * "Address on <network>" type is never re-cased here.
  */
 
 import { Callout, Input, OptionCard, RadioCardGroup, Select } from "@nearpay-internal/ui";
@@ -24,8 +27,7 @@ import {
 import { Page } from "../../ui/page";
 import { Button, ErrorNote, Field } from "../../ui/ui";
 import { AttestPanel, DestinationResult } from "./Attest";
-
-type DestType = "intents_account" | "chain_address";
+import { type DestinationType as DestType, normalizeDestinationAddress } from "./address";
 
 export function AddDestination() {
   const app = useApp();
@@ -51,7 +53,8 @@ export function AddDestination() {
   const chain = type === "intents_account" ? "near:mainnet" : (assetChain ?? manualChain);
   const live = app.mode === "live";
   const family = chainFamily(chain);
-  const addrCheck = checkAddressForChain(family, address, live);
+  const addrCheck =
+    type === "intents_account" ? checkIntentsAccount(address) : checkAddressForChain(family, address, live);
 
   const back = { label: "Payout wallets", to: "/settlement" };
   if (done)
@@ -301,6 +304,27 @@ export function AddDestination() {
 type AddressCheck =
   | { ok: true; normalized: string; note?: { title: string; body: string } }
   | { ok: false; error: string };
+
+/**
+ * A NEAR Intents account: validity is left to the API; a `0x` + 40 hex account is sent in lower case and the
+ * form says so before the request (the same note as for Bitcoin addresses).
+ */
+export function checkIntentsAccount(address: string): AddressCheck | undefined {
+  if (!address.trim()) return undefined;
+  const n = normalizeDestinationAddress("intents_account", address);
+  return {
+    ok: true,
+    normalized: n.value,
+    ...(n.lowered
+      ? {
+          note: {
+            title: "Saved in lower case",
+            body: `NEAR account names are lower case. This one is saved as ${n.value}`,
+          },
+        }
+      : {}),
+  };
+}
 
 /** Client-side check for Solana and Bitcoin addresses (others are left to the API). */
 export function checkAddressForChain(
