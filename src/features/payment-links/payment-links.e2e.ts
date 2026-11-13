@@ -44,6 +44,8 @@ test("create a payment link without a payout wallet: asks for one first, with a 
   await page.getByTestId("link-amount").fill("5");
   await page.getByTestId("create-link").click();
   await expect(page).toHaveURL(/\/payment-links\/plink_/);
+  await expect(page.getByText("https://pay.nearpay.localhost/l/plink_").first()).toBeVisible();
+  await page.waitForLoadState("networkidle");
 });
 
 test("create a payment link: the API's destination_not_active answer names the payout wallet and links to add one", async ({
