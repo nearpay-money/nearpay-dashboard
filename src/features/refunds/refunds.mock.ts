@@ -39,6 +39,71 @@ export class RefundsMock {
   readonly refunds = { test: [] as Record<string, unknown>[], live: [] as Record<string, unknown>[] };
   signer = "0x52908400098527886e0f7030069857d2e4169ee7";
   submitted: unknown[] = [];
+  /**
+   * `simulate_deposit` answers 202 at once; like the API, the refund changes only later: the next
+   * `simulateLagReads` reads of the refund still return the old state (0 = changed at once).
+   */
+  simulateLagReads = 0;
+  /** After the simulated transfer shows, the refund succeeds after this many more reads (0 = on the next read; null = stays pending). */
+  settleAfterReads: number | null = null;
+  private readonly lagging = new Map<string, number>();
+  private readonly settling = new Map<string, number>();
+
+  private applyTransfer(r: Record<string, unknown>) {
+    const legs = r.legs as Record<string, unknown>[];
+    Object.assign(r, {
+      status: "pending",
+      next_action: null,
+      sequence: (r.sequence as number) + 1,
+      legs: [{ ...legs[0], status: "submitted", submitted_tx: "9Fh3kT2mQx8LpR4vW7yZb1cDfGhJkN" }, ...legs.slice(1)],
+    });
+    if (this.settleAfterReads !== null) this.settling.set(r.id as string, this.settleAfterReads);
+  }
+
+  private settle(r: Record<string, unknown>) {
+    const legs = r.legs as Record<string, unknown>[];
+    Object.assign(r, {
+      status: "succeeded",
+      amount_received: r.amount,
+      succeeded_at: NOW,
+      sequence: (r.sequence as number) + 1,
+      legs: [{ ...legs[0], status: "succeeded" }, ...legs.slice(1)],
+      evidence: {
+        chain: "near:mainnet",
+        tx_hash: "9Fh3kT2mQx8LpR4vW7yZb1cDfGhJkN",
+        block_ref: "223270900",
+        recipient: "payer.near",
+        asset_id: USDC_NEAR,
+        amount: r.amount,
+        finality: "final",
+        tier: "A",
+        source: "indexer",
+        observed_at: new Date(NOW * 1000).toISOString(),
+        explorer_url: null,
+      },
+    });
+  }
+
+  /** One read of a refund: counts down a lagging simulated transfer, then the settlement. */
+  private read(r: Record<string, unknown>) {
+    const id = r.id as string;
+    const lag = this.lagging.get(id);
+    if (lag !== undefined) {
+      if (lag > 0) this.lagging.set(id, lag - 1);
+      else {
+        this.lagging.delete(id);
+        this.applyTransfer(r);
+      }
+      return;
+    }
+    const left = this.settling.get(id);
+    if (left === undefined) return;
+    if (left > 0) this.settling.set(id, left - 1);
+    else {
+      this.settling.delete(id);
+      this.settle(r);
+    }
+  }
 
   private action(amount: string) {
     const deadline = NOW + 900;
@@ -81,7 +146,9 @@ export class RefundsMock {
         );
       case "getRefund": {
         const r = find();
-        return r ? ok(r) : missing();
+        if (!r) return missing();
+        this.read(r);
+        return ok(r);
       }
       case "createRefund": {
         const pi = c.intents[c.mode].find((p) => p.id === c.body.payment_intent);
@@ -166,13 +233,11 @@ export class RefundsMock {
             };
           this.submitted.push(c.body);
         }
-        const legs = r.legs as Record<string, unknown>[];
-        Object.assign(r, {
-          status: "pending",
-          next_action: null,
-          sequence: (r.sequence as number) + 1,
-          legs: [{ ...legs[0], status: "submitted", submitted_tx: "9Fh3kT2mQx8LpR4vW7yZb1cDfGhJkN" }, ...legs.slice(1)],
-        });
+        if (c.routeId === "simulateRefundDeposit" && this.simulateLagReads > 0) {
+          this.lagging.set(r.id as string, this.simulateLagReads);
+          return { status: 202 };
+        }
+        this.applyTransfer(r);
         return c.routeId === "simulateRefundDeposit" ? { status: 202 } : ok(r);
       }
       case "cancelRefund": {

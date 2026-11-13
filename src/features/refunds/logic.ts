@@ -312,6 +312,53 @@ export function shouldPoll(r: Pick<Refund, "status" | "next_action" | "legs">): 
 }
 
 // ---------------------------------------------------------------------------------------------
+// After "Simulate signed transfer" (test mode). The API answers 202 and applies the transfer a moment
+// later, so the refund read right after it is still `requires_action` with its `next_action`, a state
+// `shouldPoll` does not follow. The page watches the refund until the transfer shows, for a limited time.
+// ---------------------------------------------------------------------------------------------
+
+/** How often the refund is read while a simulated transfer is being applied. */
+export const SIMULATE_WATCH_INTERVAL_MS = 2000;
+/** How long the page waits for a simulated transfer to show before it says so and stops reading. */
+export const SIMULATE_WATCH_LIMIT_MS = 120_000;
+
+/** The refund as it was when the simulated transfer was sent, and when that was (ms). */
+export interface SimulateWatch {
+  readonly status: string;
+  readonly sequence: number;
+  readonly startedAt: number;
+}
+
+export function startSimulateWatch(before: Pick<Refund, "status" | "sequence">, nowMs: number): SimulateWatch {
+  return { status: before.status, sequence: before.sequence, startedAt: nowMs };
+}
+
+export type SimulateWatchStep = "waiting" | "done" | "timed_out";
+
+/**
+ * Where the watch stands for the newest refund read:
+ * - `done`: the status changed (pending, succeeded, failed, canceled), or the refund is in a state the
+ *   ordinary polling follows by itself (`shouldPoll`, e.g. the transfer is recorded on the leg);
+ * - `timed_out`: nothing showed within the limit: stop reading and tell the merchant;
+ * - `waiting`: read again. A higher `sequence` alone is shown but does not end the watch, because the
+ *   page would stop reading while the refund still asks for a signature.
+ */
+export function simulateWatchStep(
+  w: SimulateWatch,
+  r: Pick<Refund, "status" | "next_action" | "legs">,
+  nowMs: number,
+  limitMs = SIMULATE_WATCH_LIMIT_MS,
+): SimulateWatchStep {
+  if (r.status !== w.status || shouldPoll(r)) return "done";
+  return nowMs - w.startedAt >= limitMs ? "timed_out" : "waiting";
+}
+
+/** The newer of two reads of one refund: the higher `sequence` wins (an older read never replaces a newer one). */
+export function newerRefund<T extends Pick<Refund, "sequence">>(current: T, next: T): T {
+  return next.sequence > current.sequence ? next : current;
+}
+
+// ---------------------------------------------------------------------------------------------
 // next_action checks — defence in depth before a wallet prompt. The dashboard signs the API's
 // payload verbatim (never rebuilt, never edited); these checks only refuse to sign a payload whose
 // parts disagree with each other or with the refund (lld/dashboard §1).

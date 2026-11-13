@@ -2,7 +2,9 @@
  * Refund detail (Figma b01 "Refund RF–00218"): amount, return-to, status, the activity table and
  * "View return transaction". Actions follow the spec's state rules: review in wallet (`next_action`),
  * prepare a new route (expired / failed), cancel (nothing submitted), and the owner-only recipient
- * override with step-up (INV-7). Open refunds are polled until they settle.
+ * override with step-up (INV-7). Open refunds are polled until they settle. After "Simulate signed
+ * transfer" (test mode) the refund is read every 2 s until the transfer shows (at most 2 min, then the page
+ * says it is still confirming and offers "Check again"); no reload is needed.
  */
 
 import {
@@ -35,10 +37,15 @@ import {
   canOverrideRecipient,
   canPrepare,
   chainLabel,
+  newerRefund,
   refundBadge,
   refundStage,
+  SIMULATE_WATCH_INTERVAL_MS,
+  type SimulateWatch,
   shortRef,
   shouldPoll,
+  simulateWatchStep,
+  startSimulateWatch,
 } from "./logic";
 import { ActionError, ErrorState, PageSkeleton } from "./parts";
 import { SignRefund } from "./SignRefund";
@@ -69,29 +76,58 @@ function RefundView({ initial }: { initial: Refund }) {
   const root = useRef<HTMLDivElement>(null);
   useSpaLinks(root);
 
-  // poll while the refund moves without the merchant (preparing, submitted, confirming)
-  const poll = shouldPoll(refund);
-  useEffect(() => {
-    if (!poll) return;
-    const t = setInterval(() => {
-      calls.get(refund.id).then(
-        (next) => {
-          setRefund((cur) => {
-            if (next.sequence <= cur.sequence) return cur;
-            if (next.status !== cur.status) setAnnounce(`Refund status: ${refundBadge(next.status)}.`);
-            return next;
-          });
-        },
-        () => {},
-      );
-    }, POLL_MS);
-    return () => clearInterval(t);
-  }, [poll, refund.id, calls]);
+  // a simulated transfer was accepted (test mode) and has not shown on the refund yet
+  const [watch, setWatch] = useState<SimulateWatch | null>(null);
+  const [watchTimedOut, setWatchTimedOut] = useState(false);
+  const latest = useRef({ refund, calls });
+  latest.current = { refund, calls };
 
-  const update = (next: Refund, message: string) => {
+  // poll while the refund moves without the merchant (preparing, submitted, confirming), and while a
+  // simulated transfer is being applied; stops on a final state, on unmount and at the watch's time limit
+  const poll = shouldPoll(refund);
+  const refundId = refund.id;
+  useEffect(() => {
+    if (!poll && !watch) return;
+    let alive = true;
+    const t = setInterval(
+      async () => {
+        let next: Refund | undefined;
+        try {
+          next = await latest.current.calls.get(refundId);
+        } catch {
+          next = undefined; // keep the last known state; read again on the next tick
+        }
+        if (!alive) return;
+        const cur = latest.current.refund;
+        const shown = next ? newerRefund(cur, next) : cur;
+        if (shown !== cur) {
+          if (shown.status !== cur.status) setAnnounce(`Refund status: ${refundBadge(shown.status)}.`);
+          setRefund(shown);
+        }
+        if (!watch) return;
+        const step = simulateWatchStep(watch, shown, Date.now());
+        if (step === "waiting") return;
+        setWatch(null);
+        if (step === "timed_out") {
+          setWatchTimedOut(true);
+          setAnnounce("Still confirming. The simulated transfer hasn't shown on this refund yet.");
+        }
+      },
+      watch ? SIMULATE_WATCH_INTERVAL_MS : POLL_MS,
+    );
+    return () => {
+      alive = false;
+      clearInterval(t);
+    };
+  }, [poll, watch, refundId]);
+
+  const update = (next: Refund, message: string, opts?: { readonly simulatedFrom?: Refund }) => {
     setRefund(next);
     setAnnounce(message);
     setReviewOpen(false);
+    setWatchTimedOut(false);
+    const started = opts?.simulatedFrom ? startSimulateWatch(opts.simulatedFrom, Date.now()) : null;
+    setWatch(started && simulateWatchStep(started, next, started.startedAt) === "waiting" ? started : null);
   };
 
   const act = async (label: string, fn: () => Promise<Refund>, message: string) => {
@@ -108,7 +144,7 @@ function RefundView({ initial }: { initial: Refund }) {
 
   const asset = app.assets.get(refund.asset_id);
   const symbol = asset?.symbol ?? "units";
-  const stage = refundStage(refund);
+  const stage = watch ? { title: "Confirming", sub: "Simulated transfer sent" } : refundStage(refund);
   const settled = intent.data?.amount_settled;
   const full = settled !== undefined && settled === refund.amount;
   const evidenceUrl = refund.evidence ? explorerTxUrl(refund.evidence) : null;
@@ -127,7 +163,7 @@ function RefundView({ initial }: { initial: Refund }) {
         }
         status={<StatusBadge data-testid="refund-status">{refundBadge(refund.status)}</StatusBadge>}
         actions={
-          refund.next_action ? (
+          refund.next_action && !watch ? (
             <Button onClick={() => setReviewOpen(true)} data-testid="open-review">
               {app.mode === "test" ? "Simulate return" : "Review in wallet"}
             </Button>
@@ -148,7 +184,30 @@ function RefundView({ initial }: { initial: Refund }) {
         <Stat label="Status" value={<span className="npf-refunds__stat-text">{stage.title}</span>} sub={stage.sub} />
       </StatGroup>
 
-      {refund.status === "requires_action" && refund.next_action && (
+      {watch && (
+        <Callout tone="warning" title="Simulated transfer sent" live data-testid="simulate-confirming">
+          The return is confirming. This page updates by itself when it is confirmed.
+        </Callout>
+      )}
+      {watchTimedOut && !watch && refund.status === "requires_action" && (
+        <Callout tone="warning" title="Still confirming" live data-testid="simulate-timeout">
+          <p>The simulated transfer hasn't shown on this refund yet. Check again in a moment.</p>
+          <p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setWatchTimedOut(false);
+                setWatch(startSimulateWatch(refund, Date.now()));
+              }}
+              data-testid="simulate-check-again"
+            >
+              Check again
+            </Button>
+          </p>
+        </Callout>
+      )}
+      {refund.status === "requires_action" && refund.next_action && !watch && !watchTimedOut && (
         <Callout title="Your wallet authorization is needed" data-testid="needs-signature">
           The return is prepared. Review it and approve it in the wallet that holds your settlement destination before
           the signing window closes.

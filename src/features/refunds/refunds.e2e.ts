@@ -2,10 +2,13 @@
  * Refunds E2E (mock-backed; harness fails on page errors / CSP violations). Test mode simulates the signed
  * transfer (no wallet, no broadcast); live mode signs the API's ERC-191 payload verbatim and submits it.
  */
+import { mkdirSync } from "node:fs";
 import { expect, signIn, test } from "../../../test/e2e/harness";
 import { installFeatureMock, RefundsMock } from "./refunds.mock";
 
 const SHOTS = "/home/claude/shots/dashboard-features";
+const JUDGE_SHOTS = process.env.NP_SHOTS ?? "/home/claude/shots/dash-judge";
+mkdirSync(JUDGE_SHOTS, { recursive: true });
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test.describe("refunds", () => {
@@ -40,6 +43,67 @@ test.describe("refunds", () => {
     await page.goto(`/payments/${pi?.id}/refund`);
     await expect(page.getByRole("heading", { name: "Review refund" })).toBeVisible();
     await page.screenshot({ path: `${SHOTS}/refund-review-390.png`, fullPage: true });
+  });
+
+  test("test mode: the page follows a simulated transfer to Refunded without a reload", async ({ page, api }) => {
+    const mock = new RefundsMock();
+    // like the API: 202 at once, the refund changes a moment later (the read right after it is unchanged)
+    mock.simulateLagReads = 2;
+    mock.settleAfterReads = 0;
+    installFeatureMock(api, mock);
+    const pi = api.intents.test[0];
+    await signIn(page, api);
+    await page.goto(`/payments/${pi?.id}/refund`);
+    await page.getByTestId("refund-amount").fill("1");
+    await page.getByTestId("review-in-wallet").click();
+    await page.getByTestId("simulate-transfer").click();
+    // accepted, not applied yet: the page says it is confirming instead of asking for the wallet again
+    await expect(page.getByTestId("simulate-confirming")).toContainText("This page updates by itself");
+    await expect(page.getByTestId("refund-status")).toHaveText("Not submitted");
+    await expect(page.getByText("Confirming", { exact: true })).toBeVisible();
+    await expect(page.getByTestId("needs-signature")).toHaveCount(0);
+    await expect(page.getByTestId("open-review")).toHaveCount(0);
+    await page.screenshot({ path: `${JUDGE_SHOTS}/refund-simulated-confirming-1440.png`, fullPage: true });
+    // no reload from here on
+    await expect(page.getByTestId("refund-status")).toHaveText("Pending", { timeout: 15_000 });
+    await expect(page.getByTestId("simulate-confirming")).toHaveCount(0);
+    await expect(page.getByTestId("refund-status")).toHaveText("Refunded", { timeout: 15_000 });
+    await expect(page.getByRole("cell", { name: "Refund complete" })).toBeVisible();
+    await expect(page.getByTestId("view-return-tx")).toBeVisible();
+    await page.screenshot({ path: `${JUDGE_SHOTS}/refund-simulated-refunded-1440.png`, fullPage: true });
+    expect(api.callsTo("simulateRefundDeposit")).toHaveLength(1);
+    // a final state is not read again
+    const reads = api.callsTo("getRefund").length;
+    await page.waitForTimeout(5_500);
+    expect(api.callsTo("getRefund")).toHaveLength(reads);
+  });
+
+  test("test mode: a simulated transfer that never shows stops after 2 minutes and says so", async ({ page, api }) => {
+    const mock = new RefundsMock();
+    mock.simulateLagReads = Number.POSITIVE_INFINITY;
+    installFeatureMock(api, mock);
+    const pi = api.intents.test[0];
+    await signIn(page, api);
+    await page.goto(`/payments/${pi?.id}/refund`);
+    await page.getByTestId("refund-amount").fill("1");
+    await page.getByTestId("review-in-wallet").click();
+    await page.clock.install();
+    await page.getByTestId("simulate-transfer").click();
+    await expect(page.getByTestId("simulate-confirming")).toBeVisible();
+    await page.clock.runFor(121_000);
+    await expect(page.getByTestId("simulate-timeout")).toContainText("Still confirming");
+    await expect(page.getByTestId("simulate-confirming")).toHaveCount(0);
+    await expect(page.getByTestId("open-review")).toBeVisible();
+    await page.screenshot({ path: `${JUDGE_SHOTS}/refund-simulated-still-confirming-1440.png`, fullPage: true });
+    // stopped: no more reads until "Check again"
+    const reads = api.callsTo("getRefund").length;
+    await page.clock.runFor(30_000);
+    await page.waitForTimeout(300);
+    expect(api.callsTo("getRefund")).toHaveLength(reads);
+    await page.getByTestId("simulate-check-again").click();
+    await expect(page.getByTestId("simulate-confirming")).toBeVisible();
+    await page.clock.runFor(2_500);
+    await expect.poll(() => api.callsTo("getRefund").length).toBeGreaterThan(reads);
   });
 
   test("live mode: signs exactly the ERC-191 payload and submits it; owner override needs step-up", async ({
