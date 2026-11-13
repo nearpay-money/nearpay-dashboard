@@ -2,7 +2,7 @@
 import { expect, signIn, test } from "../../../test/e2e/harness";
 import { installFeatureMock, TeamMock } from "./team.mock";
 
-const SHOTS = "/home/claude/shots/dashboard-features";
+const SHOTS = "test-results/shots/dashboard-features";
 test.use({ viewport: { width: 1440, height: 900 } });
 const ME = "usr_01jbz9k3m4n5p6q7r8s9t0v1w2";
 

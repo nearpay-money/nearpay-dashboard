@@ -1,7 +1,7 @@
 /** Checkout appearance E2E (mock-backed): live preview themed via CSSOM, save to account branding. */
 import { expect, signIn, test } from "../../../test/e2e/harness";
 
-const SHOTS = "/home/claude/shots/dashboard-features";
+const SHOTS = "test-results/shots/dashboard-features";
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test("appearance: preview follows the accent and saves branding", async ({ page, api }) => {

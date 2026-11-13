@@ -7,7 +7,7 @@ import { mkdirSync } from "node:fs";
 import { USDC_BASE, USDC_NEAR } from "../../../test/e2e/fixtures";
 import { expect, signIn, test } from "../../../test/e2e/harness";
 
-const SHOTS = process.env.NP_SHOTS ?? "/home/claude/shots/dash-judge";
+const SHOTS = process.env.NP_SHOTS ?? "test-results/shots/dash-judge";
 mkdirSync(SHOTS, { recursive: true });
 test.use({ viewport: { width: 1440, height: 900 } });
 

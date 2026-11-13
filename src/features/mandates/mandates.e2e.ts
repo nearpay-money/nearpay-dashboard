@@ -14,7 +14,7 @@ import type { MockApi } from "../../../test/e2e/mock-api";
 import { BillingMock } from "../billing/billing.mock";
 import { MandatesMock, MONTH, txHash } from "./mandates.mock";
 
-const SHOTS = process.env.NP_SHOTS ?? "/home/claude/shots/dashboard-4.3";
+const SHOTS = process.env.NP_SHOTS ?? "test-results/shots/dashboard-4.3";
 mkdirSync(SHOTS, { recursive: true });
 test.use({ viewport: { width: 1440, height: 900 } });
 
