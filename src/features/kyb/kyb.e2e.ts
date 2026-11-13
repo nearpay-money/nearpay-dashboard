@@ -5,7 +5,7 @@
 import { expect, signIn, test } from "../../../test/e2e/harness";
 import { installFeatureMock, KybMock } from "./kyb.mock";
 
-const SHOTS = "/home/claude/shots/dashboard-features";
+const SHOTS = "test-results/shots/dashboard-features";
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test("business details: validate → save draft → save and go live (step-up), no register number", async ({

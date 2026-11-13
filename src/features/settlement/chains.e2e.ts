@@ -13,7 +13,7 @@ import { BTC_BITCOIN, SOL_SOLANA } from "../../../test/e2e/fixtures";
 import { expect, signIn, test } from "../../../test/e2e/harness";
 
 const require = createRequire(import.meta.url);
-const SHOTS = process.env.NP_SHOTS ?? "/home/claude/shots/dashboard-4.3";
+const SHOTS = process.env.NP_SHOTS ?? "test-results/shots/dashboard-4.3";
 mkdirSync(SHOTS, { recursive: true });
 test.use({ viewport: { width: 1440, height: 900 } });
 

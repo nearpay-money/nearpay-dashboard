@@ -6,7 +6,7 @@ import { expect, signIn, test } from "../../../test/e2e/harness";
 import { MandatesMock } from "../mandates/mandates.mock";
 import { BillingMock } from "./billing.mock";
 
-const SHOTS = process.env.NP_SHOTS ?? "/home/claude/shots/dashboard";
+const SHOTS = process.env.NP_SHOTS ?? "test-results/shots/dashboard";
 mkdirSync(SHOTS, { recursive: true });
 test.use({ viewport: { width: 1440, height: 900 } });
 

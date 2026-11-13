@@ -7,8 +7,8 @@ import { destination } from "../../../test/e2e/fixtures";
 import { expect, signIn, test } from "../../../test/e2e/harness";
 import { installFeatureMock, PaymentLinksMock } from "./payment-links.mock";
 
-const SHOTS = "/home/claude/shots/dashboard-features";
-const JUDGE_SHOTS = process.env.NP_SHOTS ?? "/home/claude/shots/dash-judge";
+const SHOTS = "test-results/shots/dashboard-features";
+const JUDGE_SHOTS = process.env.NP_SHOTS ?? "test-results/shots/dash-judge";
 mkdirSync(JUDGE_SHOTS, { recursive: true });
 test.use({ viewport: { width: 1440, height: 900 } });
 

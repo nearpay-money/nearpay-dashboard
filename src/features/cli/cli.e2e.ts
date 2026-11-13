@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "../../../test/e2e/harness";
 import { BillingMock } from "../billing/billing.mock";
 
-const SHOTS = process.env.NP_SHOTS ?? "/home/claude/shots/dashboard";
+const SHOTS = process.env.NP_SHOTS ?? "test-results/shots/dashboard";
 mkdirSync(SHOTS, { recursive: true });
 test.use({ viewport: { width: 1440, height: 900 } });
 

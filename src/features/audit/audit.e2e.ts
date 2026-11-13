@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { expect, signIn, test } from "../../../test/e2e/harness";
 import { AuditMock, installFeatureMock } from "./audit.mock";
 
-const SHOTS = "/home/claude/shots/dashboard-features";
+const SHOTS = "test-results/shots/dashboard-features";
 test.use({ viewport: { width: 1440, height: 900 } });
 
 test("audit log: filter and export CSV", async ({ page, api }) => {
