@@ -95,6 +95,38 @@ export function usesText(l: Pick<PaymentLink, "uses" | "max_uses">): string {
   return l.max_uses === null ? String(l.uses) : `${l.uses} of ${l.max_uses}`;
 }
 
+/**
+ * What the create form knows about the account's payout wallets in the current mode. A link can only be
+ * created when an active payout wallet can receive its payments (the API answers `409
+ * destination_not_active` otherwise), so the form says so before the request instead of after it.
+ * - `unknown`: the list is loading or could not be loaded: don't block, the API decides;
+ * - `none`: loaded, and no wallet is active: ask for a payout wallet first;
+ * - `ready`: at least one active wallet.
+ */
+export type PayoutWalletState = "unknown" | "none" | "ready";
+
+export interface WalletListState<T> {
+  readonly loading: boolean;
+  readonly error: unknown;
+  readonly data: { readonly data: readonly T[] } | undefined;
+}
+
+/** The active wallets of a loaded list (the query asks for active ones; the status is checked again here). */
+export function activePayoutWallets<T extends { readonly status: string }>(s: WalletListState<T>): readonly T[] {
+  return (s.data?.data ?? []).filter((d) => d.status === "active");
+}
+
+export function payoutWalletState(s: WalletListState<{ readonly status: string }>): PayoutWalletState {
+  if (s.loading || s.error || !s.data) return "unknown";
+  return activePayoutWallets(s).length > 0 ? "ready" : "none";
+}
+
+/** Body of the "Add a payout wallet first" notice (`mode` as shown by the Test/Live switch). */
+export function payoutWalletNeededText(mode: "test" | "live"): string {
+  const first = `Payments from this link go straight to your payout wallet. This account has no active payout wallet in ${mode} mode yet.`;
+  return mode === "live" ? `${first} If you've added one, finish verifying it first.` : first;
+}
+
 /** A positive integer from a text field, or null when empty; `undefined` when invalid. */
 export function optionalCount(text: string): number | null | undefined {
   const t = text.trim();

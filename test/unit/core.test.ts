@@ -113,6 +113,20 @@ describe("friendly errors", () => {
     expect(friendlyError(new Error("boom")).title).toBe("boom");
     expect(friendlyError("str").title).toBe("str");
   });
+  it("says payout wallet, not destination, when no active payout wallet can receive a payment", () => {
+    const f = friendlyError(
+      new ApiError({
+        status: 409,
+        type: "invalid_request_error",
+        code: "destination_not_active",
+        message: "The account has no active default settlement destination in this mode.",
+      }),
+    );
+    expect(f.title).toBe(
+      "You need an active payout wallet in this mode first. Add one under Payout wallets, then try again.",
+    );
+    expect(f.title).not.toMatch(/destination/i);
+  });
 });
 
 describe("feature registry", () => {

@@ -2,17 +2,29 @@
  * "Create a payment link" (Figma b01): title, price, settlement destination, fee callout and a live
  * checkout preview. Pricing is immutable after creation (INV-6), so it is validated here first and by the
  * API at creation (destination active, minimum, unverified cap, currency).
+ * A link needs an active payout wallet in the current mode: when the loaded list has none, the form says
+ * "Add a payout wallet first" with a link to `/settlement/new`; "Create link" then repeats it under the
+ * button and sends no request.
  */
 
 import { Button, Callout, Card, Checkbox, Field, Input, PageHeader, Select } from "@nearpay-internal/ui";
 import { createPaymentLink } from "@nearpay-money/spec";
 import { useMemo, useState } from "react";
-import { useApp } from "../../app/context";
+import { Link, useApp } from "../../app/context";
 import { roleAllows } from "../../lib/permissions";
 import { useDestinations, useLinkCalls } from "./api";
-import { FIAT_CURRENCIES, optionalCount, optionalUrl, parsePrice, priceText } from "./logic";
+import {
+  activePayoutWallets,
+  FIAT_CURRENCIES,
+  optionalCount,
+  optionalUrl,
+  parsePrice,
+  payoutWalletNeededText,
+  payoutWalletState,
+  priceText,
+} from "./logic";
 import { CheckoutPreview } from "./Preview";
-import { ActionError, RoleNotice } from "./parts";
+import { ActionError, errorCopy, isPayoutWalletError, RoleNotice } from "./parts";
 import "./payment-links.css";
 
 const CHAINS: Readonly<Record<string, string>> = {
@@ -58,6 +70,8 @@ export function CreatePaymentLink() {
   const merchant = app.account?.verified_legal_name ?? app.account?.display_name ?? "Your business";
   const payerFees = (app.account?.fee_bearer ?? "payer") === "payer";
   const blocked = app.gate(createPaymentLink);
+  const wallets = payoutWalletState(destinations);
+  const needsWallet = wallets === "none";
 
   const header = <PageHeader title="Create a payment link" subtitle="A familiar checkout, ready to share." />;
   if (!roleAllows(createPaymentLink, app.session?.role))
@@ -70,7 +84,7 @@ export function CreatePaymentLink() {
 
   const submit = async () => {
     setTouched(true);
-    if (!valid || !price.ok || busy) return;
+    if (!valid || !price.ok || busy || needsWallet) return;
     setBusy(true);
     setError(undefined);
     try {
@@ -87,14 +101,16 @@ export function CreatePaymentLink() {
     } catch (e) {
       setError(e);
       setBusy(false);
+      // the wallet list may be out of date (disabled or removed meanwhile): load it again
+      if (isPayoutWalletError(e)) destinations.reload();
     }
   };
 
   const destOptions = [
     { value: "", label: "Account default" },
-    ...(destinations.data?.data ?? []).map((d) => ({
+    ...activePayoutWallets(destinations).map((d) => ({
       value: d.id,
-      label: `${d.label || "Destination"} · ${app.assets.get(d.asset_id)?.symbol ?? "asset"} on ${CHAINS[d.chain] ?? d.chain}`,
+      label: `${d.label || "Payout wallet"} · ${app.assets.get(d.asset_id)?.symbol ?? "asset"} on ${CHAINS[d.chain] ?? d.chain}`,
     })),
   ];
 
@@ -165,12 +181,22 @@ export function CreatePaymentLink() {
             label="Receive payments in"
             hint={
               destinations.error
-                ? "We couldn't load your destinations; the account default is used."
-                : "Only active destinations can receive payments."
+                ? "We couldn't load your payout wallets; the account default is used."
+                : needsWallet
+                  ? undefined
+                  : "Only active payout wallets can receive payments."
             }
           >
             <Select value={destination} options={destOptions} onChange={(e) => setDestination(e.target.value)} />
           </Field>
+          {needsWallet && (
+            <Callout tone="warning" title="Add a payout wallet first" data-testid="payout-wallet-needed">
+              <p>{payoutWalletNeededText(app.mode)}</p>
+              <p>
+                <Link to="/settlement/new">Add a payout wallet</Link>
+              </p>
+            </Callout>
+          )}
           <details className="npf-payment-links__more">
             <summary>More options</summary>
             <div className="np-stack">
@@ -217,7 +243,19 @@ export function CreatePaymentLink() {
           >
             Create link
           </Button>
-          <ActionError error={error} />
+          {needsWallet ? (
+            touched && (
+              <p className="npf-payment-links__action-error" role="alert" data-testid="payout-wallet-error">
+                Add a payout wallet first, then create the link. <Link to="/settlement/new">Add a payout wallet</Link>
+              </p>
+            )
+          ) : isPayoutWalletError(error) ? (
+            <p className="npf-payment-links__action-error" role="alert" data-testid="payout-wallet-error">
+              {errorCopy(error)} <Link to="/settlement/new">Add a payout wallet</Link>
+            </p>
+          ) : (
+            <ActionError error={error} />
+          )}
         </form>
         <Card className="npf-payment-links__preview-wrap">
           <CheckoutPreview
