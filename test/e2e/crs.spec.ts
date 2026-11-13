@@ -31,6 +31,7 @@ test("payment detail: what the payer sent and their refund address (refund_to, o
 test("payment link: internal name on create, list and detail (PaymentLink.name)", async ({ page, api }) => {
   const mock = new PaymentLinksMock();
   installLinks(api, mock);
+  api.destinations.test.push(destination({ label: "Treasury" }));
   await signIn(page, api, "/payment-links/new");
   await page.getByTestId("link-title").fill("Acme Pro");
   await page.getByTestId("link-name").fill("Pro — launch campaign");

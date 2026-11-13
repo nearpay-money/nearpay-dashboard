@@ -5,7 +5,7 @@ import { ApiError, StepUpCanceled } from "../../lib/errors";
 
 const COPY: Readonly<Record<string, string>> = {
   destination_not_active:
-    "That payout wallet isn't active. Pick an active payout wallet, or finish verifying this one first.",
+    "No active payout wallet can receive this link's payments. Pick an active payout wallet, or add one first.",
   amount_below_destination_minimum: "The price is below the smallest payment this destination accepts.",
   amount_above_unverified_cap: "The price is above the per-payment cap of an unverified destination.",
   currency_unsupported: "This currency isn't supported for pricing.",
@@ -16,6 +16,11 @@ const COPY: Readonly<Record<string, string>> = {
   validation_error: "Some fields aren't valid. Check the highlighted fields.",
   invalid_request: "Some fields aren't valid. Check the form and try again.",
 };
+
+/** The API refused because no active payout wallet can receive the payments (`409 destination_not_active`). */
+export function isPayoutWalletError(e: unknown): boolean {
+  return e instanceof ApiError && e.code === "destination_not_active";
+}
 
 /** Friendly copy for an error (API code → sentence; step-up outcome; fallback: API message). */
 export function errorCopy(e: unknown): string {

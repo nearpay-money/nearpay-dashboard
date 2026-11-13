@@ -8,14 +8,19 @@ import {
   checkNextAction,
   intentSigner,
   NextActionMismatch,
+  newerRefund,
   parseUnits,
   payingAttempt,
   refundableAmount,
   refundBadge,
   refundStage,
+  SIMULATE_WATCH_INTERVAL_MS,
+  SIMULATE_WATCH_LIMIT_MS,
   type SignAndSend,
   type SignIntent,
   shouldPoll,
+  simulateWatchStep,
+  startSimulateWatch,
   unitsToInput,
   validateRefundAmount,
 } from "./logic";
@@ -321,6 +326,44 @@ describe("refund state", () => {
     expect(canPrepare(refund({ status: "failed" }))).toBe(true);
     expect(shouldPoll(refund())).toBe(true); // preparing
     expect(shouldPoll(refund({ status: "succeeded" }))).toBe(false);
+  });
+  it("follows a simulated transfer until it shows, for a limited time (test mode)", () => {
+    const T0 = 1_800_000_000_000;
+    // right after the 202 the refund still asks for the wallet: ordinary polling does not follow that state
+    const before = refund({ next_action: intentAction(), sequence: 2 });
+    expect(shouldPoll(before)).toBe(false);
+    const w = startSimulateWatch(before, T0);
+    expect(w).toEqual({ status: "requires_action", sequence: 2, startedAt: T0 });
+    expect(simulateWatchStep(w, before, T0)).toBe("waiting");
+    expect(simulateWatchStep(w, before, T0 + SIMULATE_WATCH_LIMIT_MS - 1)).toBe("waiting");
+    // the status changed: done, whatever it became (final states are not read again, pending is polled)
+    for (const status of ["pending", "succeeded", "failed", "canceled"] as const) {
+      const next = refund({ status, next_action: null, sequence: 3 });
+      expect(simulateWatchStep(w, next, T0 + 2000)).toBe("done");
+      expect(shouldPoll(next)).toBe(status === "pending");
+    }
+    // the transfer is recorded on the leg while the status is unchanged: ordinary polling takes over
+    const recorded = refund({ next_action: null, sequence: 3, legs: [leg({ submitted_tx: "abcdefgh12" })] });
+    expect(simulateWatchStep(w, recorded, T0 + 2000)).toBe("done");
+    // a higher sequence alone is not the transfer: keep reading (the page would otherwise stop again)
+    const reprepared = refund({ next_action: intentAction(), sequence: 3 });
+    expect(simulateWatchStep(w, reprepared, T0 + 2000)).toBe("waiting");
+    // nothing showed within the limit: stop and say so, also when the change is long overdue
+    expect(simulateWatchStep(w, before, T0 + SIMULATE_WATCH_LIMIT_MS)).toBe("timed_out");
+    expect(simulateWatchStep(w, reprepared, T0 + 10 * SIMULATE_WATCH_LIMIT_MS)).toBe("timed_out");
+    expect(simulateWatchStep(w, before, T0 + 5000, 5000)).toBe("timed_out");
+    // a change wins over the limit
+    expect(simulateWatchStep(w, refund({ status: "succeeded" }), T0 + 10 * SIMULATE_WATCH_LIMIT_MS)).toBe("done");
+    expect(SIMULATE_WATCH_INTERVAL_MS).toBeLessThan(SIMULATE_WATCH_LIMIT_MS);
+    expect(SIMULATE_WATCH_LIMIT_MS).toBe(120_000);
+  });
+  it("shows the newest read of a refund (higher sequence wins)", () => {
+    const a = refund({ sequence: 2 });
+    const b = refund({ status: "pending", sequence: 3 });
+    expect(newerRefund(a, b)).toBe(b);
+    expect(newerRefund(b, a)).toBe(b);
+    const same = refund({ sequence: 2 });
+    expect(newerRefund(a, same)).toBe(a);
   });
   it("builds the activity trail", () => {
     const rows = activity(refund({ status: "pending", legs: [leg({ submitted_tx: "abcdefgh12" })] }));

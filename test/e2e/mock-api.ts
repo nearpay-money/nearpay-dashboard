@@ -453,6 +453,13 @@ export class MockApi {
         // identity §20: Bitcoin destinations are P2WPKH / P2TR only (both modes)
         if (String(body.chain).startsWith("bip122:") && !/^bc1[qp]/.test(String(body.address)))
           return err(400, "invalid_request_error", "address_invalid", "Use a native SegWit or Taproot address");
+        // kit `checkNear`: NEAR account ids are lower case, so a mixed-case (EIP-55) `0x` account is refused
+        if (
+          body.type === "intents_account" &&
+          String(body.address).startsWith("0x") &&
+          !/^0x[0-9a-f]{40}$/.test(String(body.address))
+        )
+          return err(400, "invalid_request_error", "address_invalid", "not a valid NEAR account id");
         if (!live) {
           const d = destination({
             ...body,

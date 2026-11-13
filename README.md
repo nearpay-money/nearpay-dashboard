@@ -102,8 +102,8 @@ Needs Node 22 (`.nvmrc`), pnpm 9 and, for step 4, Google Chrome. No Docker. `.np
    `git clone https://github.com/nearpay-money/nearpay-deploy ../nearpay-deploy && ../nearpay-deploy/scripts/registry.sh start`
    → `curl http://127.0.0.1:4873/-/ping` answers `{}`.
 2. `pnpm install --frozen-lockfile` → ends with `Done in …`, no registry errors.
-3. `pnpm test` (unit tests: API client, session recovery, money formatting, signing helpers, feature logic) → `Test Files  25 passed (25)`, `Tests  266 passed (266)`.
-4. `pnpm verify` (the full gate: typecheck, lint, unit tests with the coverage gate, build, then Playwright end-to-end tests of the built app against a spec-driven mock of `/api`) → exits 0; the Playwright list ends with `99 passed` and `5 skipped` (about 4 minutes). The browser is the system Chrome at `/usr/bin/google-chrome`; set `NP_CHROME_PATH` to another path if needed.
+3. `pnpm test` (unit tests: API client, session recovery, money formatting, signing helpers, feature logic) → `Test Files  26 passed (26)`, `Tests  279 passed (279)`.
+4. `pnpm verify` (the full gate: typecheck, lint, unit tests with the coverage gate, build, then Playwright end-to-end tests of the built app against a spec-driven mock of `/api`) → exits 0; the Playwright list ends with `105 passed` and `5 skipped` (about 4 minutes). The browser is the system Chrome at `/usr/bin/google-chrome`; set `NP_CHROME_PATH` to another path if needed.
 
 To use the dashboard for real, follow the walkthrough in the [entry repo](https://github.com/nearpay-money/nearpay).
 

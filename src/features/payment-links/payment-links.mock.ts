@@ -12,12 +12,14 @@ export interface MockCtx {
   readonly role: Role;
   readonly userId: string;
   readonly intents: Record<"test" | "live", Array<Record<string, unknown>>>;
+  /** Payout wallets of the shared mock, by mode. */
+  readonly destinations: Record<"test" | "live", Array<{ id: string; status: string; is_default: boolean }>>;
 }
 export type Reply = { status: number; body?: unknown };
 const ok = (body: unknown, status = 200): Reply => ({ status, body });
-const fail = (status: number, code: string, type = "invalid_request_error"): Reply => ({
+const fail = (status: number, code: string, message = code, type = "invalid_request_error"): Reply => ({
   status,
-  body: { error: { type, code, message: code, request_id: newId("req") } },
+  body: { error: { type, code, message, request_id: newId("req") } },
 });
 const list = (url: string, data: unknown[]) => ({ object: "list", data, has_more: false, url });
 
@@ -67,6 +69,19 @@ export class PaymentLinksMock {
       }
       case "createPaymentLink": {
         const b = c.body;
+        // like the API: the link's payout wallet (the chosen one, else the account default) must be active
+        const wallets = c.destinations[c.mode];
+        const wallet = b.settlement_destination
+          ? wallets.find((d) => d.id === b.settlement_destination)
+          : wallets.find((d) => d.is_default);
+        if (wallet?.status !== "active")
+          return fail(
+            409,
+            "destination_not_active",
+            b.settlement_destination
+              ? "The settlement destination is not active."
+              : "The account has no active default settlement destination in this mode.",
+          );
         const l = this.seed(c.mode, {
           created: NOW,
           amount: b.amount,
@@ -112,6 +127,7 @@ export function installFeatureMock(api: object, mock: { handle(c: MockCtx): Repl
     dispatch: Dispatch;
     role: Role;
     intents: MockCtx["intents"];
+    destinations: MockCtx["destinations"];
   };
   const base = a.dispatch.bind(api);
   a.dispatch = (route, params, query, body, h) =>
@@ -124,5 +140,6 @@ export function installFeatureMock(api: object, mock: { handle(c: MockCtx): Repl
       role: a.role,
       userId: "usr_01jbz9k3m4n5p6q7r8s9t0v1w2",
       intents: a.intents,
+      destinations: a.destinations,
     }) ?? base(route, params, query, body, h);
 }

@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { linkStatus, optionalCount, optionalUrl, parsePrice, priceText, shareUrl, usesText } from "./logic";
+import { ApiError } from "../../lib/errors";
+import {
+  activePayoutWallets,
+  linkStatus,
+  optionalCount,
+  optionalUrl,
+  parsePrice,
+  payoutWalletNeededText,
+  payoutWalletState,
+  priceText,
+  shareUrl,
+  usesText,
+} from "./logic";
+import { errorCopy, isPayoutWalletError } from "./parts";
 
 const USDC = { id: "nep141:usdc.near", meta: { symbol: "USDC", decimals: 6 } };
 
@@ -40,5 +53,56 @@ describe("payment link pricing (INV-5)", () => {
       "https://pay.nearpay.money/l/plink_1",
     );
     expect(shareUrl({ id: "plink_1", url: "https://evil.example/l/plink_2" })).toBeNull();
+  });
+});
+
+describe("payout wallet needed before a link can be created", () => {
+  const loaded = (data: { status: string }[]) => ({ loading: false, error: undefined, data: { data } });
+
+  it("knows nothing while the list loads or when it failed, so the form does not block", () => {
+    expect(payoutWalletState({ loading: true, error: undefined, data: undefined })).toBe("unknown");
+    // a reload (mode switch) keeps the last data: still unknown until the new list arrives
+    expect(payoutWalletState({ loading: true, error: undefined, data: { data: [] } })).toBe("unknown");
+    expect(payoutWalletState({ loading: false, error: new Error("offline"), data: undefined })).toBe("unknown");
+    expect(payoutWalletState({ loading: false, error: undefined, data: undefined })).toBe("unknown");
+  });
+
+  it("asks for a payout wallet when the loaded list has no active one", () => {
+    expect(payoutWalletState(loaded([]))).toBe("none");
+    expect(payoutWalletState(loaded([{ status: "pending_verification" }, { status: "disabled" }]))).toBe("none");
+    expect(payoutWalletState(loaded([{ status: "disabled" }, { status: "active" }]))).toBe("ready");
+  });
+
+  it("offers only active wallets", () => {
+    const list = loaded([{ status: "active" }, { status: "pending_approval" }, { status: "active" }]);
+    expect(activePayoutWallets(list)).toHaveLength(2);
+    expect(activePayoutWallets({ loading: true, error: undefined, data: undefined })).toEqual([]);
+  });
+
+  it("says it in plain words, per mode, without the word destination", () => {
+    expect(payoutWalletNeededText("test")).toBe(
+      "Payments from this link go straight to your payout wallet. This account has no active payout wallet in test mode yet.",
+    );
+    expect(payoutWalletNeededText("live")).toMatch(
+      /in live mode yet\. If you've added one, finish verifying it first\.$/,
+    );
+    for (const mode of ["test", "live"] as const) expect(payoutWalletNeededText(mode)).not.toMatch(/destination/i);
+  });
+
+  it("maps the API's 409 destination_not_active to payout wallet wording", () => {
+    const e = new ApiError({
+      status: 409,
+      type: "invalid_request_error",
+      code: "destination_not_active",
+      message: "The account has no active default settlement destination in this mode.",
+      requestId: "req_01",
+    });
+    expect(isPayoutWalletError(e)).toBe(true);
+    expect(errorCopy(e)).toBe(
+      "No active payout wallet can receive this link's payments. Pick an active payout wallet, or add one first. Reference req_01.",
+    );
+    expect(errorCopy(e)).not.toMatch(/destination/i);
+    expect(isPayoutWalletError(new Error("x"))).toBe(false);
+    expect(isPayoutWalletError(undefined)).toBe(false);
   });
 });

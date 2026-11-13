@@ -1,13 +1,76 @@
-/** Payment links E2E (mock-backed): list, create with live preview, share URL, deactivate. */
+/**
+ * Payment links E2E (mock-backed): list, create with live preview, share URL, deactivate; a link needs an
+ * active payout wallet (the mock answers `409 destination_not_active` like the API).
+ */
+import { mkdirSync } from "node:fs";
+import { destination } from "../../../test/e2e/fixtures";
 import { expect, signIn, test } from "../../../test/e2e/harness";
 import { installFeatureMock, PaymentLinksMock } from "./payment-links.mock";
 
 const SHOTS = "/home/claude/shots/dashboard-features";
+const JUDGE_SHOTS = process.env.NP_SHOTS ?? "/home/claude/shots/dash-judge";
+mkdirSync(JUDGE_SHOTS, { recursive: true });
 test.use({ viewport: { width: 1440, height: 900 } });
+
+test("create a payment link without a payout wallet: asks for one first, with a link to add it", async ({
+  page,
+  api,
+}) => {
+  installFeatureMock(api, new PaymentLinksMock());
+  await signIn(page, api, "/payment-links/new");
+  const notice = page.getByTestId("payout-wallet-needed");
+  await expect(notice).toContainText("Add a payout wallet first");
+  await expect(notice).toContainText("This account has no active payout wallet in test mode yet.");
+  await expect(page.getByText(/destination/i)).toHaveCount(0);
+  await page.getByTestId("link-title").fill("Judge sticker");
+  await page.getByTestId("link-amount").fill("5");
+  await page.screenshot({ path: `${JUDGE_SHOTS}/payment-link-needs-payout-wallet-1440.png`, fullPage: true });
+  // "Create link" sends nothing and says the same under the button
+  await page.getByTestId("create-link").click();
+  await expect(page.getByTestId("payout-wallet-error")).toContainText("Add a payout wallet first");
+  await expect(page.getByText(/destination/i)).toHaveCount(0);
+  expect(api.callsTo("createPaymentLink")).toHaveLength(0);
+  await page.screenshot({ path: `${JUDGE_SHOTS}/payment-link-needs-payout-wallet-submit-1440.png`, fullPage: true });
+  await notice.getByRole("link", { name: "Add a payout wallet" }).click();
+  await expect(page).toHaveURL(/\/settlement\/new$/);
+  await expect(page.getByRole("heading", { name: "Add a payout wallet" })).toBeVisible();
+
+  // with an active payout wallet the notice is gone and the link can be created
+  api.destinations.test.push(destination({ label: "Treasury" }));
+  await page.goto("/payment-links/new");
+  await expect(page.getByText("Only active payout wallets can receive payments.")).toBeVisible();
+  await expect(page.getByTestId("payout-wallet-needed")).toHaveCount(0);
+  await page.getByTestId("link-title").fill("Judge sticker");
+  await page.getByTestId("link-amount").fill("5");
+  await page.getByTestId("create-link").click();
+  await expect(page).toHaveURL(/\/payment-links\/plink_/);
+  await expect(page.getByText("https://pay.nearpay.localhost/l/plink_").first()).toBeVisible();
+  await page.waitForLoadState("networkidle");
+});
+
+test("create a payment link: the API's destination_not_active answer names the payout wallet and links to add one", async ({
+  page,
+  api,
+}) => {
+  installFeatureMock(api, new PaymentLinksMock());
+  // an active wallet exists, but none is the account default
+  api.destinations.test.push(destination({ label: "Ops", is_default: false }));
+  await signIn(page, api, "/payment-links/new");
+  await expect(page.getByTestId("payout-wallet-needed")).toHaveCount(0);
+  await page.getByTestId("link-title").fill("Judge sticker");
+  await page.getByTestId("link-amount").fill("5");
+  await page.getByTestId("create-link").click();
+  const error = page.getByTestId("payout-wallet-error");
+  await expect(error).toContainText("No active payout wallet can receive this link's payments.");
+  await expect(error).not.toContainText(/destination/i);
+  await expect(error.getByRole("link", { name: "Add a payout wallet" })).toHaveAttribute("href", "/settlement/new");
+  await page.screenshot({ path: `${JUDGE_SHOTS}/payment-link-payout-wallet-error-1440.png`, fullPage: true });
+});
 
 test("payment links: empty → create (preview) → detail → deactivate", async ({ page, api }) => {
   const mock = new PaymentLinksMock();
   installFeatureMock(api, mock);
+  api.destinations.test.push(destination({ label: "Treasury" }));
   await signIn(page, api);
   await page.goto("/payment-links");
   await expect(page.getByText("No test payment links yet")).toBeVisible();

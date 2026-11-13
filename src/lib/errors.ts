@@ -93,7 +93,7 @@ const FRIENDLY: Readonly<Record<string, string>> = {
   customer_deleted: "This customer was deleted. Choose another customer.",
   attempt_in_flight: "A payment for this invoice may still be settling. Try again in a few minutes.",
   destination_not_active:
-    "Your settlement destination isn't active yet. Activate a destination in Settlement, then try again.",
+    "You need an active payout wallet in this mode first. Add one under Payout wallets, then try again.",
   amount_below_destination_minimum: "The total is below the minimum your settlement destination accepts.",
   invoice_not_payable: "This invoice can't be paid right now.",
   // stage 4 (spec 0.4.0): auto-debit and Solana/Bitcoin destinations

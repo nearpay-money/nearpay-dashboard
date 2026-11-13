@@ -5,7 +5,9 @@
  * {signed_intent}`; `sign_and_send` → EVM wallet transfer or the manual path → `submit_tx {tx_hash}`.
  *
  * Test mode never opens a wallet or broadcasts (test legs point at sandbox deposit addresses): the merchant
- * simulates the signed transfer with `simulateRefundDeposit` instead.
+ * simulates the signed transfer with `simulateRefundDeposit` instead. That call answers 202 and the refund
+ * changes a moment later, so the page is told which state the simulation started from and follows the
+ * refund until the transfer shows (`RefundDetail`, `simulateWatchStep`).
  */
 
 import {
@@ -33,7 +35,11 @@ import { assetText } from "./ui";
 
 export interface SignRefundProps {
   readonly refund: Refund;
-  readonly onUpdated: (r: Refund, announce: string) => void;
+  /**
+   * `simulatedFrom`: the refund as it was when a simulated transfer was accepted (test mode only); the page
+   * then reads the refund until that transfer shows.
+   */
+  readonly onUpdated: (r: Refund, announce: string, opts?: { readonly simulatedFrom?: Refund }) => void;
 }
 
 export function SignRefund({ refund, onUpdated }: SignRefundProps) {
@@ -338,7 +344,15 @@ function SimulateReturn({ refund, onUpdated }: SignRefundProps) {
         onClick={() =>
           run("sim", async () => {
             await calls.simulate(refund.id);
-            onUpdated(await calls.get(refund.id), "Simulated transfer sent. The return is confirming.");
+            // 202: accepted, applied a moment later. This first read usually still shows the old state;
+            // if it fails, the page reads the refund again by itself.
+            let next = refund;
+            try {
+              next = await calls.get(refund.id);
+            } catch {
+              next = refund;
+            }
+            onUpdated(next, "Simulated transfer sent. The return is confirming.", { simulatedFrom: refund });
           })
         }
         data-testid="simulate-transfer"
